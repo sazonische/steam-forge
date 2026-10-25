@@ -1,0 +1,35 @@
+# Local Markdown files, except README and license files.
+*.[mM][dD]
+![Rr][Ee][Aa][Dd][Mm][Ee].[mM][dD]
+![Ll][Ii][Cc][Ee][Nn][Ss][Ee].[mM][dD]
+![Ll][Ii][Cc][Ee][Nn][Cc][Ee].[mM][dD]
+
+# Local reference material, not part of the project.
+/examples/
+
+# Build trees and vcpkg state.
+/build/
+/out/
+/vcpkg_installed/
+/Testing/
+/compile_commands.json
+
+# Per-user CMake presets.
+/CMakeUserPresets.json
+
+# Editor and tool caches.
+/.cache/
+/.codebase-memory/
+/.vs/
+/.vscode/
+/.idea/
+*.user
+*.user.*
+*.autosave
+*.swp
+*~
+
+# Operating system files.
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,64 @@
+{
+	"$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+	"name": "steamforge",
+	"version-string": "0.1.0",
+	"builtin-baseline": "a1cae005c39be7b18ba319fced856b68d7276271",
+	"dependencies": [
+		{
+			"name": "dbus",
+			"default-features": false,
+			"platform": "linux"
+		},
+		{
+			"name": "qtbase",
+			"default-features": false,
+			"features": [
+				"gui",
+				"widgets",
+				"network",
+				"thread",
+				"concurrent",
+				"png",
+				"jpeg",
+				"freetype",
+				"harfbuzz",
+				"doubleconversion",
+				"pcre2",
+				"testlib",
+				{
+					"name": "xcb",
+					"platform": "linux"
+				},
+				{
+					"name": "xcb-xlib",
+					"platform": "linux"
+				},
+				{
+					"name": "fontconfig",
+					"platform": "linux"
+				},
+				{
+					"name": "dbus",
+					"platform": "linux"
+				},
+				{
+					"name": "openssl",
+					"platform": "linux"
+				}
+			]
+		},
+		{
+			"name": "qtsvg",
+			"default-features": false
+		},
+		{
+			"name": "qttools",
+			"host": true,
+			"default-features": false,
+			"features": [
+				"linguist"
+			]
+		},
+		"qttranslations"
+	]
+}

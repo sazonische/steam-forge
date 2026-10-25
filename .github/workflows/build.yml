@@ -1,0 +1,246 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  # Tag builds are never cancelled midway: their files become the release.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CLANG_FORMAT_VERSION: "21.1.7"
+
+jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check formatting
+        run: |
+          python3 -m pip install --quiet "clang-format==${CLANG_FORMAT_VERSION}"
+          clang-format --version
+          find src tests \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print0 | xargs -0 clang-format --dry-run --Werror
+
+  meta:
+    name: Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # A tag vMAJOR.MINOR.PATCH names the release, the files and the version inside the program.
+      # Without a tag the version is project(VERSION) from CMakeLists.txt, as in local builds.
+      - name: Determine version
+        id: version
+        run: |
+          declared_version="$(sed -nE 's/^project\(SteamForge VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)"
+          if [[ -z "${declared_version}" ]]; then
+            echo "project(SteamForge VERSION ...) not found in CMakeLists.txt" >&2
+            exit 1
+          fi
+          version="${declared_version}"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Tag ${GITHUB_REF_NAME} is not vMAJOR.MINOR.PATCH" >&2
+              exit 1
+            fi
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "Version ${version} (CMakeLists.txt declares ${declared_version}, ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME})"
+
+  windows:
+    name: Windows (MSVC, static)
+    needs: [meta, format]
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-archives
+      RELEASE_FILE: build/windows-release/SteamForge.exe
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: x64
+
+      - name: Checkout vcpkg at the manifest baseline
+        shell: pwsh
+        run: |
+          $vcpkgRoot = "${{ github.workspace }}/vcpkg"
+          $baseline = (Get-Content vcpkg.json -Raw | ConvertFrom-Json).'builtin-baseline'
+          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git $vcpkgRoot
+          git -C $vcpkgRoot checkout --quiet $baseline
+          & "$vcpkgRoot/bootstrap-vcpkg.bat" -disableMetrics
+          if ($LASTEXITCODE -ne 0) {
+            throw "bootstrap-vcpkg failed ($LASTEXITCODE)"
+          }
+          "VCPKG_ROOT=$vcpkgRoot" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/vcpkg-archives" | Out-Null
+
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/vcpkg-archives
+          key: vcpkg-windows-${{ hashFiles('vcpkg.json', 'triplets/x64-windows-static-release.cmake') }}
+          restore-keys: |
+            vcpkg-windows-
+
+      - name: Configure
+        run: cmake --preset windows-release "-DSTEAMFORGE_VERSION=${{ needs.meta.outputs.version }}"
+
+      - name: Save vcpkg binary cache
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/vcpkg-archives
+          key: vcpkg-windows-${{ hashFiles('vcpkg.json', 'triplets/x64-windows-static-release.cmake') }}
+
+      - name: Build
+        run: cmake --build --preset windows-release
+
+      - name: Test
+        run: ctest --preset windows-release
+
+      - name: Check executable dependencies
+        shell: pwsh
+        run: |
+          ./tools/ci/check-windows-dependencies.ps1 -ExecutablePath $env:RELEASE_FILE
+          "{0}: {1:N1} MB" -f $env:RELEASE_FILE, ((Get-Item $env:RELEASE_FILE).Length / 1MB)
+
+      # Anyone can verify the file was built by this workflow: gh attestation verify <file> --repo <owner>/<repo>
+      - name: Attest build provenance
+        if: github.ref_type == 'tag'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ env.RELEASE_FILE }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: SteamForge-windows-x64
+          path: ${{ env.RELEASE_FILE }}
+          if-no-files-found: error
+
+  linux:
+    name: Linux (GCC 14, glibc 2.28, static Qt)
+    needs: [meta, format]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64@sha256:a57da7c5fcbdc2df58c0f95f10a6fd676e5ea98097d93e70d20db52c926db2b0
+    env:
+      VCPKG_ROOT: /opt/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-archives
+      STEAMFORGE_VERSION: ${{ needs.meta.outputs.version }}
+      RELEASE_FILE: build/linux-release/SteamForge
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install system build dependencies
+        run: tools/ci/install-linux-build-dependencies.sh
+
+      - name: Prepare vcpkg binary cache directory
+        run: mkdir -p "${VCPKG_DEFAULT_BINARY_CACHE}"
+
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/vcpkg-archives
+          key: vcpkg-linux-${{ hashFiles('vcpkg.json', 'triplets/x64-linux-static-release.cmake', 'tools/ci/install-linux-build-dependencies.sh') }}
+          restore-keys: |
+            vcpkg-linux-
+
+      - name: Build
+        run: tools/ci/build-linux.sh release
+
+      - name: Save vcpkg binary cache
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/vcpkg-archives
+          key: vcpkg-linux-${{ hashFiles('vcpkg.json', 'triplets/x64-linux-static-release.cmake', 'tools/ci/install-linux-build-dependencies.sh') }}
+
+      - name: Test
+        run: ctest --preset linux-release
+
+      - name: Check executable dependencies
+        run: |
+          tools/ci/check-linux-dependencies.sh "${RELEASE_FILE}" 2.28
+          ls -l "${RELEASE_FILE}"
+
+      - name: Attest build provenance
+        if: github.ref_type == 'tag'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ env.RELEASE_FILE }}
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: SteamForge-linux-x64
+          path: ${{ env.RELEASE_FILE }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    # Only a pushed tag creates a release; branch pushes, pull requests and manual runs stop at artifacts.
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [meta, windows, linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: release-files
+          merge-multiple: true
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          mapfile -t release_files < <(find release-files -type f | sort)
+          if [[ "${#release_files[@]}" -ne 2 ]]; then
+            echo "Expected the Windows and Linux files, found: ${release_files[*]}" >&2
+            exit 1
+          fi
+
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
+            # A re-run attaches only missing files; published files are not replaced.
+            attached_names=" $(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name' | tr '\n' ' ') "
+            for release_file in "${release_files[@]}"; do
+              file_name="$(basename "${release_file}")"
+              if [[ "${attached_names}" == *" ${file_name} "* ]]; then
+                echo "Release ${RELEASE_TAG} already has ${file_name}"
+              else
+                gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" "${release_file}"
+              fi
+            done
+            exit 0
+          fi
+
+          gh release create "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --verify-tag \
+            --title "SteamForge ${RELEASE_TAG}" --generate-notes \
+            "${release_files[@]}"

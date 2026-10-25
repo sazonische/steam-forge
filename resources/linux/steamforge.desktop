@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=SteamForge
+GenericName=Steam Account Manager
+GenericName[ru]=Менеджер аккаунтов Steam
+Comment=Steam accounts, Steam Guard codes and confirmations
+Comment[ru]=Аккаунты Steam, коды Steam Guard и подтверждения
+Exec=SteamForge
+Icon=steamforge
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+StartupWMClass=SteamForge

@@ -1,0 +1,134 @@
+{
+	"version": 6,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 25,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "base",
+			"hidden": true,
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build/${presetName}",
+			"toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+			"cacheVariables": {
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+				"VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/triplets"
+			}
+		},
+		{
+			"name": "windows-base",
+			"hidden": true,
+			"inherits": "base",
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Windows"
+			},
+			"cacheVariables": {
+				"CMAKE_CXX_COMPILER": "cl.exe",
+				"VCPKG_TARGET_TRIPLET": "x64-windows-static-release",
+				"VCPKG_HOST_TRIPLET": "x64-windows-static-release"
+			}
+		},
+		{
+			"name": "windows-release",
+			"displayName": "Windows Release (static)",
+			"inherits": "windows-base",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		},
+		{
+			"name": "windows-dev",
+			"displayName": "Windows RelWithDebInfo (static)",
+			"inherits": "windows-base",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo"
+			}
+		},
+		{
+			"name": "linux-base",
+			"hidden": true,
+			"inherits": "base",
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Linux"
+			},
+			"cacheVariables": {
+				"CMAKE_CXX_COMPILER": "g++",
+				"VCPKG_TARGET_TRIPLET": "x64-linux-static-release",
+				"VCPKG_HOST_TRIPLET": "x64-linux-static-release"
+			}
+		},
+		{
+			"name": "linux-release",
+			"displayName": "Linux Release (static)",
+			"inherits": "linux-base",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		},
+		{
+			"name": "linux-dev",
+			"displayName": "Linux RelWithDebInfo (static)",
+			"inherits": "linux-base",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "windows-release",
+			"configurePreset": "windows-release"
+		},
+		{
+			"name": "windows-dev",
+			"configurePreset": "windows-dev"
+		},
+		{
+			"name": "linux-release",
+			"configurePreset": "linux-release"
+		},
+		{
+			"name": "linux-dev",
+			"configurePreset": "linux-dev"
+		}
+	],
+	"testPresets": [
+		{
+			"name": "test-base",
+			"hidden": true,
+			"output": {
+				"outputOnFailure": true
+			},
+			"execution": {
+				"noTestsAction": "error",
+				"stopOnFailure": false
+			}
+		},
+		{
+			"name": "windows-release",
+			"inherits": "test-base",
+			"configurePreset": "windows-release"
+		},
+		{
+			"name": "windows-dev",
+			"inherits": "test-base",
+			"configurePreset": "windows-dev"
+		},
+		{
+			"name": "linux-release",
+			"inherits": "test-base",
+			"configurePreset": "linux-release"
+		},
+		{
+			"name": "linux-dev",
+			"inherits": "test-base",
+			"configurePreset": "linux-dev"
+		}
+	]
+}

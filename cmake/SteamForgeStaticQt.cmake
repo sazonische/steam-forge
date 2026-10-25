@@ -1,0 +1,12 @@
+function(steamforge_require_static_qt)
+	get_target_property(qtCoreType Qt6::Core TYPE)
+	if(NOT qtCoreType STREQUAL "STATIC_LIBRARY")
+		message(FATAL_ERROR "SteamForge requires a static Qt build (found Qt6::Core of type ${qtCoreType}). Use one of the CMake presets with the vcpkg static triplets.")
+	endif()
+endfunction()
+
+function(steamforge_apply_static_runtime target)
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+		target_link_options(${target} PRIVATE -static-libstdc++ -static-libgcc)
+	endif()
+endfunction()

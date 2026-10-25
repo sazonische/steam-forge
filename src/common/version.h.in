@@ -1,0 +1,7 @@
+#pragma once
+
+namespace SteamForge {
+
+inline constexpr QLatin1StringView APPLICATION_VERSION{"@STEAMFORGE_VERSION@"};
+
+} // namespace SteamForge

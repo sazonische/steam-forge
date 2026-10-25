@@ -1,0 +1,5 @@
+InheritParentConfig: true
+
+# Qt Test invokes test slots through the meta-object system; they cannot be static.
+Checks: >
+  -readability-convert-member-functions-to-static

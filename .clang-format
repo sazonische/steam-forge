@@ -1,0 +1,98 @@
+Language: Cpp
+Standard: Latest
+
+UseTab: Always
+TabWidth: 4
+IndentWidth: 4
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -4
+IndentCaseLabels: true
+IndentPPDirectives: BeforeHash
+PPIndentWidth: -1
+IndentWrappedFunctionNames: false
+NamespaceIndentation: Inner
+CompactNamespaces: false
+FixNamespaceComments: true
+
+ColumnLimit: 0
+BreakStringLiterals: false
+ReflowComments: true
+MaxEmptyLinesToKeep: 1
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: false
+  AtStartOfFile: false
+InsertNewlineAtEOF: true
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterExternBlock: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: None
+AllowShortLoopsOnASingleLine: false
+InsertBraces: true
+RemoveBracesLLVM: false
+
+AlignAfterOpenBracket: BlockIndent
+AlignArrayOfStructures: None
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignEscapedNewlines: Right
+AlignOperands: Align
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: true
+BinPackParameters: BinPack
+PackConstructorInitializers: BinPack
+BreakAfterReturnType: Automatic
+BreakTemplateDeclarations: Yes
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeTernaryOperators: false
+BreakConstructorInitializers: AfterColon
+AlwaysBreakBeforeMultilineStrings: false
+Cpp11BracedListStyle: true
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+QualifierAlignment: Leave
+
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 1
+SpacesInAngles: Never
+SpacesInContainerLiterals: true
+SpacesInParens: Never
+SpacesInSquareBrackets: false
+
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+SortUsingDeclarations: Never
