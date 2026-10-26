@@ -16,6 +16,7 @@ class SteamClock;
 class SteamImageCache;
 class SteamCommunityTransport;
 class SteamWebApiTransport;
+class UpdateCheck;
 
 class Application final : public QApplication {
 	Q_OBJECT
@@ -30,6 +31,7 @@ public:
 private:
 	void ApplyLanguage(std::optional<InterfaceLanguage> language);
 	void ChangeLanguage(std::optional<InterfaceLanguage> language);
+	void ChangeUpdateChecks(bool isEnabled);
 
 	InterfaceTranslator interfaceTranslator;
 	SingleInstanceGuard singleInstanceGuard;
@@ -44,6 +46,7 @@ private:
 	std::unique_ptr<ConfirmationMonitor> confirmationMonitor;
 	std::unique_ptr<SteamImageCache> steamImageCache;
 	std::unique_ptr<AccountProfiles> accountProfiles;
+	std::unique_ptr<UpdateCheck> updateCheck;
 	std::unique_ptr<MainWindow> mainWindow;
 };
 

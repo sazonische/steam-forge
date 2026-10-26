@@ -1,5 +1,6 @@
 #include "ui/settings_dialog.h"
 
+#include "common/version.h"
 #include "ui/widget_styles.h"
 
 namespace SteamForge {
@@ -41,7 +42,7 @@ namespace {
 	}
 } // namespace
 
-SettingsDialog::SettingsDialog(std::optional<InterfaceLanguage> currentLanguage, DataLocation location, EncryptionStatus encryption, QWidget* parent) :
+SettingsDialog::SettingsDialog(std::optional<InterfaceLanguage> currentLanguage, bool checksForUpdates, DataLocation location, EncryptionStatus encryption, QWidget* parent) :
 	QDialog(parent),
 	dataLocation(std::move(location)),
 	encryptionStatus(encryption) {
@@ -70,6 +71,13 @@ SettingsDialog::SettingsDialog(std::optional<InterfaceLanguage> currentLanguage,
 	portableModeLabel = new QLabel(this);
 	portableModeLabel->setObjectName(SECONDARY_TEXT_STYLE);
 	portableModeLabel->setWordWrap(true);
+	updatesSectionLabel = new QLabel(this);
+	MakeSectionLabel(*updatesSectionLabel);
+	updateChecksCheckBox = new QCheckBox(this);
+	updateChecksCheckBox->setChecked(checksForUpdates);
+	updatesNoteLabel = new QLabel(this);
+	updatesNoteLabel->setObjectName(SECONDARY_TEXT_STYLE);
+	updatesNoteLabel->setWordWrap(true);
 	buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
 
 	auto* folderRowLayout = new QHBoxLayout();
@@ -87,11 +95,16 @@ SettingsDialog::SettingsDialog(std::optional<InterfaceLanguage> currentLanguage,
 	dialogLayout->addWidget(dataFolderTitleLabel);
 	dialogLayout->addLayout(folderRowLayout);
 	dialogLayout->addWidget(portableModeLabel);
+	dialogLayout->addSpacing(SECTION_SPACING);
+	dialogLayout->addWidget(updatesSectionLabel);
+	dialogLayout->addWidget(updateChecksCheckBox);
+	dialogLayout->addWidget(updatesNoteLabel);
 	dialogLayout->addStretch();
 	dialogLayout->addWidget(buttonBox);
 
 	connect(languageComboBox, &QComboBox::activated, this, &SettingsDialog::SelectLanguage);
 	connect(openFolderButton, &QPushButton::clicked, this, &SettingsDialog::OpenDataFolder);
+	connect(updateChecksCheckBox, &QCheckBox::toggled, this, &SettingsDialog::UpdateChecksToggled);
 	connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
 	RetranslateUi();
@@ -132,6 +145,9 @@ void SettingsDialog::RetranslateUi() {
 	} else {
 		portableModeLabel->setText(tr("To keep the data next to the program instead, place an empty file named .portable next to SteamForge and restart it. Existing data is not moved automatically."));
 	}
+	updatesSectionLabel->setText(tr("Updates"));
+	updateChecksCheckBox->setText(tr("Check for new versions"));
+	updatesNoteLabel->setText(tr("Once a day SteamForge asks GitHub which version is the latest and offers a new one in a window. Nothing is downloaded or installed by itself. You have version %1.").arg(APPLICATION_VERSION));
 	buttonBox->button(QDialogButtonBox::Close)->setText(tr("Close"));
 }
 

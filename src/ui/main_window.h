@@ -33,9 +33,12 @@ public:
 	void QuitApplication();
 	// Asks for the key right after the start when Windows Hello or a keyring password guards it.
 	void UnlockIfLocked();
+	// Offered in a window when this one is in front; a skipped version, older ones and one postponed in this run are not.
+	void ShowAvailableUpdate(const QVersionNumber& version);
 
 Q_SIGNALS:
 	void LanguageChangeRequested(std::optional<InterfaceLanguage> language);
+	void UpdateChecksChangeRequested(bool isEnabled);
 
 protected:
 	void closeEvent(QCloseEvent* event) override;
@@ -45,6 +48,7 @@ protected:
 
 private:
 	[[nodiscard]] QWidget* CreateTopBar();
+	void OfferPendingUpdate();
 	[[nodiscard]] QWidget* CreateEmptyStatePage();
 	[[nodiscard]] QWidget* CreateLockedPage();
 	void Unlock();
@@ -111,6 +115,8 @@ private:
 	QLabel* loadProblemLabel = nullptr;
 	QPushButton* loadProblemDetailsButton = nullptr;
 	QWidget* loadProblemBanner = nullptr;
+	QVersionNumber pendingUpdateVersion;
+	QVersionNumber postponedUpdateVersion;
 	QStackedWidget* pageStack = nullptr;
 	QWidget* emptyStatePage = nullptr;
 	QWidget* lockedPage = nullptr;

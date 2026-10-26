@@ -16,6 +16,14 @@ public:
 	[[nodiscard]] QByteArray MainWindowGeometry() const;
 	void SetMainWindowGeometry(const QByteArray& geometry);
 
+	// On unless the user turned it off.
+	[[nodiscard]] bool ChecksForUpdates() const;
+	void SetChecksForUpdates(bool isEnabled);
+
+	// Releases up to this version are not offered again; null when none was skipped.
+	[[nodiscard]] QVersionNumber SkippedUpdateVersion() const;
+	void SetSkippedUpdateVersion(const QVersionNumber& version);
+
 private:
 	QSettings settings;
 };

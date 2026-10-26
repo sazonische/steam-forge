@@ -230,7 +230,7 @@
         <translation>Подтверждение</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="57"/>
+        <location filename="../src/ui/main_window.cpp" line="59"/>
         <source>%1: %2</source>
         <translation>%1: %2</translation>
     </message>
@@ -626,12 +626,12 @@
 <context>
     <name>SteamForge::Application</name>
     <message>
-        <location filename="../src/app/application.cpp" line="50"/>
+        <location filename="../src/app/application.cpp" line="51"/>
         <source>SteamForge is already running, or its instance endpoint is unavailable.</source>
         <translation>SteamForge уже запущен, или точка связи с запущенным экземпляром недоступна.</translation>
     </message>
     <message>
-        <location filename="../src/app/application.cpp" line="58"/>
+        <location filename="../src/app/application.cpp" line="59"/>
         <source>No folder for SteamForge data is available for this user.</source>
         <translation>Для этого пользователя нет доступной папки данных SteamForge.</translation>
     </message>
@@ -730,102 +730,102 @@
 <context>
     <name>SteamForge::ConfirmationsDialog</name>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="208"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="224"/>
         <source>Confirmations · %1</source>
         <translation>Подтверждения · %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="212"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="228"/>
         <source>Refresh</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="213"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="229"/>
         <source>Sign in to Steam…</source>
         <translation>Войти в Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="214"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="230"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="255"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="271"/>
         <source>New confirmations will appear here automatically.</source>
         <translation>Новые подтверждения появятся здесь автоматически.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="383"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="399"/>
         <source>Confirm</source>
         <translation>Подтвердить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="383"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="399"/>
         <source>Decline</source>
         <translation>Отклонить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="346"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="362"/>
         <source>Clear selection</source>
         <translation>Снять выбор</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="210"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="226"/>
         <source>Trade and market confirmations of this account.</source>
         <translation>Подтверждения обменов и Торговой площадки этого аккаунта.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="249"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="265"/>
         <source>Sign in to Steam again</source>
         <translation>Войдите в Steam снова</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="249"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="265"/>
         <source>Confirmations are unavailable</source>
         <translation>Подтверждения недоступны</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="254"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="270"/>
         <source>Nothing to confirm</source>
         <translation>Подтверждать нечего</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="316"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="332"/>
         <source>All %1</source>
         <translation>Все %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="317"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="333"/>
         <source>Trades %1</source>
         <translation>Обмены %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="318"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="334"/>
         <source>Market %1</source>
         <translation>Торговая площадка %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="319"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="335"/>
         <source>Other %1</source>
         <translation>Другое %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="346"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="362"/>
         <source>Select all</source>
         <translation>Выбрать все</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="348"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="364"/>
         <source>Confirm selected (%1)</source>
         <translation>Подтвердить выбранные (%1)</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="349"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="365"/>
         <source>Decline selected (%1)</source>
         <translation>Отклонить выбранные (%1)</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/confirmations_dialog.cpp" line="381"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="397"/>
         <source>Confirm %n selected confirmations of %1?</source>
         <translation>
             <numerusform>Подтвердить %n выбранное подтверждение аккаунта %1?</numerusform>
@@ -834,7 +834,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/confirmations_dialog.cpp" line="381"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="397"/>
         <source>Decline %n selected confirmations of %1?</source>
         <translation>
             <numerusform>Отклонить %n выбранное подтверждение аккаунта %1?</numerusform>
@@ -843,73 +843,73 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="473"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="489"/>
         <source>Steam no longer accepts the saved sign-in of %1. Sign in to Steam again to see and confirm trades.</source>
         <translation>Steam больше не принимает сохранённый вход %1. Войдите в Steam заново, чтобы видеть и подтверждать обмены.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="475"/>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="477"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="491"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="493"/>
         <source>Confirmations could not be loaded.</source>
         <translation>Не удалось загрузить подтверждения.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="503"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="519"/>
         <source>It is unknown whether Steam carried out the decision.</source>
         <translation>Неизвестно, выполнил ли Steam решение.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="503"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="519"/>
         <source>The list was loaded again: an entry that is still listed was not processed.</source>
         <translation>Список загружен заново: подтверждение, которое осталось в списке, не обработано.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="505"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="521"/>
         <source>Steam did not carry out the decision.</source>
         <translation>Steam не выполнил решение.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="505"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="521"/>
         <source>The list was loaded again.</source>
         <translation>Список загружен заново.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="479"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="495"/>
         <source>The renewed Steam sign-in could not be saved on this computer, so nothing was requested.</source>
         <translation>Не удалось сохранить обновлённый вход в Steam на этом компьютере, поэтому запрос не отправлен.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="466"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="482"/>
         <source>The authenticator of %1 has no confirmation key, so confirmations are not available. Add the key in the account panel: the gear button, then &quot;Add data…&quot;.</source>
         <translation>У аутентификатора %1 нет ключа подтверждений, поэтому подтверждения недоступны. Добавьте ключ в панели аккаунта: кнопка с шестерёнкой, затем «Дополнить данные…».</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="468"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="484"/>
         <source>There is no valid Steam sign-in for %1. Sign in to Steam to see and confirm trades.</source>
         <translation>Для %1 нет действующего входа в Steam. Войдите, чтобы видеть и подтверждать обмены.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="475"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="491"/>
         <source>We&apos;ll try again automatically.</source>
         <translation>Попробуем снова автоматически.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="483"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="499"/>
         <source>Loading confirmations…</source>
         <translation>Загрузка подтверждений…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="486"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="502"/>
         <source>Updating…</source>
         <translation>Обновление…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="491"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="507"/>
         <source>Updated at %1.</source>
         <translation>Обновлено в %1.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/confirmations_dialog.cpp" line="493"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="509"/>
         <source>%n waiting, updated at %1.</source>
         <translation>
             <numerusform>Ожидает %n, обновлено в %1.</numerusform>
@@ -918,7 +918,7 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="507"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="523"/>
         <source>The renewed Steam sign-in could not be saved on this computer, so the decision was not sent.</source>
         <translation>Не удалось сохранить обновлённый вход в Steam на этом компьютере, поэтому решение не отправлено.</translation>
     </message>
@@ -1795,107 +1795,112 @@
 <context>
     <name>SteamForge::MainWindow</name>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="342"/>
+        <location filename="../src/ui/main_window.cpp" line="386"/>
         <source>Accounts</source>
         <translation>Аккаунты</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="345"/>
+        <location filename="../src/ui/main_window.cpp" line="389"/>
         <source>The data is protected with the password of the SteamForge keyring. To be asked for it every time, untick “Automatically unlock…” in the system window.</source>
         <translation>Данные защищены паролем связки ключей SteamForge. Чтобы его спрашивали каждый раз, снимите в окне системы галочку «Автоматически разблокировать…».</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="351"/>
+        <location filename="../src/ui/main_window.cpp" line="395"/>
         <source>Add account</source>
         <translation>Добавить аккаунт</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="352"/>
+        <location filename="../src/ui/main_window.cpp" line="396"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="353"/>
+        <location filename="../src/ui/main_window.cpp" line="397"/>
         <source>No accounts yet</source>
         <translation>Аккаунтов пока нет</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="354"/>
+        <location filename="../src/ui/main_window.cpp" line="398"/>
         <source>Sign in to a Steam account to set up Steam Guard or move it here from your phone, or import an authenticator from Steam Desktop Authenticator or WinAuth.</source>
         <translation>Войдите в аккаунт Steam, чтобы подключить Steam Guard или перенести его сюда с телефона, или импортируйте аутентификатор из Steam Desktop Authenticator или WinAuth.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="355"/>
+        <location filename="../src/ui/main_window.cpp" line="399"/>
         <source>Sign in to Steam</source>
         <translation>Войти в Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="356"/>
+        <location filename="../src/ui/main_window.cpp" line="400"/>
         <source>Import from files</source>
         <translation>Импортировать из файлов</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="357"/>
+        <location filename="../src/ui/main_window.cpp" line="401"/>
         <source>Sign in to a Steam account…</source>
         <translation>Войти в аккаунт Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="358"/>
+        <location filename="../src/ui/main_window.cpp" line="402"/>
         <source>Import from files…</source>
         <translation>Импортировать из файлов…</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="359"/>
+        <location filename="../src/ui/main_window.cpp" line="403"/>
         <source>Details</source>
         <translation>Подробнее</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="449"/>
+        <location filename="../src/ui/main_window.cpp" line="493"/>
         <source>Windows Hello guards the key: SteamForge asks for your PIN, face or fingerprint at every start.</source>
         <translation>Ключ защищает Windows Hello: при каждом запуске SteamForge попросит PIN-код, лицо или отпечаток.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="542"/>
+        <location filename="../src/ui/main_window.cpp" line="586"/>
         <source>Windows Hello is not set up on this computer.</source>
         <translation>На этом компьютере не настроен Windows Hello.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="495"/>
+        <location filename="../src/ui/main_window.cpp" line="539"/>
         <source>Set up a PIN in Windows Settings, Accounts, Sign-in options, and try again. Or turn on encryption without Windows Hello: Windows then keeps the key for your user account and asks nothing at the start.</source>
         <translation>Настройте PIN-код в параметрах Windows (Учётные записи → Варианты входа) и попробуйте снова. Или включите шифрование без Windows Hello: тогда ключ хранит Windows для вашей учётной записи и при запуске ничего не спрашивается.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="499"/>
+        <location filename="../src/ui/main_window.cpp" line="543"/>
         <source>Encrypt without Windows Hello</source>
         <translation>Зашифровать без Windows Hello</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="488"/>
+        <location filename="../src/ui/main_window.cpp" line="532"/>
         <source>The authenticators and Steam sign-ins on this computer are stored encrypted.</source>
         <translation>Аутентификаторы и входы в Steam на этом компьютере хранятся зашифрованными.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="509"/>
+        <location filename="../src/ui/main_window.cpp" line="232"/>
+        <source>You have %1. Replace the old file with the new one: accounts and settings are kept.</source>
+        <translation>У вас %1. Замените старый файл новым: аккаунты и настройки сохранятся.</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="553"/>
         <source>Windows Hello guards the key and is asked at every start and to turn encryption off. Turned off, the data is stored on this computer without encryption again.</source>
         <translation>Ключ защищает Windows Hello: он спрашивается при каждом запуске и при отключении шифрования. Если отключить шифрование, данные снова будут храниться на этом компьютере без шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="535"/>
+        <location filename="../src/ui/main_window.cpp" line="579"/>
         <source>Encryption is off</source>
         <translation>Шифрование отключено</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="535"/>
+        <location filename="../src/ui/main_window.cpp" line="579"/>
         <source>The data on this computer is stored without encryption.</source>
         <translation>Данные на этом компьютере хранятся без шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="556"/>
+        <location filename="../src/ui/main_window.cpp" line="600"/>
         <source>The confirmation was cancelled. Nothing has changed.</source>
         <translation>Подтверждение отменено. Ничего не изменилось.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="581"/>
+        <location filename="../src/ui/main_window.cpp" line="625"/>
         <source>Account files that could not be read: %n. They were skipped and left unchanged.</source>
         <translation>
             <numerusform>Не удалось прочитать файлов аккаунтов: %n. Они пропущены и оставлены без изменений.</numerusform>
@@ -1904,7 +1909,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="748"/>
+        <location filename="../src/ui/main_window.cpp" line="792"/>
         <source>and %n more</source>
         <translation>
             <numerusform>и ещё %n</numerusform>
@@ -1913,7 +1918,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="750"/>
+        <location filename="../src/ui/main_window.cpp" line="794"/>
         <source>%n new confirmations for %1</source>
         <translation>
             <numerusform>%1: %n новое подтверждение</numerusform>
@@ -1922,12 +1927,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="760"/>
+        <location filename="../src/ui/main_window.cpp" line="804"/>
         <source>Sign in again: %1</source>
         <translation>Нужно войти снова: %1</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="815"/>
+        <location filename="../src/ui/main_window.cpp" line="859"/>
         <source>Accounts added: %n</source>
         <translation>
             <numerusform>Добавлен %n аккаунт</numerusform>
@@ -1936,342 +1941,373 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="587"/>
+        <location filename="../src/ui/main_window.cpp" line="631"/>
         <source>Checking the time with Steam…</source>
         <translation>Сверяем время со Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="295"/>
-        <location filename="../src/ui/main_window.cpp" line="349"/>
-        <location filename="../src/ui/main_window.cpp" line="406"/>
+        <location filename="../src/ui/main_window.cpp" line="231"/>
+        <source>SteamForge %1 is out</source>
+        <translation>Вышла SteamForge %1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="235"/>
+        <source>Skip this version</source>
+        <translation>Пропустить эту версию</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="236"/>
+        <source>Later</source>
+        <translation>Позже</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="233"/>
+        <source>Download</source>
+        <translation>Скачать</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="231"/>
+        <location filename="../src/ui/main_window.cpp" line="243"/>
+        <source>Update available</source>
+        <translation>Доступно обновление</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="243"/>
+        <source>The browser could not be opened. The new version is at %1</source>
+        <translation>Не удалось открыть браузер. Новая версия здесь: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="339"/>
+        <location filename="../src/ui/main_window.cpp" line="393"/>
+        <location filename="../src/ui/main_window.cpp" line="450"/>
         <source>Unlock</source>
         <translation>Разблокировать</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="343"/>
+        <location filename="../src/ui/main_window.cpp" line="387"/>
         <source>SteamForge is locked</source>
         <translation>SteamForge заблокирован</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="347"/>
+        <location filename="../src/ui/main_window.cpp" line="391"/>
         <source>The data is protected with Windows Hello. Unlock it with your PIN, face or fingerprint.</source>
         <translation>Данные защищены Windows Hello. Разблокируйте их PIN-кодом, лицом или отпечатком.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="398"/>
-        <location filename="../src/ui/main_window.cpp" line="466"/>
-        <location filename="../src/ui/main_window.cpp" line="484"/>
-        <location filename="../src/ui/main_window.cpp" line="493"/>
+        <location filename="../src/ui/main_window.cpp" line="442"/>
+        <location filename="../src/ui/main_window.cpp" line="510"/>
+        <location filename="../src/ui/main_window.cpp" line="528"/>
+        <location filename="../src/ui/main_window.cpp" line="537"/>
         <source>Turn on encryption</source>
         <translation>Включить шифрование</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="402"/>
-        <location filename="../src/ui/main_window.cpp" line="488"/>
+        <location filename="../src/ui/main_window.cpp" line="446"/>
+        <location filename="../src/ui/main_window.cpp" line="532"/>
         <source>Encryption is on</source>
         <translation>Шифрование включено</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="410"/>
+        <location filename="../src/ui/main_window.cpp" line="454"/>
         <source>Encryption key unavailable</source>
         <translation>Ключ шифрования недоступен</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="414"/>
+        <location filename="../src/ui/main_window.cpp" line="458"/>
         <source>Encryption unavailable</source>
         <translation>Шифрование недоступно</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="431"/>
-        <location filename="../src/ui/main_window.cpp" line="437"/>
-        <location filename="../src/ui/main_window.cpp" line="506"/>
+        <location filename="../src/ui/main_window.cpp" line="475"/>
+        <location filename="../src/ui/main_window.cpp" line="481"/>
+        <location filename="../src/ui/main_window.cpp" line="550"/>
         <source>Encryption</source>
         <translation>Шифрование</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="431"/>
+        <location filename="../src/ui/main_window.cpp" line="475"/>
         <source>The encryption key is not available.</source>
         <translation>Ключ шифрования недоступен.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="432"/>
+        <location filename="../src/ui/main_window.cpp" line="476"/>
         <source>The encrypted files stay unchanged in %1. They open again under the same user account on the computer where encryption was turned on, once the system key store is unlocked. Without it, import the authenticators again from their .maFile copies.</source>
         <translation>Зашифрованные файлы остаются нетронутыми в папке %1. Они снова откроются под той же учётной записью на компьютере, где включали шифрование, когда системное хранилище ключей будет разблокировано. Без этого импортируйте аутентификаторы заново из копий .maFile.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="437"/>
-        <location filename="../src/ui/main_window.cpp" line="554"/>
+        <location filename="../src/ui/main_window.cpp" line="481"/>
+        <location filename="../src/ui/main_window.cpp" line="598"/>
         <source>This system has nowhere to keep the encryption key.</source>
         <translation>В системе нет хранилища для ключа шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="438"/>
+        <location filename="../src/ui/main_window.cpp" line="482"/>
         <source>The key is kept in the keyring of the system, such as GNOME Keyring or KWallet. Start one of them, then turn on encryption.</source>
         <translation>Ключ хранится в связке ключей системы, например GNOME Keyring или KWallet. Запустите одну из них и включите шифрование.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="447"/>
+        <location filename="../src/ui/main_window.cpp" line="491"/>
         <source>The keyring of the system keeps the key, so no password is asked.</source>
         <translation>Ключ хранит связка ключей системы, поэтому пароль не нужен.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="451"/>
+        <location filename="../src/ui/main_window.cpp" line="495"/>
         <source>The key goes to a separate SteamForge keyring. The system asks you to choose its password now and asks for it at every start.</source>
         <translation>Ключ будет храниться в отдельной связке ключей SteamForge. Сейчас система предложит придумать для неё пароль и будет спрашивать его при каждом запуске.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="455"/>
+        <location filename="../src/ui/main_window.cpp" line="499"/>
         <source>In the system window, untick “Automatically unlock…”, otherwise the password is asked only once.</source>
         <translation>В окне системы снимите галочку «Автоматически разблокировать…», иначе пароль спросят только один раз.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="458"/>
+        <location filename="../src/ui/main_window.cpp" line="502"/>
         <source>Protects the data when the folder is copied, backed up or synced to a cloud.</source>
         <translation>Защищает данные, если папку скопируют, сохранят в резервную копию или синхронизируют с облаком.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="459"/>
+        <location filename="../src/ui/main_window.cpp" line="503"/>
         <source>Does not protect from programs running under your user account.</source>
         <translation>Не защищает от программ, запущенных под вашей учётной записью.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="460"/>
+        <location filename="../src/ui/main_window.cpp" line="504"/>
         <source>A data folder moved to another computer or user account does not open there: move accounts with the export to .maFile.</source>
         <translation>Папка с данными, перенесённая на другой компьютер или в другую учётную запись, там не откроется: переносите аккаунты экспортом в .maFile.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="466"/>
+        <location filename="../src/ui/main_window.cpp" line="510"/>
         <source>Encrypt the authenticators and Steam sign-ins on this computer?</source>
         <translation>Зашифровать аутентификаторы и входы в Steam на этом компьютере?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="468"/>
+        <location filename="../src/ui/main_window.cpp" line="512"/>
         <source>Encrypt</source>
         <translation>Зашифровать</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="497"/>
+        <location filename="../src/ui/main_window.cpp" line="541"/>
         <source>Encryption can use the main keyring instead. It opens together with your sign-in to the system, so no password is asked at the start.</source>
         <translation>Можно шифровать с основной связкой ключей. Она открывается вместе со входом в систему, поэтому при запуске пароль не спрашивается.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="499"/>
+        <location filename="../src/ui/main_window.cpp" line="543"/>
         <source>Encrypt with the main keyring</source>
         <translation>Шифровать с основной связкой</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="506"/>
+        <location filename="../src/ui/main_window.cpp" line="550"/>
         <source>The authenticators and Steam sign-ins on this computer are encrypted.</source>
         <translation>Аутентификаторы и входы в Steam на этом компьютере зашифрованы.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="512"/>
+        <location filename="../src/ui/main_window.cpp" line="556"/>
         <source>The key is in the SteamForge keyring. Its password is asked at every start and to turn encryption off. Turned off, the data is stored on this computer without encryption again, and the SteamForge keyring is deleted.</source>
         <translation>Ключ хранится в связке ключей SteamForge. Её пароль спрашивается при каждом запуске и при выключении шифрования. После выключения данные снова хранятся на этом компьютере без шифрования, а связка SteamForge удаляется.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="516"/>
+        <location filename="../src/ui/main_window.cpp" line="560"/>
         <source>Windows keeps the key for your user account. Turned off, the data is stored on this computer without encryption again.</source>
         <translation>Ключ хранит Windows для вашей учётной записи. Если отключить шифрование, данные снова будут храниться на этом компьютере без шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="518"/>
+        <location filename="../src/ui/main_window.cpp" line="562"/>
         <source>The keyring of the system keeps the key. Turned off, the data is stored on this computer without encryption again.</source>
         <translation>Ключ хранит связка ключей системы. Если отключить шифрование, данные снова будут храниться на этом компьютере без шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="522"/>
-        <location filename="../src/ui/main_window.cpp" line="531"/>
+        <location filename="../src/ui/main_window.cpp" line="566"/>
+        <location filename="../src/ui/main_window.cpp" line="575"/>
         <source>Turn off encryption</source>
         <translation>Отключить шифрование</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="540"/>
+        <location filename="../src/ui/main_window.cpp" line="584"/>
         <source>The keyring of the system cannot make a separate keyring.</source>
         <translation>Связка ключей системы не может создать отдельную связку.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="547"/>
+        <location filename="../src/ui/main_window.cpp" line="591"/>
         <source>Not every file opens, and this change would leave it unreadable for good: %1 Nothing has changed.</source>
         <translation>Не все файлы открываются, и после этого изменения их уже нельзя будет открыть: %1 Ничего не изменено.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="550"/>
+        <location filename="../src/ui/main_window.cpp" line="594"/>
         <source>Not every file could be rewritten: %1 The change continues at the next start.</source>
         <translation>Не все файлы удалось перезаписать: %1 Изменение продолжится при следующем запуске.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="561"/>
+        <location filename="../src/ui/main_window.cpp" line="605"/>
         <source>The encryption key could not be read.</source>
         <translation>Не удалось прочитать ключ шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="565"/>
+        <location filename="../src/ui/main_window.cpp" line="609"/>
         <source>The system did not keep the encryption key. Nothing has changed.</source>
         <translation>Система не сохранила ключ шифрования. Ничего не изменилось.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="593"/>
+        <location filename="../src/ui/main_window.cpp" line="637"/>
         <source>Time is in sync with Steam.</source>
         <translation>Время сверено со Steam.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="595"/>
+        <location filename="../src/ui/main_window.cpp" line="639"/>
         <source>Time is in sync with Steam. This computer&apos;s clock is %1 s behind, and the codes allow for it.</source>
         <translation>Время сверено со Steam. Часы компьютера отстают на %1 с, коды это учитывают.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="597"/>
+        <location filename="../src/ui/main_window.cpp" line="641"/>
         <source>Time is in sync with Steam. This computer&apos;s clock is %1 s ahead, and the codes allow for it.</source>
         <translation>Время сверено со Steam. Часы компьютера спешат на %1 с, коды это учитывают.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="602"/>
+        <location filename="../src/ui/main_window.cpp" line="646"/>
         <source>Could not check the time with Steam, so codes use the clock of this computer for now. We&apos;ll try again automatically.</source>
         <translation>Не удалось сверить время со Steam, поэтому коды пока считаются по часам компьютера. Попробуем снова автоматически.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="760"/>
+        <location filename="../src/ui/main_window.cpp" line="804"/>
         <source>Steam no longer accepts the saved sign-in. Sign in again to keep getting confirmations.</source>
         <translation>Steam больше не принимает сохранённый вход. Войдите снова, чтобы получать подтверждения.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="782"/>
-        <location filename="../src/ui/main_window.cpp" line="791"/>
+        <location filename="../src/ui/main_window.cpp" line="826"/>
+        <location filename="../src/ui/main_window.cpp" line="835"/>
         <source>Sign out of Steam</source>
         <translation>Выход из Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="782"/>
+        <location filename="../src/ui/main_window.cpp" line="826"/>
         <source>Remove the saved Steam sign-in of %1 from this computer?</source>
         <translation>Удалить сохранённый вход в Steam для %1 с этого компьютера?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="783"/>
+        <location filename="../src/ui/main_window.cpp" line="827"/>
         <source>Confirmations, trades and approving sign-ins need a new sign-in afterwards. Steam Guard codes keep working.</source>
         <translation>После этого для подтверждений, обменов и подтверждения входа нужно будет войти снова. Коды Steam Guard продолжат работать.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="784"/>
+        <location filename="../src/ui/main_window.cpp" line="828"/>
         <source>Sign out</source>
         <translation>Выйти</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="814"/>
+        <location filename="../src/ui/main_window.cpp" line="858"/>
         <source>Codes and confirmations work already.</source>
         <translation>Коды и подтверждения уже работают.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="814"/>
+        <location filename="../src/ui/main_window.cpp" line="858"/>
         <source>The panel on the right shows what is left to set up.</source>
         <translation>Что осталось настроить, показано справа.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="837"/>
+        <location filename="../src/ui/main_window.cpp" line="881"/>
         <source>Steam Guard codes</source>
         <translation>коды Steam Guard</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="839"/>
+        <location filename="../src/ui/main_window.cpp" line="883"/>
         <source>trade and market confirmations</source>
         <translation>подтверждения обменов и Торговой площадки</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="842"/>
+        <location filename="../src/ui/main_window.cpp" line="886"/>
         <source>the recovery code</source>
         <translation>код восстановления</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="844"/>
-        <location filename="../src/ui/main_window.cpp" line="853"/>
-        <location filename="../src/ui/main_window.cpp" line="858"/>
-        <location filename="../src/ui/main_window.cpp" line="861"/>
+        <location filename="../src/ui/main_window.cpp" line="888"/>
+        <location filename="../src/ui/main_window.cpp" line="897"/>
+        <location filename="../src/ui/main_window.cpp" line="902"/>
+        <location filename="../src/ui/main_window.cpp" line="905"/>
         <source>Export to .maFile</source>
         <translation>Экспорт в .maFile</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="844"/>
+        <location filename="../src/ui/main_window.cpp" line="888"/>
         <source>The file holds the secrets of %1 without encryption: with it anyone can get its Steam Guard codes and confirm its trades. Keep it as safely as a password.</source>
         <translation>Файл содержит секреты %1 без шифрования: с ним любой сможет получать коды Steam Guard и подтверждать обмены этого аккаунта. Храните его так же надёжно, как пароль.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="845"/>
+        <location filename="../src/ui/main_window.cpp" line="889"/>
         <source>The file contains: %1. The Steam sign-in is not exported: Steam Desktop Authenticator asks to sign in when it imports the file.</source>
         <translation>В файле: %1. Вход в Steam не экспортируется: Steam Desktop Authenticator попросит войти при импорте файла.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="846"/>
+        <location filename="../src/ui/main_window.cpp" line="890"/>
         <source>Choose where to save…</source>
         <translation>Выбрать, куда сохранить…</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="853"/>
+        <location filename="../src/ui/main_window.cpp" line="897"/>
         <source>Steam Desktop Authenticator files (*.maFile)</source>
         <translation>Файлы Steam Desktop Authenticator (*.maFile)</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="861"/>
+        <location filename="../src/ui/main_window.cpp" line="905"/>
         <source>The authenticator of %1 is saved to %2.</source>
         <translation>Аутентификатор %1 сохранён в %2.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="877"/>
+        <location filename="../src/ui/main_window.cpp" line="922"/>
         <source>The file with the secrets is deleted from this computer, and the codes and confirmations of this account no longer appear here.</source>
         <translation>Файл с секретами удалится с этого компьютера, коды и подтверждения этого аккаунта здесь больше не появятся.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="878"/>
+        <location filename="../src/ui/main_window.cpp" line="923"/>
         <source>Steam Guard stays on the Steam account: removing the record here does not turn it off.</source>
         <translation>Steam Guard остаётся на аккаунте Steam: удаление записи здесь его не отключает.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="881"/>
+        <location filename="../src/ui/main_window.cpp" line="926"/>
         <source>The saved Steam sign-in is removed from this computer as well.</source>
         <translation>Сохранённый вход в Steam тоже удаляется с этого компьютера.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="883"/>
+        <location filename="../src/ui/main_window.cpp" line="928"/>
         <source>Without another copy of the secrets or the recovery code you can lose access to the account.</source>
         <translation>Без другой копии секретов или кода восстановления можно потерять доступ к аккаунту.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="883"/>
+        <location filename="../src/ui/main_window.cpp" line="928"/>
         <source>No recovery code is saved: without another copy of the secrets you can lose access to the account.</source>
         <translation>Код восстановления не сохранён: без другой копии секретов можно потерять доступ к аккаунту.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="890"/>
+        <location filename="../src/ui/main_window.cpp" line="935"/>
         <source>Recommended: export the authenticator to a .maFile first and keep it as safely as a password.</source>
         <translation>Рекомендуем сначала экспортировать аутентификатор в .maFile и хранить его так же надёжно, как пароль.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="893"/>
-        <location filename="../src/ui/main_window.cpp" line="909"/>
+        <location filename="../src/ui/main_window.cpp" line="938"/>
+        <location filename="../src/ui/main_window.cpp" line="954"/>
         <source>Remove account</source>
         <translation>Удаление аккаунта</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="893"/>
+        <location filename="../src/ui/main_window.cpp" line="938"/>
         <source>Remove %1 from SteamForge?</source>
         <translation>Удалить %1 из SteamForge?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="895"/>
+        <location filename="../src/ui/main_window.cpp" line="940"/>
         <source>Export first…</source>
         <translation>Сначала экспортировать…</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="896"/>
+        <location filename="../src/ui/main_window.cpp" line="941"/>
         <source>Remove</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="927"/>
+        <location filename="../src/ui/main_window.cpp" line="972"/>
         <source>Unreadable account files</source>
         <translation>Нечитаемые файлы аккаунтов</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="927"/>
+        <location filename="../src/ui/main_window.cpp" line="972"/>
         <source>These files were skipped and left unchanged in %1:</source>
         <translation>Эти файлы в %1 пропущены и оставлены без изменений:</translation>
     </message>
@@ -2422,72 +2458,87 @@
 <context>
     <name>SteamForge::SettingsDialog</name>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="108"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="121"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="109"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="122"/>
         <source>Language</source>
         <translation>Язык</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="110"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="123"/>
         <source>System language</source>
         <translation>Язык системы</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="111"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="124"/>
         <source>Storage</source>
         <translation>Хранение</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="115"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="128"/>
         <source>Data is stored on this computer without encryption. Turn it on with the button at the top of the main window.</source>
         <translation>Данные хранятся на этом компьютере без шифрования. Включить его можно кнопкой вверху главного окна.</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="118"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="131"/>
         <source>Data on this computer is encrypted. The system keeps the key for your user account.</source>
         <translation>Данные на этом компьютере зашифрованы. Ключ хранит система для вашей учётной записи.</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="122"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="135"/>
         <source>Data on this computer is encrypted, but its key is not available now.</source>
         <translation>Данные на этом компьютере зашифрованы, но их ключ сейчас недоступен.</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="125"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="138"/>
         <source>Data is stored on this computer without encryption: the system has nowhere to keep a key.</source>
         <translation>Данные хранятся на этом компьютере без шифрования: в системе нет хранилища для ключа.</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="128"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="141"/>
         <source>Data folder</source>
         <translation>Папка данных</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="129"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="142"/>
         <source>Open folder</source>
         <translation>Открыть папку</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="131"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="144"/>
         <source>Portable mode: the .portable file next to SteamForge keeps the data in this folder next to the program.</source>
         <translation>Переносимый режим: файл .portable рядом с SteamForge хранит данные в этой папке рядом с программой.</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="133"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="146"/>
         <source>To keep the data next to the program instead, place an empty file named .portable next to SteamForge and restart it. Existing data is not moved automatically.</source>
         <translation>Чтобы хранить данные рядом с программой, положите рядом с SteamForge пустой файл .portable и перезапустите программу. Существующие данные не переносятся автоматически.</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="135"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="148"/>
+        <source>Updates</source>
+        <translation>Обновления</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/settings_dialog.cpp" line="149"/>
+        <source>Check for new versions</source>
+        <translation>Проверять, вышла ли новая версия</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/settings_dialog.cpp" line="150"/>
+        <source>Once a day SteamForge asks GitHub which version is the latest and offers a new one in a window. Nothing is downloaded or installed by itself. You have version %1.</source>
+        <translation>Раз в сутки SteamForge спрашивает у GitHub, какая версия последняя, и предлагает новую в окне. Сама программа ничего не скачивает и не устанавливает. У вас версия %1.</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/settings_dialog.cpp" line="151"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings_dialog.cpp" line="144"/>
+        <location filename="../src/ui/settings_dialog.cpp" line="160"/>
         <source>The data folder could not be opened.</source>
         <translation>Не удалось открыть папку данных.</translation>
     </message>
@@ -2579,112 +2630,112 @@
 <context>
     <name>SteamForge::TradeOfferDialog</name>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="235"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="236"/>
         <source>Partner profile in Steam</source>
         <translation>Профиль партнёра в Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="236"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="237"/>
         <source>Open the trade in Steam</source>
         <translation>Открыть обмен в Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="237"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="238"/>
         <source>Select an item to check it: its exterior, warnings of Steam, a 3D view and its page in Steam.</source>
         <translation>Выберите предмет, чтобы проверить его: внешний вид, предупреждения Steam, осмотр в 3D и страницу в Steam.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="238"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="239"/>
         <source>Inspect in 3D on reskins.gg</source>
         <translation>Осмотреть в 3D на reskins.gg</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="239"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="240"/>
         <source>Inspect in game</source>
         <translation>Осмотреть в игре</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="240"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="241"/>
         <source>Steam Community Market</source>
         <translation>Торговая площадка Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="241"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="242"/>
         <source>Item in the Steam inventory</source>
         <translation>Предмет в инвентаре Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="242"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="243"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="243"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="244"/>
         <source>Decline</source>
         <translation>Отклонить</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="244"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="245"/>
         <source>Confirm</source>
         <translation>Подтвердить</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="247"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="248"/>
         <source>Loading the items of the trade from Steam…</source>
         <translation>Загрузка предметов обмена из Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="281"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="282"/>
         <source>Trade with %1 · %2</source>
         <translation>Обмен с %1 · %2</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="287"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="288"/>
         <source>SteamID %1</source>
         <translation>SteamID %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="287"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="288"/>
         <source>SteamID unknown</source>
         <translation>SteamID неизвестен</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="288"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="289"/>
         <source>you sent this offer</source>
         <translation>предложение отправили вы</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="288"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="289"/>
         <source>the partner sent this offer</source>
         <translation>предложение отправил партнёр</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="290"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="291"/>
         <source>valid until %1</source>
         <translation>действует до %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="304"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="305"/>
         <source>Steam holds the items of this trade until %1 before they change hands.</source>
         <translation>Steam удерживает предметы этого обмена до %1 и только потом передаёт их новым владельцам.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="310"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="311"/>
         <source>Message: %1</source>
         <translation>Сообщение: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="393"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="394"/>
         <source>Cannot be traded now</source>
         <translation>Сейчас нельзя обменять</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="396"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="397"/>
         <source>Cannot be sold on the Community Market</source>
         <translation>Нельзя продать на Торговой площадке</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="258"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="259"/>
         <source>You give: %n item(s)</source>
         <translation>
             <numerusform>Вы отдаёте: %n предмет</numerusform>
@@ -2693,12 +2744,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="245"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="246"/>
         <source>The decision is made for the account %1.</source>
         <translation>Решение принимается для аккаунта %1.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="258"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="259"/>
         <source>You receive: %n item(s)</source>
         <translation>
             <numerusform>Вы получаете: %n предмет</numerusform>
@@ -2707,52 +2758,52 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="261"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="262"/>
         <source>You give nothing.</source>
         <translation>Вы ничего не отдаёте.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="261"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="262"/>
         <source>You receive nothing.</source>
         <translation>Вы ничего не получаете.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="377"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="378"/>
         <source>You give this item</source>
         <translation>Этот предмет вы отдаёте</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="377"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="378"/>
         <source>You receive this item</source>
         <translation>Этот предмет вы получаете</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="385"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="386"/>
         <source>%1: %2</source>
         <translation>%1: %2</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="403"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="404"/>
         <source>Steam gave no item code for this item, so reskins.gg cannot show it.</source>
         <translation>Steam не передал код этого предмета, поэтому reskins.gg не может его показать.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="437"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="438"/>
         <source>Sending the decision to Steam…</source>
         <translation>Отправка решения в Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="441"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="442"/>
         <source>The decision was sent; this confirmation no longer waits.</source>
         <translation>Решение отправлено, это подтверждение больше не ожидает.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="443"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="444"/>
         <source>This confirmation no longer waits: it was decided elsewhere or it expired.</source>
         <translation>Это подтверждение больше не ожидает: решение принято в другом месте или истёк срок.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="446"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="447"/>
         <source>Steam did not confirm the decision. The list was loaded again: this trade still waits.</source>
         <translation>Steam не подтвердил решение. Список загружен заново: этот обмен всё ещё ожидает.</translation>
     </message>

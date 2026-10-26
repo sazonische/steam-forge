@@ -5,6 +5,7 @@
 #include "app/application_settings.h"
 #include "app/confirmation_monitor.h"
 #include "app/storage_encryption.h"
+#include "app/update_check.h"
 #include "common/constants.h"
 #include "common/version.h"
 #include "platform/application_icons.h"
@@ -78,15 +79,21 @@ int Application::Run() {
 	confirmationMonitor = std::make_unique<ConfirmationMonitor>(*webApiTransport, *communityTransport, *accountLibrary, *steamClock);
 	steamImageCache = std::make_unique<SteamImageCache>();
 	accountProfiles = std::make_unique<AccountProfiles>(*communityTransport, *steamImageCache, dataDirectory.filePath(PROFILE_CACHE_FILE_PATH));
+	updateCheck = std::make_unique<UpdateCheck>(QVersionNumber::fromString(APPLICATION_VERSION), QUrl(LATEST_RELEASE_API_URL));
 
 	mainWindow = std::make_unique<MainWindow>(*accountLibrary, *steamClock, *confirmationMonitor, *steamImageCache, *accountProfiles, *storageEncryption, *settings, dataLocation);
 	connect(&singleInstanceGuard, &SingleInstanceGuard::ActivationRequested, mainWindow.get(), &MainWindow::BringToFront);
 	connect(mainWindow.get(), &MainWindow::LanguageChangeRequested, this, &Application::ChangeLanguage);
+	connect(mainWindow.get(), &MainWindow::UpdateChecksChangeRequested, this, &Application::ChangeUpdateChecks);
+	connect(updateCheck.get(), &UpdateCheck::NewerReleaseFound, mainWindow.get(), &MainWindow::ShowAvailableUpdate);
 	mainWindow->show();
 	systemKeyStore->SetPromptWindow(mainWindow->winId());
 	mainWindow->UnlockIfLocked();
 	steamClock->Synchronize();
 	confirmationMonitor->Start();
+	if (settings->ChecksForUpdates()) {
+		updateCheck->Start();
+	}
 	return exec();
 }
 
@@ -100,6 +107,15 @@ void Application::ChangeLanguage(std::optional<InterfaceLanguage> language) {
 	settings->SetLanguage(language);
 	ApplyLanguage(language);
 	confirmationMonitor->RecheckMarketRestrictions();
+}
+
+void Application::ChangeUpdateChecks(bool isEnabled) {
+	settings->SetChecksForUpdates(isEnabled);
+	if (isEnabled) {
+		updateCheck->Start();
+	} else {
+		updateCheck->Stop();
+	}
 }
 
 } // namespace SteamForge

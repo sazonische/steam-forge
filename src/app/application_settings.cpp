@@ -5,6 +5,8 @@ namespace SteamForge {
 namespace {
 	constexpr QLatin1StringView LANGUAGE_KEY{"interface/language"};
 	constexpr QLatin1StringView MAIN_WINDOW_GEOMETRY_KEY{"window/mainGeometry"};
+	constexpr QLatin1StringView UPDATE_CHECKS_KEY{"updates/check"};
+	constexpr QLatin1StringView SKIPPED_UPDATE_VERSION_KEY{"updates/skippedVersion"};
 	constexpr QLatin1StringView SYSTEM_LANGUAGE_VALUE{"system"};
 	constexpr QLatin1StringView ENGLISH_LANGUAGE_VALUE{"en"};
 	constexpr QLatin1StringView RUSSIAN_LANGUAGE_VALUE{"ru"};
@@ -48,6 +50,22 @@ QByteArray ApplicationSettings::MainWindowGeometry() const {
 
 void ApplicationSettings::SetMainWindowGeometry(const QByteArray& geometry) {
 	settings.setValue(MAIN_WINDOW_GEOMETRY_KEY, geometry);
+}
+
+bool ApplicationSettings::ChecksForUpdates() const {
+	return settings.value(UPDATE_CHECKS_KEY, true).toBool();
+}
+
+void ApplicationSettings::SetChecksForUpdates(bool isEnabled) {
+	settings.setValue(UPDATE_CHECKS_KEY, isEnabled);
+}
+
+QVersionNumber ApplicationSettings::SkippedUpdateVersion() const {
+	return QVersionNumber::fromString(settings.value(SKIPPED_UPDATE_VERSION_KEY).toString());
+}
+
+void ApplicationSettings::SetSkippedUpdateVersion(const QVersionNumber& version) {
+	settings.setValue(SKIPPED_UPDATE_VERSION_KEY, version.toString());
 }
 
 } // namespace SteamForge

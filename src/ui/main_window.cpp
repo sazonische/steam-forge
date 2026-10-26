@@ -5,7 +5,9 @@
 #include "app/application_settings.h"
 #include "app/confirmation_monitor.h"
 #include "app/storage_encryption.h"
+#include "app/update_check.h"
 #include "common/constants.h"
+#include "common/version.h"
 #include "platform/desktop_notifications.h"
 #include "steam/steam_clock.h"
 #include "storage/authenticator_export.h"
@@ -171,6 +173,9 @@ void MainWindow::changeEvent(QEvent* event) {
 	if (event->type() == QEvent::LanguageChange) {
 		RetranslateUi();
 	}
+	if (event->type() == QEvent::ActivationChange && isActiveWindow()) {
+		QTimer::singleShot(0, this, &MainWindow::OfferPendingUpdate);
+	}
 	QMainWindow::changeEvent(event);
 }
 
@@ -206,6 +211,45 @@ QWidget* MainWindow::CreateTopBar() {
 	connect(importAction, &QAction::triggered, this, &MainWindow::OpenImportDialog);
 	connect(settingsButton, &QPushButton::clicked, this, &MainWindow::OpenSettingsDialog);
 	return topBar;
+}
+
+void MainWindow::ShowAvailableUpdate(const QVersionNumber& version) {
+	if (QVersionNumber::compare(version, settings.SkippedUpdateVersion()) <= 0 || QVersionNumber::compare(version, postponedUpdateVersion) <= 0) {
+		return;
+	}
+	pendingUpdateVersion = version;
+	// Not inside the handler of the network reply: the offer runs its own event loop.
+	QTimer::singleShot(0, this, &MainWindow::OfferPendingUpdate);
+}
+
+void MainWindow::OfferPendingUpdate() {
+	// Hidden in the tray, behind another program or busy with a dialog, the offer waits until the window is in front again.
+	if (pendingUpdateVersion.isNull() || !isActiveWindow() || QApplication::activeModalWidget() != nullptr) {
+		return;
+	}
+	const QVersionNumber version = std::exchange(pendingUpdateVersion, QVersionNumber());
+	QMessageBox offer(QMessageBox::Information, tr("Update available"), tr("SteamForge %1 is out").arg(version.toString()), QMessageBox::NoButton, this);
+	offer.setInformativeText(tr("You have %1. Replace the old file with the new one: accounts and settings are kept.").arg(APPLICATION_VERSION));
+	QPushButton* downloadButton = offer.addButton(tr("Download"), QMessageBox::AcceptRole);
+	SetButtonRole(*downloadButton, ButtonRole::PRIMARY);
+	const QPushButton* skipButton = offer.addButton(tr("Skip this version"), QMessageBox::DestructiveRole);
+	offer.addButton(tr("Later"), QMessageBox::RejectRole);
+	offer.setDefaultButton(downloadButton);
+	offer.exec();
+
+	if (offer.clickedButton() == downloadButton) {
+		const QUrl releasePageUrl = ReleasePageUrl(version);
+		if (!QDesktopServices::openUrl(releasePageUrl)) {
+			QMessageBox::warning(this, tr("Update available"), tr("The browser could not be opened. The new version is at %1").arg(releasePageUrl.toString()));
+		}
+		return;
+	}
+	if (offer.clickedButton() == skipButton) {
+		settings.SetSkippedUpdateVersion(version);
+		return;
+	}
+	// Later: asked again at the next start, or when an even newer version is out.
+	postponedUpdateVersion = version;
 }
 
 QWidget* MainWindow::CreateEmptyStatePage() {
@@ -862,8 +906,9 @@ void MainWindow::ExportRecord(const QUuid& recordId) {
 }
 
 void MainWindow::OpenSettingsDialog() {
-	SettingsDialog settingsDialog(settings.Language(), dataLocation, storageEncryption.Status(), this);
+	SettingsDialog settingsDialog(settings.Language(), settings.ChecksForUpdates(), dataLocation, storageEncryption.Status(), this);
 	connect(&settingsDialog, &SettingsDialog::LanguageSelected, this, &MainWindow::LanguageChangeRequested);
+	connect(&settingsDialog, &SettingsDialog::UpdateChecksToggled, this, &MainWindow::UpdateChecksChangeRequested);
 	settingsDialog.exec();
 }
 

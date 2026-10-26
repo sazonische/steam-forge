@@ -1,5 +1,7 @@
 # SteamForge
 
+![SteamForge: Steam Guard, trades and QR sign-in on your PC](.github/readme/cover-en.jpg)
+
 **Steam Guard on your computer.** Codes, trade confirmations and sign-in approvals for all your Steam accounts in one window, for Windows and Linux. Free and open source.
 
 [Русская версия](README.ru.md)
@@ -13,6 +15,24 @@
 - **Import** from Steam Desktop Authenticator (`.maFile`) and WinAuth.
 - **Export** of an account to a `.maFile`, or a QR code to add it to another authenticator app.
 - Steam nicknames and avatars, a tray icon, English and Russian.
+
+## How it looks
+
+**All accounts in one window.** Codes and account names stay hidden until you click the eye. The bar at the top shows when the codes change.
+
+![Main window: four accounts with Steam Guard codes and the panel of the selected account](.github/readme/accounts-en.webp)
+
+**Confirmations.** Trades, Market listings and other actions sit on tabs, and every trade shows its items. Confirm or decline one at a time or several at once.
+
+![Confirmations: 14 waiting, tabs for trades and the Market, the items of each trade](.github/readme/confirmations-en.webp)
+
+**Steam warnings in plain sight.** Here is the classic "send it for a check, I'll give it back in 5 minutes" scam: you give 14 items, receive nothing, and the partner's account is less than 30 days old.
+
+![A suspicious trade: Steam warns that you receive nothing and that the partner's account is new](.github/readme/trade-scam-en.webp)
+
+**Sign-in approval.** A sign-in to Steam on another device appears here together with who is signing in. If the sign-in window shows a QR code, click **Find QR code on screen**.
+
+![Sign-in approval window with the Find QR code on screen button](.github/readme/login-qr-en.webp)
 
 ## Download
 
@@ -29,6 +49,10 @@ There is nothing to install. Put the file in any folder and start it.
 
 **Linux** needs permission to run the file: right-click it, open **Properties** and turn on the option that lets it run as a program.
 
+## Updating
+
+When a new version is out, SteamForge offers it in a window at start. Click **Download** and replace the old file with the new one. Your accounts and settings are kept.
+
 ## Getting started
 
 Click **Add account** and pick what fits you:
@@ -36,6 +60,10 @@ Click **Add account** and pick what fits you:
 - **The Steam app on your phone gives your codes.** Choose **Sign in to Steam**, then **Move Steam Guard to SteamForge**. Steam sends a text message to your phone number. From then on SteamForge gives the codes, and the phone app stops.
 - **Your account has no Steam Guard codes yet.** Choose **Sign in to Steam**, then **Set up Steam Guard**. Steam sends a code by text message or email.
 - **You already use Steam Desktop Authenticator or WinAuth.** Choose **Import from files** and select your `.maFile` files (with `manifest.json` if they are encrypted) or the WinAuth export.
+
+To import, drop the files into the window or click **Choose files…**
+
+![Import window: drop authenticator files here](.github/readme/import-en.webp)
 
 Your Steam password is only used to sign in and is never saved.
 
@@ -45,7 +73,7 @@ When you set up or move Steam Guard, SteamForge shows a **recovery code** like `
 
 ## Is it safe?
 
-- Everything stays on your computer. SteamForge talks only to Steam. In the trade window, an item can be opened in a 3D viewer on reskins.gg, in your browser and only when you click it.
+- Everything stays on your computer. SteamForge talks only to Steam. Apart from that, once a day it asks GitHub whether a new version is out; you can turn this off in **Settings**. In the trade window, an item can be opened in a 3D viewer on reskins.gg, in your browser and only when you click it.
 - Nothing happens on its own. Each confirmation and sign-in is approved by you, and every window shows which account it is for.
 - The QR code for another app stays blurred until you click **Show QR code**.
 - Removing an account from SteamForge does not turn off Steam Guard on Steam.
@@ -58,6 +86,8 @@ Out of the box, your accounts are stored on the computer **without encryption**,
 - **Windows:** Windows Hello guards the data. SteamForge asks for your PIN, face or fingerprint at every start and before encryption is turned off.
 - **Linux:** the key goes to a separate keyring called "SteamForge" with a password you choose. The system asks for this password at every start. In that window, untick **Automatically unlock…**, otherwise it is asked only once.
 - Without Windows Hello or a keyring, encryption still works: the key is then tied to your user account, and nothing is asked at start.
+
+![SteamForge locked until Windows Hello confirms it is you](.github/readme/locked-en.webp)
 
 Encryption protects copies of your data: backups, cloud folders, a lost or stolen disk. It does not protect against a virus on your computer while SteamForge is open.
 

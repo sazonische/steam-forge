@@ -385,6 +385,20 @@ private Q_SLOTS:
 		accountList->SelectRecord(codesOnlyRecord.id);
 		QTest::qWait(300);
 		QVERIFY(mainWindow.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_codes_only.png"))));
+		mainWindow.activateWindow();
+		QVERIFY(QTest::qWaitForWindowActive(&mainWindow));
+		bool isUpdateOfferSaved = false;
+		mainWindow.ShowAvailableUpdate(QVersionNumber(0, 2, 0));
+		// The offer runs its own event loop, so it is captured and closed from a timer inside that loop.
+		QTimer::singleShot(500, &mainWindow, [&renderDirectory, &isUpdateOfferSaved]() {
+			auto* updateOffer = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+			if (updateOffer == nullptr) {
+				return;
+			}
+			isUpdateOfferSaved = updateOffer->grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_update.png")));
+			updateOffer->reject();
+		});
+		QTRY_VERIFY(isUpdateOfferSaved);
 
 		SteamForge::AuthenticatorRecord newAccount;
 		newAccount.id = QUuid::createUuid();
@@ -394,7 +408,7 @@ private Q_SLOTS:
 		recordLoginDialog.show();
 		SteamForge::ImportDialog importDialog(library);
 		importDialog.show();
-		SteamForge::SettingsDialog settingsDialog(std::nullopt, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false}, SteamForge::EncryptionStatus::OFF);
+		SteamForge::SettingsDialog settingsDialog(std::nullopt, true, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false}, SteamForge::EncryptionStatus::OFF);
 		settingsDialog.show();
 		SteamForge::RecordDataDialog recordDataDialog(library, codesOnlyRecord, SteamForge::RecordDisplayName(codesOnlyRecord), std::nullopt);
 		recordDataDialog.show();

@@ -10,10 +10,11 @@ class SettingsDialog final : public QDialog {
 	Q_OBJECT
 
 public:
-	SettingsDialog(std::optional<InterfaceLanguage> currentLanguage, DataLocation location, EncryptionStatus encryption, QWidget* parent = nullptr);
+	SettingsDialog(std::optional<InterfaceLanguage> currentLanguage, bool checksForUpdates, DataLocation location, EncryptionStatus encryption, QWidget* parent = nullptr);
 
 Q_SIGNALS:
 	void LanguageSelected(std::optional<InterfaceLanguage> language);
+	void UpdateChecksToggled(bool isEnabled);
 
 protected:
 	void changeEvent(QEvent* event) override;
@@ -34,6 +35,9 @@ private:
 	QLineEdit* dataFolderEdit = nullptr;
 	QPushButton* openFolderButton = nullptr;
 	QLabel* portableModeLabel = nullptr;
+	QLabel* updatesSectionLabel = nullptr;
+	QCheckBox* updateChecksCheckBox = nullptr;
+	QLabel* updatesNoteLabel = nullptr;
 	QDialogButtonBox* buttonBox = nullptr;
 };
 
