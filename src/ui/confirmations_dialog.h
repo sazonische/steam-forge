@@ -7,6 +7,7 @@ namespace SteamForge {
 class ConfirmationCard;
 class ConfirmationMonitor;
 class IllustrationView;
+class PictureView;
 class SteamImageCache;
 class TradeOfferDialog;
 
@@ -15,7 +16,7 @@ class ConfirmationsDialog final : public QDialog {
 	Q_OBJECT
 
 public:
-	ConfirmationsDialog(ConfirmationMonitor& monitor, SteamImageCache& images, AuthenticatorRecord accountRecord, QString title, QWidget* parent = nullptr);
+	ConfirmationsDialog(ConfirmationMonitor& monitor, SteamImageCache& images, AuthenticatorRecord accountRecord, QString title, const QImage& accountAvatar, QWidget* parent = nullptr);
 
 	[[nodiscard]] const QUuid& RecordId() const;
 
@@ -66,6 +67,7 @@ private:
 	EntryFilter filter = EntryFilter::ALL;
 	bool hasRefreshedOnOpen = false;
 
+	PictureView* avatarPicture = nullptr;
 	QLabel* accountNameLabel = nullptr;
 	QLabel* accountDetailsLabel = nullptr;
 	QLabel* statusLabel = nullptr;

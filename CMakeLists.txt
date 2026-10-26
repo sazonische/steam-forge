@@ -160,6 +160,7 @@ if(WIN32)
 	enable_language(RC)
 	set(STEAMFORGE_ICON_DIRECTORY "${PROJECT_SOURCE_DIR}/resources/icons")
 	configure_file(resources/windows/steamforge.rc.in "${PROJECT_BINARY_DIR}/steamforge.rc" @ONLY)
+	configure_file(resources/windows/steamforge_test.rc.in "${PROJECT_BINARY_DIR}/steamforge_test.rc" @ONLY)
 	target_sources(steamforge PRIVATE "${PROJECT_BINARY_DIR}/steamforge.rc")
 endif()
 

@@ -20,6 +20,11 @@ PictureView::PictureView(int edgeLength, QWidget* parent) :
 	setFixedSize(edge, edge);
 }
 
+void PictureView::FillAvailableWidth() {
+	setMaximumWidth(QWIDGETSIZE_MAX);
+	setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+}
+
 void PictureView::SetPicture(const QImage& image) {
 	if (image.cacheKey() == picture.cacheKey()) {
 		return;

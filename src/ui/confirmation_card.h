@@ -60,16 +60,20 @@ Q_SIGNALS:
 
 protected:
 	void changeEvent(QEvent* event) override;
+	void paintEvent(QPaintEvent* event) override;
 
 private:
 	void RetranslateUi();
 	void ShowItems(const TradeOfferDetails* tradeOffer);
-	[[nodiscard]] QWidget* CreateItemRow(const QString& title, int titleWidth, const std::vector<TradeItem>& items);
+	[[nodiscard]] QString TimeText(const QDateTime& createdAt) const;
+	[[nodiscard]] QWidget* CreateItemRow(bool isGiven, const std::vector<TradeItem>& items);
 
 	SteamImageCache& imageCache;
 	PendingConfirmation confirmation;
 	std::optional<QString> shownOfferId;
 
+	QGridLayout* cardLayout = nullptr;
+	QWidget* headerEdge = nullptr;
 	QCheckBox* selectionBox = nullptr;
 	SteamPicture* iconPicture = nullptr;
 	QLabel* typeLabel = nullptr;

@@ -7,10 +7,13 @@ namespace {
 	constexpr QLatin1StringView TRADE_OFFER_PATTERN{"https://steamcommunity.com/tradeoffer/%1/"};
 	constexpr QLatin1StringView MARKET_LISTING_PATTERN{"https://steamcommunity.com/market/listings/%1/%2"};
 	constexpr QLatin1StringView INVENTORY_ITEM_PATTERN{"https://steamcommunity.com/profiles/%1/inventory/#%2_%3_%4"};
-	constexpr QLatin1StringView RESKINS_RUSSIAN_PATTERN{"https://reskins.gg/ru/embed/%1"};
-	constexpr QLatin1StringView RESKINS_ENGLISH_PATTERN{"https://reskins.gg/embed/%1"};
+	// The site finds the item page from the code by itself; English lives at the root, Russian under /ru.
+	constexpr QLatin1StringView RESKINS_RUSSIAN_PATTERN{"https://reskins.gg/ru?i=%1"};
+	constexpr QLatin1StringView RESKINS_ENGLISH_PATTERN{"https://reskins.gg/?i=%1"};
 	constexpr QLatin1StringView DIGITS_PATTERN{"^\\d+$"};
-	constexpr QLatin1StringView ITEM_CODE_PATTERN{"^[0-9A-Fa-f]{16,}$"};
+	// The codes reskins.gg opens: the masked code of Steam links (hex, whole bytes, at least 11 characters) or an
+	// unmasked one after GG or GH.
+	constexpr QLatin1StringView ITEM_CODE_PATTERN{"^(?:(?:[0-9A-Fa-f]{2}){6,}|[Gg][GgHh](?:[0-9A-Fa-f]{2}){5,})$"};
 	constexpr QLatin1StringView INSPECT_ACTION_MARKER{"csgo_econ_action_preview"};
 	constexpr std::array<QLatin1StringView, 3> ARGUMENT_SEPARATORS{QLatin1StringView("%20"), QLatin1StringView(" "), QLatin1StringView("+")};
 
@@ -67,7 +70,7 @@ std::optional<QString> InspectItemCode(const QString& inspectLink) {
 	return code;
 }
 
-QUrl ReskinsViewerUrl(const QString& itemCode, bool isRussian) {
+QUrl ReskinsItemPageUrl(const QString& itemCode, bool isRussian) {
 	if (!QRegularExpression(ITEM_CODE_PATTERN).match(itemCode).hasMatch()) {
 		return {};
 	}

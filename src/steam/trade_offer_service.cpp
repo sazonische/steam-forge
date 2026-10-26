@@ -8,11 +8,21 @@ namespace SteamForge {
 namespace {
 	constexpr QLatin1StringView ECON_INTERFACE{"Econ"};
 	constexpr QLatin1StringView GET_TRADE_OFFER_METHOD{"GetTradeOffer"};
+	constexpr QLatin1StringView GET_INVENTORY_ITEMS_METHOD{"GetInventoryItemsWithDescriptions"};
 	constexpr int METHOD_VERSION = 1;
 	constexpr QLatin1StringView TRADE_OFFER_ID_PARAMETER{"tradeofferid"};
 	constexpr QLatin1StringView DESCRIPTIONS_PARAMETER{"get_descriptions"};
 	constexpr QLatin1StringView LANGUAGE_PARAMETER{"language"};
 	constexpr QLatin1StringView ENABLED_VALUE{"1"};
+	// The inventory method reads its nested asset filter only from JSON; indexed parameters fail with EResult 29.
+	constexpr QLatin1StringView INPUT_JSON_PARAMETER{"input_json"};
+	constexpr QLatin1StringView STEAM_ID_FIELD{"steamid"};
+	constexpr QLatin1StringView GET_DESCRIPTIONS_FIELD{"get_descriptions"};
+	constexpr QLatin1StringView GET_ASSET_PROPERTIES_FIELD{"get_asset_properties"};
+	constexpr QLatin1StringView TRADE_OFFER_VERIFICATION_FIELD{"for_trade_offer_verification"};
+	constexpr QLatin1StringView LANGUAGE_FIELD{"language"};
+	constexpr QLatin1StringView FILTERS_FIELD{"filters"};
+	constexpr QLatin1StringView ASSET_IDS_FIELD{"assetids"};
 
 	// COMMUNITY_CDN_URL of the Steam mobile application 3.10.9; the suffix asks for a picture of that edge.
 	constexpr QLatin1StringView ECONOMY_IMAGE_PATTERN{"https://steamcommunity-a.akamaihd.net/economy/image/%1/%2fx%2f"};
@@ -23,6 +33,9 @@ namespace {
 	constexpr quint64 INDIVIDUAL_STEAM_ID_BASE = 76561197960265728;
 	constexpr QLatin1StringView OWNER_PLACEHOLDER{"%owner_steamid%"};
 	constexpr QLatin1StringView ASSET_PLACEHOLDER{"%assetid%"};
+	constexpr QLatin1StringView CONTEXT_PLACEHOLDER{"%contextid%"};
+	constexpr QLatin1StringView PROPERTY_PLACEHOLDER_MARKER{"%propid:"};
+	constexpr QLatin1StringView PROPERTY_PLACEHOLDER_PATTERN{"%propid:(\\d+)%"};
 	// Lowercase only, so an escaped separator such as %20 before an uppercase argument is not taken for one.
 	constexpr QLatin1StringView UNRESOLVED_PLACEHOLDER_PATTERN{"%[a-z_]+(?::\\d+)?%"};
 	constexpr QLatin1StringView STEAM_LINK_PREFIX{"steam://"};
@@ -64,6 +77,11 @@ namespace {
 	constexpr QLatin1StringView MARKETABLE_KEY{"marketable"};
 	constexpr QLatin1StringView ACTIONS_KEY{"actions"};
 	constexpr QLatin1StringView LINK_KEY{"link"};
+	constexpr QLatin1StringView ASSET_PROPERTIES_KEY{"asset_properties"};
+	constexpr QLatin1StringView PROPERTY_ID_KEY{"propertyid"};
+	constexpr QLatin1StringView FLOAT_VALUE_KEY{"float_value"};
+	constexpr QLatin1StringView INT_VALUE_KEY{"int_value"};
+	constexpr QLatin1StringView STRING_VALUE_KEY{"string_value"};
 	constexpr QLatin1StringView KEY_SEPARATOR{"_"};
 	constexpr QLatin1StringView DEFAULT_INSTANCE_ID{"0"};
 
@@ -131,8 +149,9 @@ namespace {
 		return texts;
 	}
 
-	// The game's inspect action with the item's owner and asset; a link with placeholders left is not usable.
-	QString ReadInspectLink(const QJsonArray& actions, quint64 ownerSteamId, const QString& assetId) {
+	// The game's inspect action with the item's owner, asset and context. Asset properties stay as %propid:N% for
+	// FillInspectLinks; a link with any other placeholder left is not usable.
+	QString ReadInspectLink(const QJsonArray& actions, quint64 ownerSteamId, const QString& contextId, const QString& assetId) {
 		for (const auto& actionValue : actions) {
 			QString link = actionValue.toObject().value(LINK_KEY).toString();
 			if (!link.startsWith(STEAM_LINK_PREFIX) || !link.contains(INSPECT_ACTION_MARKER)) {
@@ -140,12 +159,26 @@ namespace {
 			}
 			link.replace(OWNER_PLACEHOLDER, QString::number(ownerSteamId));
 			link.replace(ASSET_PLACEHOLDER, assetId);
-			if (link.contains(QRegularExpression(UNRESOLVED_PLACEHOLDER_PATTERN))) {
+			link.replace(CONTEXT_PLACEHOLDER, contextId);
+			QString withoutProperties = link;
+			withoutProperties.remove(QRegularExpression(PROPERTY_PLACEHOLDER_PATTERN));
+			if (withoutProperties.contains(QRegularExpression(UNRESOLVED_PLACEHOLDER_PATTERN))) {
 				return {};
 			}
 			return link;
 		}
 		return {};
+	}
+
+	// The value as the trade window of Steam writes it into a link: a float, else an integer, else the text.
+	QString ReadPropertyValue(const QJsonObject& property) {
+		if (const QJsonValue floatValue = property.value(FLOAT_VALUE_KEY); !floatValue.isUndefined()) {
+			return floatValue.isString() ? floatValue.toString() : QString::number(floatValue.toDouble(), 'g', QLocale::FloatingPointShortest);
+		}
+		if (const QJsonValue intValue = property.value(INT_VALUE_KEY); !intValue.isUndefined()) {
+			return ReadNumberText(intValue);
+		}
+		return property.value(STRING_VALUE_KEY).toString();
 	}
 
 	std::vector<TradeItem> ReadItems(const QJsonArray& assets, const QHash<QString, QJsonObject>& descriptions, quint64 ownerSteamId) {
@@ -164,10 +197,11 @@ namespace {
 				largeIconHash = iconHash;
 			}
 			const QString assetId = ReadNumberText(asset.value(ASSET_ID_KEY));
+			const QString contextId = ReadNumberText(asset.value(CONTEXT_ID_KEY));
 			const qint64 amount = ReadNumberText(asset.value(AMOUNT_KEY)).toLongLong();
 			items.push_back(TradeItem{
 				.appId = ReadNumberText(asset.value(APP_ID_KEY)),
-				.contextId = ReadNumberText(asset.value(CONTEXT_ID_KEY)),
+				.contextId = contextId,
 				.assetId = assetId,
 				.ownerSteamId = ownerSteamId,
 				.name = name,
@@ -182,7 +216,7 @@ namespace {
 				.fraudWarnings = ReadFraudWarnings(description.value(FRAUD_WARNINGS_KEY).toArray()),
 				.isTradable = ReadFlag(description.value(TRADABLE_KEY)),
 				.isMarketable = ReadFlag(description.value(MARKETABLE_KEY)),
-				.inspectLink = ReadInspectLink(description.value(ACTIONS_KEY).toArray(), ownerSteamId, assetId),
+				.inspectLink = ReadInspectLink(description.value(ACTIONS_KEY).toArray(), ownerSteamId, contextId, assetId),
 			});
 		}
 		return items;
@@ -223,6 +257,59 @@ QUrl EconomyImageUrl(const QString& iconHash, int edgeLength) {
 	return QUrl(QString(ECONOMY_IMAGE_PATTERN).arg(iconHash).arg(edgeLength));
 }
 
+QString AssetPropertiesKey(const QString& appId, const QString& contextId, const QString& assetId) {
+	return appId + KEY_SEPARATOR + contextId + KEY_SEPARATOR + assetId;
+}
+
+bool NeedsAssetProperties(const TradeItem& item) {
+	return item.inspectLink.contains(PROPERTY_PLACEHOLDER_MARKER);
+}
+
+std::expected<AssetPropertiesByAsset, WebApiError> ParseAssetProperties(const QByteArray& responseBody) {
+	const QJsonDocument document = QJsonDocument::fromJson(responseBody);
+	const QJsonValue response = document.object().value(RESPONSE_KEY);
+	if (!document.isObject() || !response.isObject()) {
+		return std::unexpected(MalformedWebApiResponse());
+	}
+	AssetPropertiesByAsset found;
+	for (const auto& entryValue : response.toObject().value(ASSET_PROPERTIES_KEY).toArray()) {
+		const QJsonObject entry = entryValue.toObject();
+		AssetProperties properties;
+		for (const auto& propertyValue : entry.value(ASSET_PROPERTIES_KEY).toArray()) {
+			const QJsonObject property = propertyValue.toObject();
+			bool isNumber = false;
+			const int propertyId = ReadNumberText(property.value(PROPERTY_ID_KEY)).toInt(&isNumber);
+			if (isNumber) {
+				properties.insert(propertyId, ReadPropertyValue(property));
+			}
+		}
+		found.insert(AssetPropertiesKey(ReadNumberText(entry.value(APP_ID_KEY)), ReadNumberText(entry.value(CONTEXT_ID_KEY)), ReadNumberText(entry.value(ASSET_ID_KEY))), properties);
+	}
+	return found;
+}
+
+void FillInspectLinks(std::vector<TradeItem>& items, const AssetPropertiesByAsset& properties) {
+	const QRegularExpression placeholder(PROPERTY_PLACEHOLDER_PATTERN);
+	for (TradeItem& item : items) {
+		if (!NeedsAssetProperties(item)) {
+			continue;
+		}
+		const AssetProperties itemProperties = properties.value(AssetPropertiesKey(item.appId, item.contextId, item.assetId));
+		QString link;
+		qsizetype position = 0;
+		bool isComplete = true;
+		QRegularExpressionMatchIterator matches = placeholder.globalMatch(item.inspectLink);
+		while (matches.hasNext()) {
+			const QRegularExpressionMatch match = matches.next();
+			const QString value = itemProperties.value(match.captured(1).toInt());
+			isComplete = isComplete && !value.isEmpty();
+			link += item.inspectLink.sliced(position, match.capturedStart() - position) + value;
+			position = match.capturedEnd();
+		}
+		item.inspectLink = isComplete ? link + item.inspectLink.sliced(position) : QString();
+	}
+}
+
 TradeOfferService::TradeOfferService(WebApiTransport& transport) :
 	webApiTransport(transport) {
 }
@@ -242,12 +329,79 @@ void TradeOfferService::GetTradeOffer(const QString& accessToken, quint64 ownSte
 			{LANGUAGE_PARAMETER, InterfaceSteamLanguage()},
 		},
 	};
-	webApiTransport.Send(request, context, [resultHandler = std::move(handler), ownSteamId](const WebApiResponse& response) {
+	webApiTransport.Send(request, context, [this, accessToken, ownSteamId, &context, resultHandler = std::move(handler)](const WebApiResponse& response) mutable {
 		if (!response.has_value()) {
 			resultHandler(std::unexpected(response.error()));
 			return;
 		}
-		resultHandler(ParseTradeOffer(*response, ownSteamId));
+		std::expected<TradeOfferDetails, WebApiError> offer = ParseTradeOffer(*response, ownSteamId);
+		if (!offer.has_value()) {
+			resultHandler(std::move(offer));
+			return;
+		}
+		std::vector<AssetQuery> queries = AssetQueries(*offer);
+		LoadAssetProperties(accessToken, std::move(*offer), std::move(queries), {}, context, std::move(resultHandler));
+	});
+}
+
+std::vector<TradeOfferService::AssetQuery> TradeOfferService::AssetQueries(const TradeOfferDetails& offer) {
+	std::vector<AssetQuery> queries;
+	for (const std::vector<TradeItem>* side : {&offer.itemsToGive, &offer.itemsToReceive}) {
+		for (const TradeItem& item : *side) {
+			if (!NeedsAssetProperties(item) || item.ownerSteamId == 0) {
+				continue;
+			}
+			auto query = std::ranges::find_if(queries, [&item](const AssetQuery& existing) {
+				return existing.ownerSteamId == item.ownerSteamId && existing.appId == item.appId && existing.contextId == item.contextId;
+			});
+			if (query == queries.end()) {
+				queries.push_back({.ownerSteamId = item.ownerSteamId, .appId = item.appId, .contextId = item.contextId, .assetIds = {}});
+				query = std::prev(queries.end());
+			}
+			query->assetIds.append(item.assetId);
+		}
+	}
+	return queries;
+}
+
+void TradeOfferService::LoadAssetProperties(QString accessToken, TradeOfferDetails offer, std::vector<AssetQuery> queries, AssetPropertiesByAsset found, QObject& context, WebApiHandler<TradeOfferDetails> handler) {
+	if (queries.empty()) {
+		FillInspectLinks(offer.itemsToGive, found);
+		FillInspectLinks(offer.itemsToReceive, found);
+		handler(std::move(offer));
+		return;
+	}
+	const AssetQuery query = std::move(queries.back());
+	queries.pop_back();
+	// for_trade_offer_verification lets the account read the items of an offer in the partner's inventory.
+	const QJsonObject input{
+		{STEAM_ID_FIELD, QString::number(query.ownerSteamId)},
+		{APP_ID_KEY, query.appId.toLongLong()},
+		{CONTEXT_ID_KEY, query.contextId},
+		{GET_DESCRIPTIONS_FIELD, true},
+		{GET_ASSET_PROPERTIES_FIELD, true},
+		{TRADE_OFFER_VERIFICATION_FIELD, true},
+		{LANGUAGE_FIELD, QString(InterfaceSteamLanguage())},
+		{FILTERS_FIELD, QJsonObject{{ASSET_IDS_FIELD, QJsonArray::fromStringList(query.assetIds)}}},
+	};
+	const WebApiRequest request{
+		.interfaceName = ECON_INTERFACE,
+		.methodName = GET_INVENTORY_ITEMS_METHOD,
+		.version = METHOD_VERSION,
+		.httpMethod = WebApiHttpMethod::GET,
+		.protobufBody = {},
+		.accessToken = accessToken,
+		.encoding = WebApiEncoding::JSON,
+		.jsonParameters = {{INPUT_JSON_PARAMETER, QString::fromUtf8(QJsonDocument(input).toJson(QJsonDocument::Compact))}},
+	};
+	webApiTransport.Send(request, context, [this, accessToken = std::move(accessToken), offer = std::move(offer), queries = std::move(queries), found = std::move(found), &context, resultHandler = std::move(handler)](const WebApiResponse& response) mutable {
+		// Without the properties the offer still shows; only the inspect links of those items stay empty.
+		if (response.has_value()) {
+			if (std::expected<AssetPropertiesByAsset, WebApiError> properties = ParseAssetProperties(*response); properties.has_value()) {
+				found.insert(*properties);
+			}
+		}
+		LoadAssetProperties(std::move(accessToken), std::move(offer), std::move(queries), std::move(found), context, std::move(resultHandler));
 	});
 }
 

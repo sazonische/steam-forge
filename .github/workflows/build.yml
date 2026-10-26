@@ -179,7 +179,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install system build dependencies
-        run: tools/ci/install-linux-build-dependencies.sh
+        run: bash tools/ci/install-linux-build-dependencies.sh
 
       - name: Prepare vcpkg binary cache directory
         run: mkdir -p "${VCPKG_DEFAULT_BINARY_CACHE}"
@@ -196,7 +196,7 @@ jobs:
       # vcpkg builds Qt and the other packages here.
       - name: Configure
         id: configure
-        run: tools/ci/build-linux.sh release configure
+        run: bash tools/ci/build-linux.sh release configure
 
       - name: Save vcpkg binary cache
         if: always() && steps.configure.outcome == 'success' && steps.vcpkg-cache.outputs.cache-hit != 'true'
@@ -206,14 +206,14 @@ jobs:
           key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
 
       - name: Build
-        run: tools/ci/build-linux.sh release build
+        run: bash tools/ci/build-linux.sh release build
 
       - name: Test
         run: ctest --preset linux-release --no-tests=error
 
       - name: Check and name the executable
         run: |
-          tools/ci/check-linux-dependencies.sh "${BUILT_FILE}" 2.28
+          bash tools/ci/check-linux-dependencies.sh "${BUILT_FILE}" 2.28
           cp "${BUILT_FILE}" "${RELEASE_FILE}"
           chmod +x "${RELEASE_FILE}"
           ls -l "${RELEASE_FILE}"

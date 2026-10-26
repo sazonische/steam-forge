@@ -14,6 +14,8 @@ class PictureView : public QWidget {
 public:
 	explicit PictureView(int edgeLength, QWidget* parent = nullptr);
 
+	// The background takes the whole width of the layout, the picture keeps its height in the centre.
+	void FillAvailableWidth();
 	void SetPicture(const QImage& image);
 
 	[[nodiscard]] QSize sizeHint() const override;

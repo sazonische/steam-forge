@@ -2,8 +2,8 @@
 
 namespace {
 constexpr quint64 OWNER_STEAM_ID = 76561198000000001;
-// The public example item of the reskins.gg viewer.
-constexpr QLatin1StringView ITEM_CODE{"001807209A022805300438DDB8A3F70340D7076214080310B9252D000040C23D"};
+// AK-47 | Redline, a code built the way reskins.gg builds them; the site opens it.
+constexpr QLatin1StringView ITEM_CODE{"001807209A022805300438D2F0FAF803409505D00FCBB5"};
 
 SteamForge::TradeItem Rifle() {
 	return SteamForge::TradeItem{
@@ -70,6 +70,19 @@ private Q_SLOTS:
 		QCOMPARE(SteamForge::InspectItemCode(escapedLink), std::optional<QString>(ITEM_CODE));
 		const QString spacedLink = QStringLiteral("steam://rungame/730/76561202255233023/+csgo_econ_action_preview ") + ITEM_CODE;
 		QCOMPARE(SteamForge::InspectItemCode(spacedLink), std::optional<QString>(ITEM_CODE));
+		// The current links of Steam start with steam://run/.
+		const QString runLink = QStringLiteral("steam://run/730//+csgo_econ_action_preview%20") + ITEM_CODE;
+		QCOMPARE(SteamForge::InspectItemCode(runLink), std::optional<QString>(ITEM_CODE));
+	}
+
+	// The same forms the decoder of reskins.gg accepts.
+	void AcceptsTheCodesTheViewerOpens() {
+		const QString lowercaseCode = QString(ITEM_CODE).toLower();
+		QCOMPARE(SteamForge::InspectItemCode(QStringLiteral("steam://run/730//+csgo_econ_action_preview%20") + lowercaseCode), std::optional<QString>(lowercaseCode));
+		const QString unmaskedCode = QStringLiteral("GG") + QString(ITEM_CODE).sliced(2);
+		QCOMPARE(SteamForge::InspectItemCode(QStringLiteral("steam://run/730//+csgo_econ_action_preview%20") + unmaskedCode), std::optional<QString>(unmaskedCode));
+		QVERIFY(!SteamForge::InspectItemCode(QStringLiteral("steam://run/730//+csgo_econ_action_preview%20") + QString(ITEM_CODE).chopped(1)).has_value());
+		QVERIFY(!SteamForge::InspectItemCode(QStringLiteral("steam://run/730//+csgo_econ_action_preview%200018072A")).has_value());
 	}
 
 	void FindsNoItemCodeInLegacyLinks() {
@@ -79,10 +92,10 @@ private Q_SLOTS:
 		QVERIFY(!SteamForge::InspectItemCode(QStringLiteral("steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20") + ITEM_CODE + QStringLiteral("/../x")).has_value());
 	}
 
-	void OpensTheViewerInTheInterfaceLanguage() {
-		QCOMPARE(SteamForge::ReskinsViewerUrl(ITEM_CODE, true), QUrl(QStringLiteral("https://reskins.gg/ru/embed/") + ITEM_CODE));
-		QCOMPARE(SteamForge::ReskinsViewerUrl(ITEM_CODE, false), QUrl(QStringLiteral("https://reskins.gg/embed/") + ITEM_CODE));
-		QVERIFY(SteamForge::ReskinsViewerUrl(QStringLiteral("S1A2D3"), false).isEmpty());
+	void OpensTheItemPageInTheInterfaceLanguage() {
+		QCOMPARE(SteamForge::ReskinsItemPageUrl(ITEM_CODE, true), QUrl(QStringLiteral("https://reskins.gg/ru?i=") + ITEM_CODE));
+		QCOMPARE(SteamForge::ReskinsItemPageUrl(ITEM_CODE, false), QUrl(QStringLiteral("https://reskins.gg/?i=") + ITEM_CODE));
+		QVERIFY(SteamForge::ReskinsItemPageUrl(QStringLiteral("S1A2D3"), false).isEmpty());
 	}
 };
 

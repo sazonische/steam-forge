@@ -4,6 +4,7 @@
 #include "app/confirmation_monitor.h"
 #include "app/interface_translator.h"
 #include "app/storage_encryption.h"
+#include "platform/application_icons.h"
 #include "platform/data_location.h"
 #include "platform/window_frame.h"
 #include "steam/community_profile.h"
@@ -12,6 +13,7 @@
 #include "support/fake_community_transport.h"
 #include "support/fake_key_store.h"
 #include "support/fake_web_api_transport.h"
+#include "support/render_language.h"
 #include "support/synthetic_tokens.h"
 #include "ui/account_list_view.h"
 #include "ui/confirmations_dialog.h"
@@ -36,22 +38,17 @@ constexpr quint64 RENDER_STEAM_ID = 76561201960265729;
 constexpr quint64 EXPIRED_STEAM_ID = 76561201960265730;
 constexpr QLatin1StringView LIST_PATH{"mobileconf/getlist"};
 constexpr int LIST_RESPONSE_COUNT = 6;
-constexpr qint64 RESTRICTION_SECONDS = 7LL * 24 * 60 * 60;
-constexpr QLatin1StringView MARKET_PAGE{R"(<ul class="market_restrictions"><li>It looks like you made a purchase in Steam less than 7 days ago. <a href="https://help.steampowered.com/en/faqs/view/451E-96B3-D194-50FC#nottrusted" class="tooltip">Details</a><div class="market_hover_tip_header" style="display:none">A purchase without chargebacks is needed 7 days before using the Community Market.</div></li></ul>)"};
-QImage DemoAvatar() {
-	constexpr int DEMO_AVATAR_EDGE = 184;
-	QImage avatar(DEMO_AVATAR_EDGE, DEMO_AVATAR_EDGE, QImage::Format_RGB32);
-	QPainter painter(&avatar);
-	QLinearGradient background(0, 0, DEMO_AVATAR_EDGE, DEMO_AVATAR_EDGE);
-	background.setColorAt(0, QColor(0x3a, 0x8b, 0xd6));
-	background.setColorAt(1, QColor(0x8a, 0x3a, 0xd6));
-	painter.fillRect(avatar.rect(), background);
-	painter.setRenderHint(QPainter::Antialiasing);
-	painter.setBrush(QColor(0xff, 0xff, 0xff, 0xd0));
-	painter.setPen(Qt::NoPen);
-	painter.drawEllipse(QPoint(DEMO_AVATAR_EDGE / 2, DEMO_AVATAR_EDGE * 2 / 5), DEMO_AVATAR_EDGE / 5, DEMO_AVATAR_EDGE / 5);
-	painter.drawEllipse(QPoint(DEMO_AVATAR_EDGE / 2, DEMO_AVATAR_EDGE), DEMO_AVATAR_EDGE * 2 / 5, DEMO_AVATAR_EDGE * 2 / 5);
-	return avatar;
+// Ordinary players with official avatars of the Steam avatar gallery, loaded from the Steam CDN.
+struct DemoAccount {
+	quint64 steamId = 0;
+	QString accountName;
+	QString nickname;
+	QLatin1StringView avatarHash;
+};
+
+QByteArray DemoProfileXml(const DemoAccount& account) {
+	const QString avatarUrl = QStringLiteral("https://avatars.fastly.steamstatic.com/%1_full.jpg").arg(account.avatarHash);
+	return QStringLiteral(R"(<?xml version="1.0" encoding="UTF-8"?><profile><steamID64>%1</steamID64><steamID><![CDATA[%2]]></steamID><avatarFull><![CDATA[%3]]></avatarFull></profile>)").arg(account.steamId).arg(account.nickname, avatarUrl).toUtf8();
 }
 } // namespace
 
@@ -59,6 +56,10 @@ class IllustrationsRenderTest final : public QObject {
 	Q_OBJECT
 
 private Q_SLOTS:
+	void initTestCase() {
+		QApplication::setWindowIcon(SteamForge::ApplicationIcon());
+	}
+
 	void RenderEmptyStates() {
 		const QString renderDirectory = qEnvironmentVariable("STEAMFORGE_RENDER_DIRECTORY");
 		if (renderDirectory.isEmpty()) {
@@ -76,20 +77,20 @@ private Q_SLOTS:
 		SteamForge::AuthenticatorRecord record;
 		record.id = QUuid::createUuid();
 		record.account.steamId = RENDER_STEAM_ID;
-		record.account.accountName = QStringLiteral("trader_demo");
+		record.account.accountName = QStringLiteral("artie2008");
 		record.createdAt = QDateTime::currentDateTimeUtc();
 		record.secrets.sharedSecret = QByteArray::fromBase64("AQIDBAUGBwgJCgsMDQ4PEBESExQ=");
 		record.secrets.identitySecret = QByteArray::fromBase64("FBMSERAPDg0MCwoJCAcGBQQDAgE=");
 		record.secrets.deviceId = QStringLiteral("android:00000000-0000-0000-0000-000000000001");
 		QVERIFY(library.Add(record).has_value());
-		const SteamForge::AccountSession session{.recordId = record.id, .steamId = RENDER_STEAM_ID, .accountName = QStringLiteral("trader_demo"), .refreshToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("derive")}, FAR_FUTURE_SECONDS), .accessToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("mobile")}, FAR_FUTURE_SECONDS), .signedInAt = QDateTime::currentDateTimeUtc()};
+		const SteamForge::AccountSession session{.recordId = record.id, .steamId = RENDER_STEAM_ID, .accountName = QStringLiteral("artie2008"), .refreshToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("derive")}, FAR_FUTURE_SECONDS), .accessToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("mobile")}, FAR_FUTURE_SECONDS), .signedInAt = QDateTime::currentDateTimeUtc()};
 		QVERIFY(library.SaveSession(session).has_value());
 		SteamForge::AuthenticatorRecord expiredRecord = record;
 		expiredRecord.id = QUuid::createUuid();
 		expiredRecord.account.steamId = EXPIRED_STEAM_ID;
-		expiredRecord.account.accountName = QStringLiteral("old_trader");
+		expiredRecord.account.accountName = QStringLiteral("artie_old");
 		QVERIFY(library.Add(expiredRecord).has_value());
-		QVERIFY(library.SaveSession({.recordId = expiredRecord.id, .steamId = EXPIRED_STEAM_ID, .accountName = QStringLiteral("old_trader"), .refreshToken = SyntheticJwt(EXPIRED_STEAM_ID, {QStringLiteral("derive")}, PAST_SECONDS), .accessToken = SyntheticJwt(EXPIRED_STEAM_ID, {QStringLiteral("mobile")}, PAST_SECONDS), .signedInAt = QDateTime::currentDateTimeUtc()}).has_value());
+		QVERIFY(library.SaveSession({.recordId = expiredRecord.id, .steamId = EXPIRED_STEAM_ID, .accountName = QStringLiteral("artie_old"), .refreshToken = SyntheticJwt(EXPIRED_STEAM_ID, {QStringLiteral("derive")}, PAST_SECONDS), .accessToken = SyntheticJwt(EXPIRED_STEAM_ID, {QStringLiteral("mobile")}, PAST_SECONDS), .signedInAt = QDateTime::currentDateTimeUtc()}).has_value());
 		SteamForge::AuthenticatorRecord unprotectedRecord = record;
 		unprotectedRecord.secrets = {};
 
@@ -112,8 +113,8 @@ private Q_SLOTS:
 		encryption.PrepareLibrary();
 		SteamForge::MainWindow mainWindow(emptyLibrary, clock, emptyMonitor, imageCache, profiles, encryption, settings, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false});
 		mainWindow.show();
-		SteamForge::ConfirmationsDialog dialog(monitor, imageCache, record, SteamForge::RecordDisplayName(record));
-		SteamForge::ConfirmationsDialog signInDialog(monitor, imageCache, expiredRecord, SteamForge::RecordDisplayName(expiredRecord));
+		SteamForge::ConfirmationsDialog dialog(monitor, imageCache, record, SteamForge::RecordDisplayName(record), QImage());
+		SteamForge::ConfirmationsDialog signInDialog(monitor, imageCache, expiredRecord, SteamForge::RecordDisplayName(expiredRecord), QImage());
 		SteamForge::GuardSetupDialog guardSetupDialog(library, clock, unprotectedRecord, SteamForge::RecordDisplayName(unprotectedRecord), session);
 		// Not shown: showing it would ask Steam for pending sign-ins.
 		SteamForge::LoginApprovalDialog loginApprovalDialog(library, record, SteamForge::RecordDisplayName(record), session);
@@ -216,7 +217,7 @@ private Q_SLOTS:
 		auto& application = *qobject_cast<QApplication*>(QCoreApplication::instance());
 		SteamForge::ApplyTheme(application);
 		SteamForge::InterfaceTranslator translator;
-		QVERIFY(translator.Apply(SteamForge::InterfaceLanguage::RUSSIAN));
+		QVERIFY(translator.Apply(RenderLanguage()));
 
 		const QTemporaryDir dataDirectory;
 		const QDir dataRoot(dataDirectory.path());
@@ -253,13 +254,13 @@ private Q_SLOTS:
 		auto& application = *qobject_cast<QApplication*>(QCoreApplication::instance());
 		SteamForge::ApplyTheme(application);
 		SteamForge::InterfaceTranslator translator;
-		QVERIFY(translator.Apply(SteamForge::InterfaceLanguage::RUSSIAN));
+		QVERIFY(translator.Apply(RenderLanguage()));
 
-		SteamForge::SuccessDialog movedNotice(QCoreApplication::translate("SteamForge::LoginDialog", "Steam Guard moved"), QCoreApplication::translate("SteamForge::LoginDialog", "Steam Guard of %1 is now in SteamForge. One step is left: enter the password once more, and SteamForge signs in with its own codes.").arg(QStringLiteral("Demo Trader")));
+		SteamForge::SuccessDialog movedNotice(QCoreApplication::translate("SteamForge::LoginDialog", "Steam Guard moved"), QCoreApplication::translate("SteamForge::LoginDialog", "Steam Guard of %1 is now in SteamForge. One step is left: enter the password once more, and the code is entered automatically.").arg(QStringLiteral("Artie")));
 		movedNotice.SetKeptValue(QCoreApplication::translate("SteamForge::LoginDialog", "New recovery code"), QStringLiteral("R12345"), QCoreApplication::translate("SteamForge::LoginDialog", "Write it down and keep it apart from this computer: with it Steam Guard can be removed from the account if SteamForge is lost. The account details show it as well."));
 		movedNotice.show();
 		QTest::qWait(300);
-		QVERIFY(movedNotice.grab().save(QDir(renderDirectory).filePath(QStringLiteral("guard_moved_ru.png"))));
+		QVERIFY(movedNotice.grab().save(QDir(renderDirectory).filePath(QStringLiteral("guard_moved.png"))));
 
 		QWidget tilesWindow;
 		tilesWindow.setStyleSheet(QStringLiteral("background-color: #1b2838;"));
@@ -283,13 +284,13 @@ private Q_SLOTS:
 		QTest::qWait(300);
 		QVERIFY(loginDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("login_unencrypted.png"))));
 
-		SteamForge::SteamGuardQrDialog qrDialog(QStringLiteral("Demo Trader"), QStringLiteral("otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam"));
+		SteamForge::SteamGuardQrDialog qrDialog(QStringLiteral("Artie"), QStringLiteral("otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam"));
 		qrDialog.show();
 		QTest::qWait(300);
 		QVERIFY(qrDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("steam_guard_qr_hidden.png"))));
 		const QList<QPushButton*> qrButtons = qrDialog.findChildren<QPushButton*>();
 		const auto showQrButton = std::ranges::find_if(qrButtons, [](const QPushButton* button) {
-			return button->text() == QStringLiteral("Показать QR-код");
+			return button->text() == QCoreApplication::translate("SteamForge::SteamGuardQrDialog", "Show QR code");
 		});
 		QVERIFY(showQrButton != qrButtons.end());
 		(*showQrButton)->click();
@@ -302,15 +303,17 @@ private Q_SLOTS:
 		if (renderDirectory.isEmpty()) {
 			QSKIP("Set STEAMFORGE_RENDER_DIRECTORY to render the screens.");
 		}
+		auto& application = *qobject_cast<QApplication*>(QCoreApplication::instance());
+		SteamForge::ApplyTheme(application);
 		SteamForge::InterfaceTranslator translator;
-		QVERIFY(translator.Apply(SteamForge::InterfaceLanguage::RUSSIAN));
+		QVERIFY(translator.Apply(RenderLanguage()));
 		const QTemporaryDir dataDirectory;
 		const QDir dataRoot(dataDirectory.path());
 		SteamForge::AccountLibrary library(SteamForge::AuthenticatorStore(dataRoot.filePath(QStringLiteral("accounts"))), SteamForge::SessionStore(dataRoot.filePath(QStringLiteral("sessions"))));
 		SteamForge::AuthenticatorRecord fullRecord;
 		fullRecord.id = QUuid::createUuid();
 		fullRecord.account.steamId = RENDER_STEAM_ID;
-		fullRecord.account.accountName = QStringLiteral("trader_demo");
+		fullRecord.account.accountName = QStringLiteral("artie2008");
 		fullRecord.createdAt = QDateTime::currentDateTimeUtc();
 		fullRecord.source.origin = SteamForge::RecordOrigin::MA_FILE;
 		fullRecord.source.importedAt = fullRecord.createdAt;
@@ -319,35 +322,47 @@ private Q_SLOTS:
 		fullRecord.secrets.deviceId = QStringLiteral("android:00000000-0000-0000-0000-000000000001");
 		fullRecord.secrets.revocationCode = QStringLiteral("R12345");
 		QVERIFY(library.Add(fullRecord).has_value());
-		QVERIFY(library.SaveSession({.recordId = fullRecord.id, .steamId = RENDER_STEAM_ID, .accountName = QStringLiteral("trader_demo"), .refreshToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("derive")}, FAR_FUTURE_SECONDS), .accessToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("mobile")}, FAR_FUTURE_SECONDS), .signedInAt = QDateTime::currentDateTimeUtc()}).has_value());
+		QVERIFY(library.SaveSession({.recordId = fullRecord.id, .steamId = RENDER_STEAM_ID, .accountName = QStringLiteral("artie2008"), .refreshToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("derive")}, FAR_FUTURE_SECONDS), .accessToken = SyntheticJwt(RENDER_STEAM_ID, {QStringLiteral("mobile")}, FAR_FUTURE_SECONDS), .signedInAt = QDateTime::currentDateTimeUtc()}).has_value());
 		SteamForge::AuthenticatorRecord codesOnlyRecord;
 		codesOnlyRecord.id = QUuid::createUuid();
-		codesOnlyRecord.label = QStringLiteral("litebet");
+		codesOnlyRecord.label = QStringLiteral("smurf");
 		codesOnlyRecord.createdAt = QDateTime::currentDateTimeUtc();
 		codesOnlyRecord.source.origin = SteamForge::RecordOrigin::OTPAUTH_URI;
 		codesOnlyRecord.source.importedAt = codesOnlyRecord.createdAt;
 		codesOnlyRecord.secrets.sharedSecret = QByteArray::fromBase64("CQoLDA0ODxAREhMUFRYXGBkaGxw=");
 		QVERIFY(library.Add(codesOnlyRecord).has_value());
+		const std::array demoAccounts{
+			DemoAccount{.steamId = RENDER_STEAM_ID, .accountName = QStringLiteral("artie2008"), .nickname = QStringLiteral("Artie"), .avatarHash = QLatin1StringView("4264b561c93fcd0d4c832c1137229587bbb5f8d7")},
+			DemoAccount{.steamId = RENDER_STEAM_ID + 11, .accountName = QStringLiteral("meatball_cs"), .nickname = QStringLiteral("meatball"), .avatarHash = QLatin1StringView("2db6e5f11d2eb0ff1410cd6353f771da213124a0")},
+			DemoAccount{.steamId = RENDER_STEAM_ID + 12, .accountName = QStringLiteral("foxy_plays"), .nickname = QStringLiteral("Foxy"), .avatarHash = QLatin1StringView("95cc644e231f05cf0590311be14b2924ed66f66b")},
+		};
+		for (const DemoAccount& account : demoAccounts | std::views::drop(1)) {
+			SteamForge::AuthenticatorRecord friendRecord;
+			friendRecord.id = QUuid::createUuid();
+			friendRecord.account.steamId = account.steamId;
+			friendRecord.account.accountName = account.accountName;
+			friendRecord.createdAt = QDateTime::currentDateTimeUtc();
+			friendRecord.source.origin = SteamForge::RecordOrigin::MA_FILE;
+			friendRecord.source.importedAt = friendRecord.createdAt;
+			friendRecord.secrets.sharedSecret = QCryptographicHash::hash(account.accountName.toUtf8(), QCryptographicHash::Sha1);
+			QVERIFY(library.Add(friendRecord).has_value());
+		}
 
 		FakeWebApiTransport webApiTransport;
 		FakeCommunityTransport communityTransport;
 		for (int i = 0; i < LIST_RESPONSE_COUNT; ++i) {
 			communityTransport.AddJson(LIST_PATH, QJsonObject{{QStringLiteral("success"), true}, {QStringLiteral("conf"), QJsonArray()}});
 		}
-		const QJsonObject eligibility{
-			{QStringLiteral("allowed"), 0},
-			{QStringLiteral("allowed_at_time"), QDateTime::currentSecsSinceEpoch() + RESTRICTION_SECONDS},
-		};
+		const QJsonObject eligibility{{QStringLiteral("allowed"), 1}};
 		communityTransport.AddCookies(QStringLiteral("market/eligibilitycheck/"), QList<QNetworkCookie>{QNetworkCookie(QByteArray("webTradeEligibility"), QJsonDocument(eligibility).toJson(QJsonDocument::Compact).toPercentEncoding())});
-		communityTransport.AddResponse(QStringLiteral("market/"), QString(MARKET_PAGE).toUtf8());
 		SteamForge::SteamClock clock;
 		SteamForge::SteamImageCache imageCache;
 		SteamForge::ConfirmationMonitor monitor(webApiTransport, communityTransport, library, clock);
 		SteamForge::ApplicationSettings settings(dataRoot.filePath(QStringLiteral("settings.ini")));
 		FakeCommunityTransport profileTransport;
-		const QUrl avatarUrl(QStringLiteral("https://avatars.fastly.steamstatic.com/0123456789abcdef0123456789abcdef01234567_full.jpg"));
-		profileTransport.AddResponse(SteamForge::CommunityProfilePath(RENDER_STEAM_ID), QStringLiteral(R"(<?xml version="1.0" encoding="UTF-8"?><profile><steamID64>%1</steamID64><steamID><![CDATA[Demo Trader]]></steamID><avatarFull><![CDATA[%2]]></avatarFull></profile>)").arg(RENDER_STEAM_ID).arg(avatarUrl.toString()).toUtf8());
-		imageCache.Insert(avatarUrl, DemoAvatar());
+		for (const DemoAccount& account : demoAccounts) {
+			profileTransport.AddResponse(SteamForge::CommunityProfilePath(account.steamId), DemoProfileXml(account));
+		}
 		SteamForge::AccountProfiles profiles(profileTransport, imageCache, dataDirectory.filePath(QStringLiteral("profiles.json")));
 		FakeKeyStore keyStore;
 		SteamForge::StorageEncryption encryption(keyStore, library, dataDirectory.filePath(QStringLiteral("encryption.json")));

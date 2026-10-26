@@ -4,6 +4,7 @@
 #include "ui/confirmation_card.h"
 #include "ui/illustration_view.h"
 #include "ui/record_presentation.h"
+#include "ui/steam_picture.h"
 #include "ui/trade_offer_dialog.h"
 #include "ui/widget_styles.h"
 
@@ -14,6 +15,8 @@ namespace {
 	constexpr QSize MINIMUM_DIALOG_SIZE{640, 480};
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
 	constexpr int DIALOG_SPACING = 12;
+	constexpr int AVATAR_EDGE = 56;
+	constexpr int HEADER_TEXT_SPACING = 2;
 	constexpr int ENTRY_SPACING = 8;
 	constexpr int FILTER_SPACING = 4;
 	constexpr int EMPTY_STATE_TOP_MARGIN = 24;
@@ -49,7 +52,7 @@ namespace {
 	}
 } // namespace
 
-ConfirmationsDialog::ConfirmationsDialog(ConfirmationMonitor& monitor, SteamImageCache& images, AuthenticatorRecord accountRecord, QString title, QWidget* parent) :
+ConfirmationsDialog::ConfirmationsDialog(ConfirmationMonitor& monitor, SteamImageCache& images, AuthenticatorRecord accountRecord, QString title, const QImage& accountAvatar, QWidget* parent) :
 	QDialog(parent),
 	confirmationMonitor(monitor),
 	imageCache(images),
@@ -58,6 +61,10 @@ ConfirmationsDialog::ConfirmationsDialog(ConfirmationMonitor& monitor, SteamImag
 	resize(INITIAL_DIALOG_SIZE);
 	setMinimumSize(MINIMUM_DIALOG_SIZE);
 
+	// The account the decisions are made for, the way the account list shows it.
+	avatarPicture = new PictureView(AVATAR_EDGE, this);
+	avatarPicture->SetPicture(accountAvatar);
+	avatarPicture->setVisible(!accountAvatar.isNull());
 	accountNameLabel = CreatePlainLabel(this, PAGE_TITLE_STYLE);
 	accountDetailsLabel = CreatePlainLabel(this, SECONDARY_TEXT_STYLE);
 	statusLabel = CreatePlainLabel(this, SECONDARY_TEXT_STYLE);
@@ -129,9 +136,18 @@ ConfirmationsDialog::ConfirmationsDialog(ConfirmationMonitor& monitor, SteamImag
 	auto* dialogLayout = new QVBoxLayout(this);
 	dialogLayout->setContentsMargins(DIALOG_MARGINS);
 	dialogLayout->setSpacing(DIALOG_SPACING);
-	dialogLayout->addWidget(accountNameLabel);
-	dialogLayout->addWidget(accountDetailsLabel);
-	dialogLayout->addWidget(statusLabel);
+	auto* headerTextLayout = new QVBoxLayout();
+	headerTextLayout->setSpacing(HEADER_TEXT_SPACING);
+	headerTextLayout->addStretch();
+	headerTextLayout->addWidget(accountNameLabel);
+	headerTextLayout->addWidget(accountDetailsLabel);
+	headerTextLayout->addWidget(statusLabel);
+	headerTextLayout->addStretch();
+	auto* headerLayout = new QHBoxLayout();
+	headerLayout->setSpacing(DIALOG_SPACING);
+	headerLayout->addWidget(avatarPicture, 0, Qt::AlignVCenter);
+	headerLayout->addLayout(headerTextLayout, 1);
+	dialogLayout->addLayout(headerLayout);
 	dialogLayout->addWidget(responseFailureLabel);
 	dialogLayout->addWidget(filterBar);
 	dialogLayout->addLayout(selectionLayout);
@@ -207,7 +223,8 @@ void ConfirmationsDialog::RetranslateUi() {
 	const QString& accountName = accountTitle;
 	setWindowTitle(tr("Confirmations · %1").arg(accountName));
 	accountNameLabel->setText(accountName);
-	accountDetailsLabel->setText(tr("Trade and market confirmations of this account. %1").arg(SteamIdText(record)));
+	accountDetailsLabel->setText(tr("Trade and market confirmations of this account."));
+	accountDetailsLabel->setToolTip(SteamIdText(record));
 	refreshButton->setText(tr("Refresh"));
 	signInButton->setText(tr("Sign in to Steam…"));
 	closeButton->setText(tr("Close"));

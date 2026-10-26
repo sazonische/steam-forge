@@ -639,49 +639,92 @@
 <context>
     <name>SteamForge::ConfirmationCard</name>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="269"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="336"/>
         <source>Trade details…</source>
         <translation>Подробнее об обмене…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="270"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="337"/>
         <source>Confirm</source>
         <translation>Подтвердить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="271"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="338"/>
         <source>Decline</source>
         <translation>Отклонить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="272"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="339"/>
         <source>Sending the decision to Steam…</source>
         <translation>Отправка решения в Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="273"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="340"/>
         <source>Select %1</source>
         <translation>Выбрать: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="286"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="375"/>
         <source>You give</source>
         <translation>Вы отдаёте</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="287"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="375"/>
         <source>You receive</source>
         <translation>Вы получаете</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../src/ui/confirmation_card.cpp" line="380"/>
+        <source>You give · %n item(s)</source>
+        <translation>
+            <numerusform>Вы отдаёте · %n предмет</numerusform>
+            <numerusform>Вы отдаёте · %n предмета</numerusform>
+            <numerusform>Вы отдаёте · %n предметов</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../src/ui/confirmation_card.cpp" line="380"/>
+        <source>You receive · %n item(s)</source>
+        <translation>
+            <numerusform>Вы получаете · %n предмет</numerusform>
+            <numerusform>Вы получаете · %n предмета</numerusform>
+            <numerusform>Вы получаете · %n предметов</numerusform>
+        </translation>
+    </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="299"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="362"/>
         <source>Message: %1</source>
         <translation>Сообщение: %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="314"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="309"/>
+        <source>just now</source>
+        <translation>только что</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/confirmation_card.cpp" line="312"/>
+        <source>%1 min ago</source>
+        <translation>%1 мин назад</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/confirmation_card.cpp" line="315"/>
+        <source>today, %1</source>
+        <translation>сегодня, %1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/confirmation_card.cpp" line="318"/>
+        <source>yesterday, %1</source>
+        <translation>вчера, %1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/confirmation_card.cpp" line="375"/>
         <source>nothing</source>
         <translation>ничего</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/confirmation_card.cpp" line="375"/>
+        <source>%1: %2</source>
+        <translation>%1: %2</translation>
     </message>
 </context>
 <context>
@@ -692,97 +735,97 @@
         <translation>Подтверждения · %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="210"/>
-        <source>Trade and market confirmations of this account. %1</source>
-        <translation>Подтверждения обменов и Торговой площадки этого аккаунта. %1</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="211"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="212"/>
         <source>Refresh</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="212"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="213"/>
         <source>Sign in to Steam…</source>
         <translation>Войти в Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="213"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="214"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="254"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="255"/>
         <source>New confirmations will appear here automatically.</source>
         <translation>Новые подтверждения появятся здесь автоматически.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="382"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="383"/>
         <source>Confirm</source>
         <translation>Подтвердить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="382"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="383"/>
         <source>Decline</source>
         <translation>Отклонить</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="345"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="346"/>
         <source>Clear selection</source>
         <translation>Снять выбор</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="248"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="210"/>
+        <source>Trade and market confirmations of this account.</source>
+        <translation>Подтверждения обменов и Торговой площадки этого аккаунта.</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="249"/>
         <source>Sign in to Steam again</source>
         <translation>Войдите в Steam снова</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="248"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="249"/>
         <source>Confirmations are unavailable</source>
         <translation>Подтверждения недоступны</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="253"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="254"/>
         <source>Nothing to confirm</source>
         <translation>Подтверждать нечего</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="315"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="316"/>
         <source>All %1</source>
         <translation>Все %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="316"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="317"/>
         <source>Trades %1</source>
         <translation>Обмены %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="317"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="318"/>
         <source>Market %1</source>
         <translation>Торговая площадка %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="318"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="319"/>
         <source>Other %1</source>
         <translation>Другое %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="345"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="346"/>
         <source>Select all</source>
         <translation>Выбрать все</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="347"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="348"/>
         <source>Confirm selected (%1)</source>
         <translation>Подтвердить выбранные (%1)</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="348"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="349"/>
         <source>Decline selected (%1)</source>
         <translation>Отклонить выбранные (%1)</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/confirmations_dialog.cpp" line="380"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="381"/>
         <source>Confirm %n selected confirmations of %1?</source>
         <translation>
             <numerusform>Подтвердить %n выбранное подтверждение аккаунта %1?</numerusform>
@@ -791,7 +834,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/confirmations_dialog.cpp" line="380"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="381"/>
         <source>Decline %n selected confirmations of %1?</source>
         <translation>
             <numerusform>Отклонить %n выбранное подтверждение аккаунта %1?</numerusform>
@@ -800,73 +843,73 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="472"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="473"/>
         <source>Steam no longer accepts the saved sign-in of %1. Sign in to Steam again to see and confirm trades.</source>
         <translation>Steam больше не принимает сохранённый вход %1. Войдите в Steam заново, чтобы видеть и подтверждать обмены.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="474"/>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="476"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="475"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="477"/>
         <source>Confirmations could not be loaded.</source>
         <translation>Не удалось загрузить подтверждения.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="502"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="503"/>
         <source>It is unknown whether Steam carried out the decision.</source>
         <translation>Неизвестно, выполнил ли Steam решение.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="502"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="503"/>
         <source>The list was loaded again: an entry that is still listed was not processed.</source>
         <translation>Список загружен заново: подтверждение, которое осталось в списке, не обработано.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="504"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="505"/>
         <source>Steam did not carry out the decision.</source>
         <translation>Steam не выполнил решение.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="504"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="505"/>
         <source>The list was loaded again.</source>
         <translation>Список загружен заново.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="478"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="479"/>
         <source>The renewed Steam sign-in could not be saved on this computer, so nothing was requested.</source>
         <translation>Не удалось сохранить обновлённый вход в Steam на этом компьютере, поэтому запрос не отправлен.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="465"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="466"/>
         <source>The authenticator of %1 has no confirmation key, so confirmations are not available. Add the key in the account panel: the gear button, then &quot;Add data…&quot;.</source>
         <translation>У аутентификатора %1 нет ключа подтверждений, поэтому подтверждения недоступны. Добавьте ключ в панели аккаунта: кнопка с шестерёнкой, затем «Дополнить данные…».</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="467"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="468"/>
         <source>There is no valid Steam sign-in for %1. Sign in to Steam to see and confirm trades.</source>
         <translation>Для %1 нет действующего входа в Steam. Войдите, чтобы видеть и подтверждать обмены.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="474"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="475"/>
         <source>We&apos;ll try again automatically.</source>
         <translation>Попробуем снова автоматически.</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="482"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="483"/>
         <source>Loading confirmations…</source>
         <translation>Загрузка подтверждений…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="485"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="486"/>
         <source>Updating…</source>
         <translation>Обновление…</translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="490"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="491"/>
         <source>Updated at %1.</source>
         <translation>Обновлено в %1.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/confirmations_dialog.cpp" line="492"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="493"/>
         <source>%n waiting, updated at %1.</source>
         <translation>
             <numerusform>Ожидает %n, обновлено в %1.</numerusform>
@@ -875,7 +918,7 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmations_dialog.cpp" line="506"/>
+        <location filename="../src/ui/confirmations_dialog.cpp" line="507"/>
         <source>The renewed Steam sign-in could not be saved on this computer, so the decision was not sent.</source>
         <translation>Не удалось сохранить обновлённый вход в Steam на этом компьютере, поэтому решение не отправлено.</translation>
     </message>
@@ -1196,7 +1239,7 @@
 <context>
     <name>SteamForge::ItemStrip</name>
     <message numerus="yes">
-        <location filename="../src/ui/confirmation_card.cpp" line="145"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="158"/>
         <source>and %n more</source>
         <translation>
             <numerusform>и ещё %n</numerusform>
@@ -1205,7 +1248,7 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/confirmation_card.cpp" line="147"/>
+        <location filename="../src/ui/confirmation_card.cpp" line="160"/>
         <source>Click to see the whole trade.</source>
         <translation>Нажмите, чтобы увидеть весь обмен.</translation>
     </message>
@@ -2536,59 +2579,54 @@
 <context>
     <name>SteamForge::TradeOfferDialog</name>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="236"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="235"/>
         <source>Partner profile in Steam</source>
         <translation>Профиль партнёра в Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="237"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="236"/>
         <source>Open the trade in Steam</source>
         <translation>Открыть обмен в Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="238"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="237"/>
         <source>Select an item to check it: its exterior, warnings of Steam, a 3D view and its page in Steam.</source>
         <translation>Выберите предмет, чтобы проверить его: внешний вид, предупреждения Steam, осмотр в 3D и страницу в Steam.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="239"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="238"/>
         <source>Inspect in 3D on reskins.gg</source>
         <translation>Осмотреть в 3D на reskins.gg</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="240"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="239"/>
         <source>Inspect in game</source>
         <translation>Осмотреть в игре</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="241"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="240"/>
         <source>Steam Community Market</source>
         <translation>Торговая площадка Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="242"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="241"/>
         <source>Item in the Steam inventory</source>
         <translation>Предмет в инвентаре Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="243"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="242"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="244"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="243"/>
         <source>Decline</source>
         <translation>Отклонить</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="245"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="244"/>
         <source>Confirm</source>
         <translation>Подтвердить</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="246"/>
-        <source>The decision is made for the account %1 (%2).</source>
-        <translation>Решение принимается для аккаунта %1 (%2).</translation>
     </message>
     <message>
         <location filename="../src/ui/trade_offer_dialog.cpp" line="247"/>
@@ -2601,39 +2639,49 @@
         <translation>Обмен с %1 · %2</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="286"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="287"/>
         <source>SteamID %1</source>
         <translation>SteamID %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="286"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="287"/>
         <source>SteamID unknown</source>
         <translation>SteamID неизвестен</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="287"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="288"/>
         <source>you sent this offer</source>
         <translation>предложение отправили вы</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="287"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="288"/>
         <source>the partner sent this offer</source>
         <translation>предложение отправил партнёр</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="289"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="290"/>
         <source>valid until %1</source>
         <translation>действует до %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="297"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="304"/>
         <source>Steam holds the items of this trade until %1 before they change hands.</source>
         <translation>Steam удерживает предметы этого обмена до %1 и только потом передаёт их новым владельцам.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="303"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="310"/>
         <source>Message: %1</source>
         <translation>Сообщение: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="393"/>
+        <source>Cannot be traded now</source>
+        <translation>Сейчас нельзя обменять</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="396"/>
+        <source>Cannot be sold on the Community Market</source>
+        <translation>Нельзя продать на Торговой площадке</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/trade_offer_dialog.cpp" line="258"/>
@@ -2643,6 +2691,11 @@
             <numerusform>Вы отдаёте: %n предмета</numerusform>
             <numerusform>Вы отдаёте: %n предметов</numerusform>
         </translation>
+    </message>
+    <message>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="245"/>
+        <source>The decision is made for the account %1.</source>
+        <translation>Решение принимается для аккаунта %1.</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/trade_offer_dialog.cpp" line="258"/>
@@ -2664,59 +2717,42 @@
         <translation>Вы ничего не получаете.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="370"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="377"/>
         <source>You give this item</source>
         <translation>Этот предмет вы отдаёте</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="370"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="377"/>
         <source>You receive this item</source>
         <translation>Этот предмет вы получаете</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="378"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="385"/>
         <source>%1: %2</source>
         <translation>%1: %2</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="384"/>
-        <source>Tradable: %1 · Marketable: %2</source>
-        <translation>Можно обменять: %1 · Можно продать: %2</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="384"/>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="384"/>
-        <source>yes</source>
-        <translation>да</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="384"/>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="384"/>
-        <source>no</source>
-        <translation>нет</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="388"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="403"/>
         <source>Steam gave no item code for this item, so reskins.gg cannot show it.</source>
         <translation>Steam не передал код этого предмета, поэтому reskins.gg не может его показать.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="422"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="437"/>
         <source>Sending the decision to Steam…</source>
         <translation>Отправка решения в Steam…</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="426"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="441"/>
         <source>The decision was sent; this confirmation no longer waits.</source>
         <translation>Решение отправлено, это подтверждение больше не ожидает.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="428"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="443"/>
         <source>This confirmation no longer waits: it was decided elsewhere or it expired.</source>
         <translation>Это подтверждение больше не ожидает: решение принято в другом месте или истёк срок.</translation>
     </message>
     <message>
-        <location filename="../src/ui/trade_offer_dialog.cpp" line="431"/>
+        <location filename="../src/ui/trade_offer_dialog.cpp" line="446"/>
         <source>Steam did not confirm the decision. The list was loaded again: this trade still waits.</source>
         <translation>Steam не подтвердил решение. Список загружен заново: этот обмен всё ещё ожидает.</translation>
     </message>

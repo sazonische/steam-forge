@@ -14,7 +14,7 @@ namespace SteamForge {
 // S…A…D… links only ask Valve for the item and have no code.
 [[nodiscard]] std::optional<QString> InspectItemCode(const QString& inspectLink);
 
-// The 3D viewer of reskins.gg for an item code.
-[[nodiscard]] QUrl ReskinsViewerUrl(const QString& itemCode, bool isRussian);
+// The page of the item on reskins.gg: the item in 3D with its name, collection, rarity and wear.
+[[nodiscard]] QUrl ReskinsItemPageUrl(const QString& itemCode, bool isRussian);
 
 } // namespace SteamForge

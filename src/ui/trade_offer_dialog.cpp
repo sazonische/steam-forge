@@ -59,18 +59,17 @@ TradeOfferDialog::TradeOfferDialog(AccountConfirmations& accountConfirmations, S
 	partnerDetailsLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	profileButton = new QPushButton(this);
 	steamOfferButton = new QPushButton(this);
-	auto* partnerButtonsLayout = new QHBoxLayout();
-	partnerButtonsLayout->addWidget(profileButton);
-	partnerButtonsLayout->addWidget(steamOfferButton);
-	partnerButtonsLayout->addStretch();
 	auto* partnerTextLayout = new QVBoxLayout();
+	partnerTextLayout->addStretch();
 	partnerTextLayout->addWidget(partnerNameLabel);
 	partnerTextLayout->addWidget(partnerDetailsLabel);
-	partnerTextLayout->addLayout(partnerButtonsLayout);
+	partnerTextLayout->addStretch();
 	auto* headerLayout = new QHBoxLayout();
 	headerLayout->setSpacing(DIALOG_SPACING);
-	headerLayout->addWidget(partnerPicture, 0, Qt::AlignTop);
+	headerLayout->addWidget(partnerPicture, 0, Qt::AlignVCenter);
 	headerLayout->addLayout(partnerTextLayout, 1);
+	headerLayout->addWidget(profileButton, 0, Qt::AlignVCenter);
+	headerLayout->addWidget(steamOfferButton, 0, Qt::AlignVCenter);
 
 	holdLabel = CreatePlainLabel(this, NOTICE_STYLE);
 	warningsLabel = CreatePlainLabel(this, ERROR_TEXT_STYLE);
@@ -104,6 +103,7 @@ TradeOfferDialog::TradeOfferDialog(AccountConfirmations& accountConfirmations, S
 	itemSideLabel = CreatePlainLabel(itemPanel);
 	MakeSectionLabel(*itemSideLabel);
 	itemPicture = new SteamPicture(imageCache, ITEM_PICTURE_EDGE, itemPanel);
+	itemPicture->FillAvailableWidth();
 	itemNameLabel = CreatePlainLabel(itemPanel, ROW_NAME_STYLE);
 	itemNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	itemTypeLabel = CreatePlainLabel(itemPanel, SECONDARY_TEXT_STYLE);
@@ -115,7 +115,7 @@ TradeOfferDialog::TradeOfferDialog(AccountConfirmations& accountConfirmations, S
 	itemLayout->setContentsMargins(0, 0, 0, 0);
 	itemLayout->setSpacing(SECTION_SPACING);
 	itemLayout->addWidget(itemSideLabel);
-	itemLayout->addWidget(itemPicture, 0, Qt::AlignHCenter);
+	itemLayout->addWidget(itemPicture);
 	itemLayout->addWidget(itemNameLabel);
 	itemLayout->addWidget(itemTypeLabel);
 	itemLayout->addWidget(itemTagsLabel);
@@ -198,7 +198,7 @@ TradeOfferDialog::TradeOfferDialog(AccountConfirmations& accountConfirmations, S
 		const TradeItem* item = SelectedItem();
 		const std::optional<QString> itemCode = item != nullptr ? InspectItemCode(item->inspectLink) : std::nullopt;
 		if (itemCode.has_value()) {
-			OpenLink(ReskinsViewerUrl(*itemCode, QLocale().language() == QLocale::Russian));
+			OpenLink(ReskinsItemPageUrl(*itemCode, QLocale().language() == QLocale::Russian));
 		}
 	});
 	connect(marketButton, &QPushButton::clicked, this, [this]() {
@@ -243,7 +243,8 @@ void TradeOfferDialog::RetranslateUi() {
 	closeButton->setText(tr("Close"));
 	rejectButton->setText(tr("Decline"));
 	acceptButton->setText(tr("Confirm"));
-	accountLabel->setText(tr("The decision is made for the account %1 (%2).").arg(accountTitle, SteamIdText(record)));
+	accountLabel->setText(tr("The decision is made for the account %1.").arg(accountTitle));
+	accountLabel->setToolTip(SteamIdText(record));
 	loadingLabel->setText(tr("Loading the items of the trade from Steam…"));
 	RetranslateSides();
 	UpdateState();
@@ -282,14 +283,21 @@ void TradeOfferDialog::UpdateState() {
 	partnerNameLabel->setText(partnerName);
 	partnerPicture->SetUrl(confirmation.has_value() ? confirmation->iconUrl : QUrl());
 	QStringList partnerDetails;
+	QString partnerSteamIdText;
 	if (offer.has_value()) {
-		partnerDetails.append(offer->partnerSteamId != 0 ? tr("SteamID %1").arg(offer->partnerSteamId) : tr("SteamID unknown"));
+		partnerSteamIdText = offer->partnerSteamId != 0 ? tr("SteamID %1").arg(offer->partnerSteamId) : tr("SteamID unknown");
 		partnerDetails.append(offer->isOwnOffer ? tr("you sent this offer") : tr("the partner sent this offer"));
 		if (offer->expiresAt.isValid()) {
 			partnerDetails.append(tr("valid until %1").arg(FormatTime(offer->expiresAt)));
 		}
 	}
-	partnerDetailsLabel->setText(partnerDetails.join(QStringLiteral(" · ")));
+	QString partnerDetailsText = partnerDetails.join(QStringLiteral(" · "));
+	if (!partnerDetailsText.isEmpty()) {
+		partnerDetailsText[0] = partnerDetailsText.at(0).toUpper();
+	}
+	partnerDetailsLabel->setText(partnerDetailsText);
+	partnerNameLabel->setToolTip(partnerSteamIdText);
+	partnerPicture->setToolTip(partnerSteamIdText);
 	profileButton->setEnabled(offer.has_value() && offer->partnerSteamId != 0);
 	steamOfferButton->setEnabled(confirmation.has_value() && TradeOfferUrl(confirmation->creatorId).isValid());
 
@@ -381,7 +389,15 @@ void TradeOfferDialog::ShowSelectedItem() {
 	itemTagsLabel->setVisible(!tagLines.isEmpty());
 	itemWarningsLabel->setText(item->fraudWarnings.join(QLatin1Char('\n')));
 	itemWarningsLabel->setVisible(!item->fraudWarnings.isEmpty());
-	itemFlagsLabel->setText(tr("Tradable: %1 · Marketable: %2").arg(item->isTradable ? tr("yes") : tr("no"), item->isMarketable ? tr("yes") : tr("no")));
+	QStringList restrictions;
+	if (!item->isTradable) {
+		restrictions.append(tr("Cannot be traded now"));
+	}
+	if (!item->isMarketable) {
+		restrictions.append(tr("Cannot be sold on the Community Market"));
+	}
+	itemFlagsLabel->setText(restrictions.join(QStringLiteral(" · ")));
+	itemFlagsLabel->setVisible(!restrictions.isEmpty());
 
 	const bool hasItemCode = InspectItemCode(item->inspectLink).has_value();
 	viewerButton->setEnabled(hasItemCode);

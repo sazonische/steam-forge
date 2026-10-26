@@ -5,6 +5,8 @@ function(steamforge_add_test_support)
 		tests/support/fake_key_store.h
 		tests/support/fake_web_api_transport.h
 		tests/support/local_http_server.h
+		tests/support/render_language.cpp
+		tests/support/render_language.h
 		tests/support/synthetic_tokens.cpp
 		tests/support/synthetic_tokens.h
 	)
@@ -20,6 +22,10 @@ endfunction()
 function(steamforge_add_test testName sourceFile)
 	set(testTarget "steamforge_${testName}_test")
 	qt_add_executable(${testTarget} ${sourceFile})
+	# Qt gives windows the IDI_ICON1 of the executable, so demonstrations show the icon of SteamForge.
+	if(WIN32)
+		target_sources(${testTarget} PRIVATE "${PROJECT_BINARY_DIR}/steamforge_test.rc")
+	endif()
 	target_link_libraries(${testTarget} PRIVATE steamforge_test_support)
 	target_precompile_headers(${testTarget} REUSE_FROM steamforge_test_support)
 

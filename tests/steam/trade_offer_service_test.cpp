@@ -3,6 +3,7 @@
 
 namespace {
 constexpr QLatin1StringView GET_TRADE_OFFER_METHOD{"GetTradeOffer"};
+constexpr QLatin1StringView GET_INVENTORY_ITEMS_METHOD{"GetInventoryItemsWithDescriptions"};
 constexpr QLatin1StringView OFFER_ID{"6123456789"};
 constexpr quint64 OWN_STEAM_ID = 76561198000000001;
 constexpr QLatin1StringView RIFLE_ICON{"synthetic-rifle_icon-0001"};
@@ -13,6 +14,13 @@ constexpr qint64 EXPIRATION_TIME = 1893456000;
 constexpr qint64 HOLD_END_TIME = 1893542400;
 constexpr QLatin1StringView INSPECT_TEMPLATE{"steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20S%owner_steamid%A%assetid%D1234"};
 constexpr QLatin1StringView UNRESOLVED_INSPECT_TEMPLATE{"steam://rungame/730/76561202255233023/+csgo_econ_action_preview%20%unknown_value%"};
+// The form Steam gives since March 2026: the code is the asset property 6, "Item Certificate".
+constexpr QLatin1StringView PROPERTY_INSPECT_TEMPLATE{"steam://run/730//+csgo_econ_action_preview%20%propid:6%"};
+constexpr QLatin1StringView OWN_SKIN_ASSET_ID{"30000000011"};
+constexpr QLatin1StringView PARTNER_SKIN_ASSET_ID{"30000000012"};
+// AK-47 | Redline, a code built the way reskins.gg builds them, and a second synthetic code.
+constexpr QLatin1StringView OWN_ITEM_CODE{"001807209A022805300438D2F0FAF803409505D00FCBB5"};
+constexpr QLatin1StringView PARTNER_ITEM_CODE{"00180720AA0228053004380B40D7076214080310B9252D00004042000000"};
 
 QJsonObject Asset(const QString& assetId, const QString& classId, const QString& amount) {
 	return {
@@ -92,6 +100,44 @@ QByteArray OfferResponse() {
 	};
 	return QJsonDocument(QJsonObject{{QStringLiteral("response"), response}}).toJson(QJsonDocument::Compact);
 }
+// A skin on each side whose inspect link names the asset property 6.
+QByteArray PropertyOfferResponse() {
+	QJsonObject skin = Description(QStringLiteral("301"), QStringLiteral("Rifle | Certified"), QStringLiteral("eb4b4b"), RIFLE_ICON);
+	skin.insert(QStringLiteral("actions"), QJsonArray{InspectAction(PROPERTY_INSPECT_TEMPLATE)});
+	const QJsonObject offer{
+		{QStringLiteral("tradeofferid"), OFFER_ID},
+		{QStringLiteral("accountid_other"), static_cast<qint64>(PARTNER_ACCOUNT_ID)},
+		{QStringLiteral("is_our_offer"), false},
+		{QStringLiteral("items_to_give"), QJsonArray{Asset(OWN_SKIN_ASSET_ID, QStringLiteral("301"), QStringLiteral("1"))}},
+		{QStringLiteral("items_to_receive"), QJsonArray{Asset(PARTNER_SKIN_ASSET_ID, QStringLiteral("301"), QStringLiteral("1"))}},
+	};
+	const QJsonObject response{{QStringLiteral("offer"), offer}, {QStringLiteral("descriptions"), QJsonArray{skin}}};
+	return QJsonDocument(QJsonObject{{QStringLiteral("response"), response}}).toJson(QJsonDocument::Compact);
+}
+
+QJsonObject CertificateEntry(const QString& assetId, const QString& itemCode) {
+	return {
+		{QStringLiteral("appid"), 730},
+		{QStringLiteral("contextid"), QStringLiteral("2")},
+		{QStringLiteral("assetid"), assetId},
+		{QStringLiteral("asset_properties"), QJsonArray{
+												 QJsonObject{{QStringLiteral("propertyid"), 1}, {QStringLiteral("int_value"), QStringLiteral("321")}},
+												 QJsonObject{{QStringLiteral("propertyid"), 2}, {QStringLiteral("float_value"), 0.125}},
+												 QJsonObject{{QStringLiteral("propertyid"), 6}, {QStringLiteral("string_value"), itemCode}},
+											 }},
+	};
+}
+
+QByteArray PropertiesResponse(const QJsonArray& entries) {
+	return QJsonDocument(QJsonObject{{QStringLiteral("response"), QJsonObject{{QStringLiteral("asset_properties"), entries}}}}).toJson(QJsonDocument::Compact);
+}
+
+QJsonObject InputJsonOf(const FakeWebApiTransport::SentRequest& request) {
+	if (request.jsonParameters.size() != 1 || request.jsonParameters.front().first != QStringLiteral("input_json")) {
+		return {};
+	}
+	return QJsonDocument::fromJson(request.jsonParameters.front().second.toUtf8()).object();
+}
 } // namespace
 
 class TradeOfferServiceTest final : public QObject {
@@ -163,6 +209,90 @@ private Q_SLOTS:
 		QVERIFY(offer->itemsToReceive.front().inspectLink.isEmpty());
 	}
 
+	void KeepsAssetPropertyPlaceholdersForLater() {
+		const auto offer = SteamForge::ParseTradeOffer(PropertyOfferResponse(), OWN_STEAM_ID);
+		QVERIFY(offer.has_value());
+		QCOMPARE(offer->itemsToGive.front().inspectLink, QString(PROPERTY_INSPECT_TEMPLATE));
+		QVERIFY(SteamForge::NeedsAssetProperties(offer->itemsToGive.front()));
+		QVERIFY(SteamForge::NeedsAssetProperties(offer->itemsToReceive.front()));
+	}
+
+	void ReadsTheAssetPropertiesOfEachAsset() {
+		const auto properties = SteamForge::ParseAssetProperties(PropertiesResponse({CertificateEntry(OWN_SKIN_ASSET_ID, OWN_ITEM_CODE)}));
+		QVERIFY(properties.has_value());
+		const SteamForge::AssetProperties skin = properties->value(SteamForge::AssetPropertiesKey(QStringLiteral("730"), QStringLiteral("2"), OWN_SKIN_ASSET_ID));
+		QCOMPARE(skin.value(1), QStringLiteral("321"));
+		QCOMPARE(skin.value(2), QStringLiteral("0.125"));
+		QCOMPARE(skin.value(6), QString(OWN_ITEM_CODE));
+		QVERIFY(!SteamForge::ParseAssetProperties(QByteArray("[]")).has_value());
+	}
+
+	void FillsInspectLinksAndDropsIncompleteOnes() {
+		auto offer = SteamForge::ParseTradeOffer(PropertyOfferResponse(), OWN_STEAM_ID);
+		QVERIFY(offer.has_value());
+		const auto properties = SteamForge::ParseAssetProperties(PropertiesResponse({CertificateEntry(OWN_SKIN_ASSET_ID, OWN_ITEM_CODE)}));
+		QVERIFY(properties.has_value());
+		SteamForge::FillInspectLinks(offer->itemsToGive, *properties);
+		SteamForge::FillInspectLinks(offer->itemsToReceive, *properties);
+		QCOMPARE(offer->itemsToGive.front().inspectLink, QStringLiteral("steam://run/730//+csgo_econ_action_preview%20") + OWN_ITEM_CODE);
+		QVERIFY(offer->itemsToReceive.front().inspectLink.isEmpty());
+	}
+
+	void AsksForTheAssetPropertiesOfBothSides() {
+		FakeWebApiTransport transport;
+		transport.AddResponse(GET_TRADE_OFFER_METHOD, PropertyOfferResponse());
+		const QByteArray properties = PropertiesResponse({CertificateEntry(OWN_SKIN_ASSET_ID, OWN_ITEM_CODE), CertificateEntry(PARTNER_SKIN_ASSET_ID, PARTNER_ITEM_CODE)});
+		transport.AddResponse(GET_INVENTORY_ITEMS_METHOD, properties);
+		transport.AddResponse(GET_INVENTORY_ITEMS_METHOD, properties);
+		SteamForge::TradeOfferService service(transport);
+		QObject context;
+		std::optional<std::expected<SteamForge::TradeOfferDetails, SteamForge::WebApiError>> result;
+		service.GetTradeOffer(QStringLiteral("synthetic.access.token"), OWN_STEAM_ID, OFFER_ID, context, [&result](std::expected<SteamForge::TradeOfferDetails, SteamForge::WebApiError> offer) {
+			result = std::move(offer);
+		});
+		QTRY_VERIFY(result.has_value());
+		QVERIFY(result->has_value());
+		QCOMPARE((*result)->itemsToGive.front().inspectLink, QStringLiteral("steam://run/730//+csgo_econ_action_preview%20") + OWN_ITEM_CODE);
+		QCOMPARE((*result)->itemsToReceive.front().inspectLink, QStringLiteral("steam://run/730//+csgo_econ_action_preview%20") + PARTNER_ITEM_CODE);
+
+		const std::vector<FakeWebApiTransport::SentRequest> requests = transport.SentTo(GET_INVENTORY_ITEMS_METHOD);
+		QCOMPARE(requests.size(), std::size_t{2});
+		QSet<QString> askedOwners;
+		for (const FakeWebApiTransport::SentRequest& request : requests) {
+			QCOMPARE(request.httpMethod, SteamForge::WebApiHttpMethod::GET);
+			QCOMPARE(request.accessToken, QStringLiteral("synthetic.access.token"));
+			const QJsonObject input = InputJsonOf(request);
+			QCOMPARE(input.value(QStringLiteral("appid")).toInt(), 730);
+			QCOMPARE(input.value(QStringLiteral("contextid")).toString(), QStringLiteral("2"));
+			QVERIFY(input.value(QStringLiteral("get_asset_properties")).toBool());
+			QVERIFY(input.value(QStringLiteral("for_trade_offer_verification")).toBool());
+			const QString owner = input.value(QStringLiteral("steamid")).toString();
+			const QJsonArray assetIds = input.value(QStringLiteral("filters")).toObject().value(QStringLiteral("assetids")).toArray();
+			QCOMPARE(assetIds.size(), 1);
+			QCOMPARE(assetIds.first().toString(), owner == QString::number(OWN_STEAM_ID) ? QString(OWN_SKIN_ASSET_ID) : QString(PARTNER_SKIN_ASSET_ID));
+			askedOwners.insert(owner);
+		}
+		QCOMPARE(askedOwners, (QSet<QString>{QString::number(OWN_STEAM_ID), QString::number(PARTNER_STEAM_ID)}));
+	}
+
+	void ShowsTheOfferWhenAssetPropertiesFail() {
+		FakeWebApiTransport transport;
+		transport.AddResponse(GET_TRADE_OFFER_METHOD, PropertyOfferResponse());
+		transport.AddHttpError(GET_INVENTORY_ITEMS_METHOD, 403);
+		transport.AddHttpError(GET_INVENTORY_ITEMS_METHOD, 403);
+		SteamForge::TradeOfferService service(transport);
+		QObject context;
+		std::optional<std::expected<SteamForge::TradeOfferDetails, SteamForge::WebApiError>> result;
+		service.GetTradeOffer(QStringLiteral("synthetic.access.token"), OWN_STEAM_ID, OFFER_ID, context, [&result](std::expected<SteamForge::TradeOfferDetails, SteamForge::WebApiError> offer) {
+			result = std::move(offer);
+		});
+		QTRY_VERIFY(result.has_value());
+		QVERIFY(result->has_value());
+		QCOMPARE((*result)->itemsToGive.size(), std::size_t{1});
+		QVERIFY((*result)->itemsToGive.front().inspectLink.isEmpty());
+		QVERIFY((*result)->itemsToReceive.front().inspectLink.isEmpty());
+	}
+
 	void KeepsAnItemWithoutDescriptionWithoutPicture() {
 		const auto offer = SteamForge::ParseTradeOffer(OfferResponse(), OWN_STEAM_ID);
 		QVERIFY(offer.has_value());
@@ -205,6 +335,8 @@ private Q_SLOTS:
 		QCOMPARE(request.jsonParameters.at(0), std::make_pair(QStringLiteral("tradeofferid"), QString(OFFER_ID)));
 		QCOMPARE(request.jsonParameters.at(1), std::make_pair(QStringLiteral("get_descriptions"), QStringLiteral("1")));
 		QCOMPARE(request.jsonParameters.at(2).first, QStringLiteral("language"));
+		// No inspect link names asset properties, so nothing else is asked.
+		QVERIFY(transport.SentTo(GET_INVENTORY_ITEMS_METHOD).empty());
 	}
 };
 

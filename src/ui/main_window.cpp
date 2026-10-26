@@ -687,7 +687,7 @@ void MainWindow::OpenConfirmationsDialog(const QUuid& recordId) {
 		return;
 	}
 	// Not modal: confirmations of several accounts can stay open side by side, each fixed to its account.
-	auto* confirmationsDialog = new ConfirmationsDialog(confirmationMonitor, steamImageCache, *record, AccountTitleFor(*record), this);
+	auto* confirmationsDialog = new ConfirmationsDialog(confirmationMonitor, steamImageCache, *record, AccountTitleFor(*record), accountProfiles.Profile(record->account.steamId).avatar, this);
 	confirmationsDialog->setAttribute(Qt::WA_DeleteOnClose);
 	// Queued, so the sign-in opens after the click in the confirmations window has finished.
 	connect(confirmationsDialog, &ConfirmationsDialog::SignInRequested, this, &MainWindow::OpenLoginDialog, Qt::QueuedConnection);

@@ -13,6 +13,8 @@ namespace {
 	constexpr QLatin1StringView BASE_STYLE_NAME{"Fusion"};
 	constexpr int DEFAULT_FONT_PIXEL_SIZE = 13;
 	constexpr qreal GUARD_CODE_LETTER_SPACING_RATIO = 0.15;
+	constexpr const char* KEYBOARD_FOCUS_PROPERTY = "keyboardFocus";
+	constexpr QLatin1StringView KEYBOARD_FOCUS_MARKER_NAME{"SteamForgeKeyboardFocusMarker"};
 
 	// Steam client colors (sp.css, library.css); the style sheet uses the same values.
 	constexpr QRgb WINDOW_COLOR = qRgb(0x17, 0x1D, 0x25);
@@ -67,6 +69,35 @@ namespace {
 		}
 		return QString::fromUtf8(styleSheetFile.readAll());
 	}
+	// The focus frame of buttons shows only when the focus came from the keyboard, like :focus-visible on the web:
+	// a dialog that just opened or a click leaves no frame, Tab shows where the focus is.
+	class KeyboardFocusMarker final : public QObject {
+	public:
+		explicit KeyboardFocusMarker(QObject* parent) :
+			QObject(parent) {
+			setObjectName(KEYBOARD_FOCUS_MARKER_NAME);
+		}
+
+	protected:
+		bool eventFilter(QObject* watched, QEvent* event) override {
+			const bool isFocusIn = event->type() == QEvent::FocusIn;
+			if (!isFocusIn && event->type() != QEvent::FocusOut) {
+				return false;
+			}
+			auto* button = qobject_cast<QAbstractButton*>(watched);
+			if (button == nullptr) {
+				return false;
+			}
+			const Qt::FocusReason reason = static_cast<QFocusEvent*>(event)->reason();
+			const bool isKeyboardFocus = isFocusIn && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason || reason == Qt::ShortcutFocusReason);
+			if (button->property(KEYBOARD_FOCUS_PROPERTY).toBool() != isKeyboardFocus) {
+				button->setProperty(KEYBOARD_FOCUS_PROPERTY, isKeyboardFocus);
+				button->style()->unpolish(button);
+				button->style()->polish(button);
+			}
+			return false;
+		}
+	};
 } // namespace
 
 void ApplyTheme(QApplication& application) {
@@ -80,6 +111,9 @@ void ApplyTheme(QApplication& application) {
 	QApplication::setStyle(BASE_STYLE_NAME);
 	QApplication::setPalette(SteamPalette());
 	application.setStyleSheet(LoadStyleSheet());
+	if (application.findChild<QObject*>(KEYBOARD_FOCUS_MARKER_NAME, Qt::FindDirectChildrenOnly) == nullptr) {
+		application.installEventFilter(new KeyboardFocusMarker(&application));
+	}
 }
 
 QFont GuardCodeFont(int pixelSize) {

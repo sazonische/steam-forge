@@ -12,11 +12,24 @@ namespace {
 	constexpr int ICON_EDGE = 56;
 	constexpr int OVERFLOW_WIDTH = 52;
 	constexpr qreal CORNER_RADIUS = 3.0;
+	constexpr qreal CARD_CORNER_RADIUS = 4.0;
+	// A light veil over the card background, so the header stays lighter while the card is hovered or selected.
+	constexpr QColor HEADER_BAND_COLOR{0xff, 0xff, 0xff, 12};
 	constexpr qsizetype MAX_TOOLTIP_NAMES = 20;
-	constexpr int ITEM_ROW_TITLE_GAP = 12;
+	constexpr int ITEM_TITLE_SPACING = 4;
+	constexpr qint64 SECONDS_PER_MINUTE = 60;
+	constexpr qint64 MINUTES_PER_HOUR = 60;
+	constexpr int ITEM_ROWS_SPACING = 10;
 	constexpr int CARD_SPACING = 12;
 	constexpr int CONTENT_SPACING = 6;
 	constexpr QMargins CARD_MARGINS{14, 12, 14, 12};
+	// The side padding lives in edge columns, so the divider alone reaches both edges of the card.
+	constexpr int LEFT_EDGE_COLUMN = 0;
+	constexpr int SELECTION_COLUMN = 1;
+	constexpr int SELECTION_GAP_COLUMN = 2;
+	constexpr int CONTENT_COLUMN = 3;
+	constexpr int RIGHT_EDGE_COLUMN = 4;
+	constexpr int COLUMN_COUNT = 5;
 	constexpr QColor OVERFLOW_BACKGROUND{0x2b, 0x31, 0x3b};
 	constexpr QColor OVERFLOW_TEXT_COLOR{0xff, 0xff, 0xff};
 	constexpr int OVERFLOW_PIXEL_SIZE = 13;
@@ -169,14 +182,17 @@ ConfirmationCard::ConfirmationCard(SteamImageCache& images, QWidget* parent) :
 	itemsWidget = new QWidget(this);
 	itemsLayout = new QVBoxLayout(itemsWidget);
 	itemsLayout->setContentsMargins(0, 0, 0, 0);
-	itemsLayout->setSpacing(CONTENT_SPACING);
+	itemsLayout->setSpacing(ITEM_ROWS_SPACING);
 	summaryLabel = CreatePlainLabel(this);
 	summaryLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	messageLabel = CreatePlainLabel(this, SECONDARY_TEXT_STYLE);
 	messageLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	warningsLabel = CreatePlainLabel(this, ERROR_TEXT_STYLE);
 	sendingLabel = CreatePlainLabel(this, SECONDARY_TEXT_STYLE);
+	// A link, not a third button: the decision keeps the only buttons, and the items open the trade as well.
 	detailsButton = new QPushButton(this);
+	detailsButton->setObjectName(LINK_BUTTON_STYLE);
+	detailsButton->setCursor(Qt::PointingHandCursor);
 	rejectButton = new QPushButton(this);
 	acceptButton = new QPushButton(this);
 	SetButtonRole(*acceptButton, ButtonRole::PRIMARY);
@@ -190,21 +206,39 @@ ConfirmationCard::ConfirmationCard(SteamImageCache& images, QWidget* parent) :
 	buttonsLayout->addStretch();
 	buttonsLayout->addWidget(rejectButton);
 	buttonsLayout->addWidget(acceptButton);
-	auto* contentLayout = new QVBoxLayout();
-	contentLayout->setSpacing(CONTENT_SPACING);
-	contentLayout->addLayout(headerLayout);
-	contentLayout->addWidget(headlineLabel);
-	contentLayout->addWidget(itemsWidget);
-	contentLayout->addWidget(summaryLabel);
-	contentLayout->addWidget(messageLabel);
-	contentLayout->addWidget(warningsLabel);
-	contentLayout->addLayout(buttonsLayout);
-	auto* cardLayout = new QHBoxLayout(this);
-	cardLayout->setContentsMargins(CARD_MARGINS);
-	cardLayout->setSpacing(CARD_SPACING);
-	cardLayout->addWidget(selectionBox, 0, Qt::AlignTop);
-	cardLayout->addWidget(iconPicture, 0, Qt::AlignTop);
-	cardLayout->addLayout(contentLayout, 1);
+	auto* titleLayout = new QVBoxLayout();
+	titleLayout->setSpacing(CONTENT_SPACING);
+	titleLayout->addStretch();
+	titleLayout->addLayout(headerLayout);
+	titleLayout->addWidget(headlineLabel);
+	titleLayout->addStretch();
+	auto* bodyLayout = new QVBoxLayout();
+	bodyLayout->setSpacing(CONTENT_SPACING);
+	bodyLayout->addWidget(itemsWidget);
+	bodyLayout->addWidget(summaryLabel);
+	bodyLayout->addWidget(messageLabel);
+	bodyLayout->addWidget(warningsLabel);
+	bodyLayout->addLayout(buttonsLayout);
+	cardLayout = new QGridLayout(this);
+	cardLayout->setContentsMargins(0, CARD_MARGINS.top(), 0, CARD_MARGINS.bottom());
+	cardLayout->setHorizontalSpacing(0);
+	cardLayout->setVerticalSpacing(CARD_SPACING);
+	cardLayout->setColumnMinimumWidth(LEFT_EDGE_COLUMN, CARD_MARGINS.left());
+	cardLayout->setColumnMinimumWidth(SELECTION_GAP_COLUMN, CARD_SPACING);
+	cardLayout->setColumnMinimumWidth(RIGHT_EDGE_COLUMN, CARD_MARGINS.right());
+	// The picture shares the cell of the title, so a card without one keeps the title in line with the body.
+	auto* headLayout = new QHBoxLayout();
+	headLayout->setSpacing(CARD_SPACING);
+	headLayout->addWidget(iconPicture, 0, Qt::AlignTop);
+	headLayout->addLayout(titleLayout, 1);
+	// Where the lighter header band ends: who and what stays apart from the items and the decision.
+	headerEdge = new QWidget(this);
+	headerEdge->setFixedHeight(1);
+	cardLayout->addWidget(selectionBox, 0, SELECTION_COLUMN, Qt::AlignVCenter);
+	cardLayout->addLayout(headLayout, 0, CONTENT_COLUMN);
+	cardLayout->addWidget(headerEdge, 1, LEFT_EDGE_COLUMN, 1, COLUMN_COUNT);
+	cardLayout->addLayout(bodyLayout, 2, CONTENT_COLUMN);
+	cardLayout->setColumnStretch(CONTENT_COLUMN, 1);
 
 	connect(selectionBox, &QCheckBox::toggled, this, [this](bool isChecked) {
 		Q_EMIT SelectionToggled(confirmation.id, isChecked);
@@ -224,15 +258,12 @@ ConfirmationCard::ConfirmationCard(SteamImageCache& images, QWidget* parent) :
 void ConfirmationCard::Show(const PendingConfirmation& shownConfirmation, const TradeOfferDetails* tradeOffer, const ConfirmationCardState& state) {
 	confirmation = shownConfirmation;
 	iconPicture->SetUrl(confirmation.iconUrl);
+	// An empty square says nothing: without a picture the title starts at the edge.
+	iconPicture->setVisible(!confirmation.iconUrl.isEmpty());
 	typeLabel->setText(ConfirmationTypeText(confirmation));
 	const QDateTime createdAt = confirmation.createdAt.toLocalTime();
-	if (!createdAt.isValid()) {
-		timeLabel->clear();
-	} else if (createdAt.date() == QDate::currentDate()) {
-		timeLabel->setText(QLocale().toString(createdAt.time(), QLocale::ShortFormat));
-	} else {
-		timeLabel->setText(QLocale().toString(createdAt, QLocale::ShortFormat));
-	}
+	timeLabel->setText(TimeText(createdAt));
+	timeLabel->setToolTip(createdAt.isValid() ? QLocale().toString(createdAt, QLocale::LongFormat) : QString());
 	headlineLabel->setText(confirmation.headline);
 	headlineLabel->setVisible(!confirmation.headline.isEmpty());
 	ShowItems(tradeOffer);
@@ -241,6 +272,7 @@ void ConfirmationCard::Show(const PendingConfirmation& shownConfirmation, const 
 
 	const QSignalBlocker selectionBlocker(selectionBox);
 	selectionBox->setVisible(confirmation.allowsBatchResponse);
+	cardLayout->setColumnMinimumWidth(SELECTION_GAP_COLUMN, confirmation.allowsBatchResponse ? CARD_SPACING : 0);
 	selectionBox->setChecked(state.isSelected);
 	selectionBox->setEnabled(state.canDecide);
 	SetStyleFlag(*this, StyleFlag::SELECTED, state.isSelected);
@@ -265,6 +297,41 @@ void ConfirmationCard::changeEvent(QEvent* event) {
 	QFrame::changeEvent(event);
 }
 
+// As people say it: "just now", "5 min ago", "today, 14:05", "yesterday, 23:50"; the full date is in the tooltip.
+QString ConfirmationCard::TimeText(const QDateTime& createdAt) const {
+	if (!createdAt.isValid()) {
+		return {};
+	}
+	const QDateTime now = QDateTime::currentDateTime();
+	const qint64 minutesAgo = createdAt.secsTo(now) / SECONDS_PER_MINUTE;
+	const QString time = QLocale().toString(createdAt.time(), QLocale::ShortFormat);
+	if (minutesAgo < 1) {
+		return tr("just now");
+	}
+	if (minutesAgo < MINUTES_PER_HOUR) {
+		return tr("%1 min ago").arg(minutesAgo);
+	}
+	if (createdAt.date() == now.date()) {
+		return tr("today, %1").arg(time);
+	}
+	if (createdAt.date() == now.date().addDays(-1)) {
+		return tr("yesterday, %1").arg(time);
+	}
+	return QLocale().toString(createdAt, QLocale::ShortFormat);
+}
+
+void ConfirmationCard::paintEvent(QPaintEvent* event) {
+	QFrame::paintEvent(event);
+	QPainter painter(this);
+	painter.setRenderHint(QPainter::Antialiasing);
+	// Inside the one-pixel border, which shows the selection.
+	const QRectF inside = QRectF(rect()).adjusted(1, 1, -1, -1);
+	QPainterPath card;
+	card.addRoundedRect(inside, CARD_CORNER_RADIUS, CARD_CORNER_RADIUS);
+	painter.setClipPath(card);
+	painter.fillRect(QRectF(inside.left(), inside.top(), inside.width(), headerEdge->geometry().top() - inside.top()), HEADER_BAND_COLOR);
+}
+
 void ConfirmationCard::RetranslateUi() {
 	detailsButton->setText(tr("Trade details…"));
 	acceptButton->setText(tr("Confirm"));
@@ -283,12 +350,8 @@ void ConfirmationCard::ShowItems(const TradeOfferDetails* tradeOffer) {
 			delete row;
 		}
 		if (tradeOffer != nullptr) {
-			const QString giveTitle = tr("You give");
-			const QString receiveTitle = tr("You receive");
-			const QFontMetrics titleMetrics(font());
-			const int titleWidth = std::max(titleMetrics.horizontalAdvance(giveTitle), titleMetrics.horizontalAdvance(receiveTitle)) + ITEM_ROW_TITLE_GAP;
-			itemsLayout->addWidget(CreateItemRow(giveTitle, titleWidth, tradeOffer->itemsToGive));
-			itemsLayout->addWidget(CreateItemRow(receiveTitle, titleWidth, tradeOffer->itemsToReceive));
+			itemsLayout->addWidget(CreateItemRow(true, tradeOffer->itemsToGive));
+			itemsLayout->addWidget(CreateItemRow(false, tradeOffer->itemsToReceive));
 		}
 	}
 	itemsWidget->setVisible(tradeOffer != nullptr);
@@ -300,26 +363,26 @@ void ConfirmationCard::ShowItems(const TradeOfferDetails* tradeOffer) {
 	messageLabel->setVisible(!message.isEmpty());
 }
 
-QWidget* ConfirmationCard::CreateItemRow(const QString& title, int titleWidth, const std::vector<TradeItem>& items) {
+// The side as a caption above its items, which then use the whole width of the card.
+QWidget* ConfirmationCard::CreateItemRow(bool isGiven, const std::vector<TradeItem>& items) {
 	auto* row = new QWidget(itemsWidget);
 	auto* titleLabel = CreatePlainLabel(row, SECONDARY_TEXT_STYLE);
-	titleLabel->setText(title);
-	titleLabel->setFixedWidth(titleWidth);
-	auto* rowLayout = new QHBoxLayout(row);
+	auto* rowLayout = new QVBoxLayout(row);
 	rowLayout->setContentsMargins(0, 0, 0, 0);
-	rowLayout->setSpacing(0);
-	rowLayout->addWidget(titleLabel, 0, Qt::AlignVCenter);
+	rowLayout->setSpacing(ITEM_TITLE_SPACING);
+	rowLayout->addWidget(titleLabel);
 	if (items.empty()) {
-		auto* nothingLabel = CreatePlainLabel(row, SECONDARY_TEXT_STYLE);
-		nothingLabel->setText(tr("nothing"));
-		rowLayout->addWidget(nothingLabel, 1);
+		titleLabel->setText(tr("%1: %2").arg(isGiven ? tr("You give") : tr("You receive"), tr("nothing")));
 		return row;
 	}
+	// The count tells how many hide behind "+N".
+	const auto itemCount = static_cast<int>(items.size());
+	titleLabel->setText(isGiven ? tr("You give · %n item(s)", nullptr, itemCount) : tr("You receive · %n item(s)", nullptr, itemCount));
 	auto* strip = new ItemStrip(imageCache, items, row);
 	connect(strip, &ItemStrip::Clicked, this, [this]() {
 		Q_EMIT TradeDetailsRequested(confirmation.id);
 	});
-	rowLayout->addWidget(strip, 1);
+	rowLayout->addWidget(strip);
 	return row;
 }
 

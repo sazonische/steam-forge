@@ -164,7 +164,7 @@ QPushButton#QrRevealButton:pressed {
 	background-color: rgba(255, 255, 255, 0.1);
 }
 
-QPushButton#QrRevealButton:focus {
+QPushButton#QrRevealButton[keyboardFocus="true"]:focus {
 	border: 1px solid rgba(255, 255, 255, 0.65);
 }
 
@@ -199,7 +199,7 @@ QPushButton:pressed {
 	background-color: #393f49;
 }
 
-QPushButton:focus {
+QPushButton[keyboardFocus="true"]:focus {
 	border: 1px solid #06bfff;
 }
 
@@ -304,7 +304,7 @@ QTreeView::indicator:checked {
 	image: url(:/styles/check.svg);
 }
 
-QCheckBox::indicator:focus {
+QCheckBox[keyboardFocus="true"]::indicator:focus {
 	border-color: #06bfff;
 }
 
@@ -384,7 +384,7 @@ QToolButton#RowIconButton:pressed {
 	background-color: rgba(255, 255, 255, 0.06);
 }
 
-QToolButton#RowIconButton:focus {
+QToolButton#RowIconButton[keyboardFocus="true"]:focus {
 	border-color: #06bfff;
 }
 
