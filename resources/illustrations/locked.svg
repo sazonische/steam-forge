@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="190" viewBox="0 0 360 190">
+	<defs>
+		<radialGradient id="blueGlow" cx="0.5" cy="0.5" r="0.5">
+			<stop offset="0" stop-color="#1a9fff" stop-opacity="0.42"/>
+			<stop offset="0.55" stop-color="#1a9fff" stop-opacity="0.1"/>
+			<stop offset="1" stop-color="#1a9fff" stop-opacity="0"/>
+		</radialGradient>
+		<linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#47bfff"/>
+			<stop offset="1" stop-color="#1a6eff"/>
+		</linearGradient>
+		<linearGradient id="lockBody" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#ffffff"/>
+			<stop offset="1" stop-color="#dfe9f5"/>
+		</linearGradient>
+		<linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#2d333d"/>
+			<stop offset="1" stop-color="#262b33"/>
+		</linearGradient>
+	</defs>
+	<circle cx="180" cy="92" r="118" fill="url(#blueGlow)"/>
+	<ellipse cx="180" cy="168" rx="70" ry="7" fill="#1a9fff" opacity="0.14"/>
+	<rect x="34" y="80" width="96" height="50" rx="8" fill="url(#card)" stroke="#3d4450" stroke-width="1.5"/>
+	<circle cx="56" cy="105" r="11" fill="#3d4450"/>
+	<circle cx="56" cy="101" r="4" fill="#67707b"/>
+	<path d="M48 112 a8 6 0 0 1 16 0 z" fill="#67707b"/>
+	<rect x="74" y="97" width="44" height="5" rx="2.5" fill="#67707b"/>
+	<rect x="74" y="108" width="30" height="4" rx="2" fill="#464d58"/>
+	<rect x="230" y="80" width="96" height="50" rx="8" fill="url(#card)" stroke="#3d4450" stroke-width="1.5"/>
+	<rect x="244" y="96" width="9" height="16" rx="2" fill="#464d58"/>
+	<rect x="256" y="96" width="9" height="16" rx="2" fill="#464d58"/>
+	<rect x="268" y="96" width="9" height="16" rx="2" fill="#464d58"/>
+	<rect x="280" y="96" width="9" height="16" rx="2" fill="#464d58"/>
+	<rect x="292" y="96" width="9" height="16" rx="2" fill="#464d58"/>
+	<rect x="304" y="96" width="9" height="16" rx="2" fill="#464d58"/>
+	<path d="M180 22 L228 41 V79 C228 113 207 136 180 150 C153 136 132 113 132 79 V41 Z" fill="url(#shield)" stroke="#8fd6ff" stroke-opacity="0.55" stroke-width="2" stroke-linejoin="round"/>
+	<path d="M180 30 L140 46 V79 C140 108 157 128 180 141 Z" fill="#ffffff" opacity="0.1"/>
+	<path d="M166 80 V70 a14 14 0 0 1 28 0 V80" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+	<rect x="158" y="78" width="44" height="34" rx="6" fill="url(#lockBody)"/>
+	<circle cx="180" cy="92" r="4.5" fill="#1a6eff"/>
+	<rect x="178" y="94" width="4" height="9" rx="2" fill="#1a6eff"/>
+	<path d="M64 46 l1.6 -4.6 l1.6 4.6 l4.6 1.6 l-4.6 1.6 l-1.6 4.6 l-1.6 -4.6 l-4.6 -1.6 z" fill="#47bfff" opacity="0.8"/>
+	<path d="M296 40 l1.4 -4 l1.4 4 l4 1.4 l-4 1.4 l-1.4 4 l-1.4 -4 l-4 -1.4 z" fill="#06bfff" opacity="0.7"/>
+	<circle cx="252" cy="158" r="2.4" fill="#47bfff" opacity="0.5"/>
+	<circle cx="106" cy="154" r="2" fill="#06bfff" opacity="0.5"/>
+</svg>

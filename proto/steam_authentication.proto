@@ -1,0 +1,119 @@
+// Steam IAuthenticationService messages used by SteamForge; numbers and wire types follow SteamDatabase/Protobufs 6c35e1ad.
+// Enum fields are declared as int32, which shares their varint encoding.
+
+syntax = "proto2";
+
+package SteamProtocol;
+
+option optimize_for = LITE_RUNTIME;
+
+message DeviceDetails {
+	optional string device_friendly_name = 1;
+	optional int32 platform_type = 2;
+	optional int32 os_type = 3;
+	optional uint32 gaming_device_type = 4;
+	optional int32 app_type = 7;
+}
+
+message AllowedConfirmation {
+	optional int32 confirmation_type = 1;
+	optional string associated_message = 2;
+}
+
+message GetPasswordRsaPublicKeyRequest {
+	optional string account_name = 1;
+}
+
+message GetPasswordRsaPublicKeyResponse {
+	optional string publickey_mod = 1;
+	optional string publickey_exp = 2;
+	optional uint64 timestamp = 3;
+}
+
+message BeginAuthSessionViaCredentialsRequest {
+	optional string account_name = 2;
+	optional string encrypted_password = 3;
+	optional uint64 encryption_timestamp = 4;
+	optional bool remember_login = 5;
+	optional int32 platform_type = 6;
+	optional int32 persistence = 7;
+	optional string website_id = 8;
+	optional DeviceDetails device_details = 9;
+}
+
+message BeginAuthSessionViaCredentialsResponse {
+	optional uint64 client_id = 1;
+	optional bytes request_id = 2;
+	optional float interval = 3;
+	repeated AllowedConfirmation allowed_confirmations = 4;
+	optional uint64 steamid = 5;
+	// Limited token the Steam mobile application uses to move the authenticator during this sign-in.
+	optional string weak_token = 6;
+	optional string extended_error_message = 8;
+}
+
+message PollAuthSessionStatusRequest {
+	optional uint64 client_id = 1;
+	optional bytes request_id = 2;
+}
+
+message PollAuthSessionStatusResponse {
+	optional uint64 new_client_id = 1;
+	optional string refresh_token = 3;
+	optional string access_token = 4;
+	optional bool had_remote_interaction = 5;
+	optional string account_name = 6;
+}
+
+message UpdateAuthSessionWithSteamGuardCodeRequest {
+	optional uint64 client_id = 1;
+	optional fixed64 steamid = 2;
+	optional string code = 3;
+	optional int32 code_type = 4;
+}
+
+message GenerateAccessTokenForAppRequest {
+	optional string refresh_token = 1;
+	optional fixed64 steamid = 2;
+	optional int32 renewal_type = 3;
+}
+
+message GenerateAccessTokenForAppResponse {
+	optional string access_token = 1;
+	optional string refresh_token = 2;
+}
+
+message GetAuthSessionInfoRequest {
+	optional uint64 client_id = 1;
+}
+
+message GetAuthSessionInfoResponse {
+	optional string ip = 1;
+	optional string geoloc = 2;
+	optional string city = 3;
+	optional string state = 4;
+	optional string country = 5;
+	optional int32 platform_type = 6;
+	optional string device_friendly_name = 7;
+	optional int32 version = 8;
+	optional int32 login_history = 9;
+	optional bool requestor_location_mismatch = 10;
+	optional bool high_usage_login = 11;
+	optional int32 requested_persistence = 12;
+}
+
+message GetAuthSessionsForAccountRequest {
+}
+
+message GetAuthSessionsForAccountResponse {
+	repeated uint64 client_ids = 1;
+}
+
+message UpdateAuthSessionWithMobileConfirmationRequest {
+	optional int32 version = 1;
+	optional uint64 client_id = 2;
+	optional fixed64 steamid = 3;
+	optional bytes signature = 4;
+	optional bool confirm = 5;
+	optional int32 persistence = 6;
+}

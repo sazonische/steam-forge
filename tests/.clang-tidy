@@ -1,5 +1,13 @@
 InheritParentConfig: true
 
 # Qt Test invokes test slots through the meta-object system; they cannot be static.
+# QVERIFY and QCOMPARE return through branches the analyzers do not follow, and QFETCH declares non-const locals.
 Checks: >
-  -readability-convert-member-functions-to-static
+  -readability-convert-member-functions-to-static,
+  -readability-function-cognitive-complexity,
+  -misc-const-correctness,
+  -bugprone-unchecked-optional-access
+
+# Qt Test finds the data of a test slot by the fixed "_data" suffix.
+CheckOptions:
+  readability-identifier-naming.MethodIgnoredRegexp: '^[A-Z][A-Za-z0-9]*_data$'

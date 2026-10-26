@@ -14,6 +14,25 @@ namespace {
 		}
 		return {};
 	}
+
+	QLocale::Language LocaleLanguage(InterfaceLanguage interfaceLanguage) {
+		switch (interfaceLanguage) {
+			case InterfaceLanguage::ENGLISH:
+				return QLocale::English;
+			case InterfaceLanguage::RUSSIAN:
+				return QLocale::Russian;
+		}
+		return QLocale::English;
+	}
+
+	// Dates follow the interface language; the system region is kept when its language matches.
+	QLocale FormattingLocale(InterfaceLanguage interfaceLanguage) {
+		const QLocale systemLocale = QLocale::system();
+		if (systemLocale.language() == LocaleLanguage(interfaceLanguage)) {
+			return systemLocale;
+		}
+		return {LocaleLanguage(interfaceLanguage)};
+	}
 } // namespace
 
 InterfaceLanguage InterfaceTranslator::DetectSystemLanguage() {
@@ -32,6 +51,7 @@ InterfaceLanguage InterfaceTranslator::DetectSystemLanguage() {
 
 bool InterfaceTranslator::Apply(InterfaceLanguage interfaceLanguage) {
 	Remove();
+	QLocale::setDefault(FormattingLocale(interfaceLanguage));
 
 	// English is the source language of the interface strings.
 	const QString localeSuffix = TranslationLocaleSuffix(interfaceLanguage);

@@ -9,6 +9,9 @@
 			"default-features": false,
 			"platform": "linux"
 		},
+		"nu-book-zxing-cpp",
+		"openssl",
+		"protobuf",
 		{
 			"name": "qtbase",
 			"default-features": false,

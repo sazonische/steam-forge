@@ -26,6 +26,9 @@ if(MSVC)
 endif()
 
 find_package(Qt6 6.11 REQUIRED COMPONENTS Core Gui Widgets Network Svg LinguistTools)
+find_package(OpenSSL 3 REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
+find_package(ZXing CONFIG REQUIRED)
 qt_standard_project_setup(REQUIRES 6.11)
 
 include(cmake/SteamForgeCompilerOptions.cmake)
@@ -35,22 +38,29 @@ include(cmake/SteamForgeTranslations.cmake)
 
 steamforge_require_static_qt()
 
-qt_add_library(steamforge_application STATIC
-	src/pch.hpp
-	src/app/application.cpp
-	src/app/application.h
-	src/app/interface_translator.cpp
-	src/app/interface_translator.h
-	src/app/single_instance_guard.cpp
-	src/app/single_instance_guard.h
-	src/common/constants.h
-	src/platform/application_icons.cpp
-	src/platform/application_icons.h
-	src/ui/main_window.cpp
-	src/ui/main_window.h
-	src/ui/system_tray.cpp
-	src/ui/system_tray.h
+set(executableSource src/app/main.cpp)
+
+file(GLOB_RECURSE
+	applicationSources
+	CONFIGURE_DEPENDS
+	src/*.cpp
+	src/*.h
+	src/*.hpp
 )
+list(REMOVE_ITEM applicationSources "${PROJECT_SOURCE_DIR}/${executableSource}")
+
+file(GLOB protocolSources CONFIGURE_DEPENDS proto/*.proto)
+add_library(steamforge_protocol STATIC ${protocolSources})
+protobuf_generate(
+	TARGET steamforge_protocol
+	LANGUAGE cpp
+	IMPORT_DIRS proto
+	PROTOC_OUT_DIR "${PROJECT_BINARY_DIR}/generated/proto"
+)
+target_include_directories(steamforge_protocol PUBLIC "${PROJECT_BINARY_DIR}/generated/proto")
+target_link_libraries(steamforge_protocol PUBLIC protobuf::libprotobuf-lite)
+
+qt_add_library(steamforge_application STATIC ${applicationSources})
 
 configure_file(src/common/version.h.in "${PROJECT_BINARY_DIR}/generated/common/version.h" @ONLY)
 
@@ -67,6 +77,16 @@ target_link_libraries(steamforge_application PUBLIC
 	Qt6::Network
 	Qt6::Svg
 )
+target_link_libraries(steamforge_application PUBLIC OpenSSL::Crypto)
+target_link_libraries(steamforge_application PUBLIC steamforge_protocol ZXing::ZXing)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	find_package(Qt6 6.11 REQUIRED COMPONENTS DBus)
+	target_link_libraries(steamforge_application PUBLIC Qt6::DBus)
+endif()
+if(WIN32)
+	# crypt32 and ncrypt: the data key under Windows data protection (DPAPI) or Windows Hello.
+	target_link_libraries(steamforge_application PRIVATE dwmapi crypt32 ncrypt)
+endif()
 
 if(WIN32)
 	set(steamforgeIconFiles resources/icons/app.ico resources/icons/tray.ico)
@@ -80,6 +100,51 @@ qt_add_resources(steamforge_application "application_icons"
 	FILES ${steamforgeIconFiles}
 )
 
+# Noto Sans 2.015 (SIL Open Font License 1.1, OFL.txt) from github.com/notofonts/latin-greek-cyrillic.
+qt_add_resources(steamforge_application "application_fonts"
+	PREFIX "/fonts"
+	BASE resources/fonts
+	FILES
+		resources/fonts/NotoSans-Regular.ttf
+		resources/fonts/NotoSans-Medium.ttf
+		resources/fonts/NotoSans-Bold.ttf
+		resources/fonts/OFL.txt
+)
+
+qt_add_resources(steamforge_application "application_styles"
+	PREFIX "/styles"
+	BASE resources/styles
+	FILES
+		resources/styles/steamforge.qss
+		resources/styles/check.svg
+		resources/styles/chevron-down.svg
+		resources/styles/eye.svg
+		resources/styles/eye-off.svg
+		resources/styles/copy.svg
+		resources/styles/copied.svg
+		resources/styles/gear.svg
+		resources/styles/lock.svg
+		resources/styles/lock-open.svg
+		resources/styles/lock-alert.svg
+)
+
+qt_add_resources(steamforge_application "application_illustrations"
+	PREFIX "/illustrations"
+	BASE resources/illustrations
+	FILES
+		resources/illustrations/welcome.svg
+		resources/illustrations/no_confirmations.svg
+		resources/illustrations/sign_in_required.svg
+		resources/illustrations/guard_setup.svg
+		resources/illustrations/all_set.svg
+		resources/illustrations/locked.svg
+		resources/illustrations/qr_approval.svg
+		resources/illustrations/import_files.svg
+		resources/illustrations/step_done.svg
+		resources/illustrations/step_todo.svg
+)
+
+set_property(TARGET steamforge_application PROPERTY QT_EXCLUDE_SOURCES_FROM_TRANSLATION "resources/*")
 qt_add_translations(TARGETS steamforge_application
 	SOURCE_TARGETS steamforge_application
 	TS_FILES translations/steamforge_ru.ts
@@ -89,9 +154,7 @@ steamforge_embed_qt_translations(steamforge_application ru)
 
 steamforge_apply_compiler_options(steamforge_application)
 
-qt_add_executable(steamforge
-	src/app/main.cpp
-)
+qt_add_executable(steamforge ${executableSource})
 
 if(WIN32)
 	enable_language(RC)
@@ -116,7 +179,16 @@ if(STEAMFORGE_BUILD_TESTS)
 	enable_testing()
 	find_package(Qt6 6.11 REQUIRED COMPONENTS Test)
 	include(cmake/SteamForgeTests.cmake)
+	steamforge_add_test_support()
 
-	steamforge_add_test(application_icons tests/platform/application_icons_test.cpp)
-	steamforge_add_test(interface_translator tests/app/interface_translator_test.cpp)
+	file(GLOB_RECURSE
+		testSources
+		CONFIGURE_DEPENDS
+		tests/*_test.cpp
+	)
+	foreach(testSource IN LISTS testSources)
+		get_filename_component(testFileName "${testSource}" NAME_WE)
+		string(REGEX REPLACE "_test$" "" testName "${testFileName}")
+		steamforge_add_test(${testName} "${testSource}")
+	endforeach()
 endif()

@@ -1,0 +1,76 @@
+// Steam ITwoFactorService messages used by SteamForge; numbers and wire types follow SteamDatabase/Protobufs 6c35e1ad.
+
+syntax = "proto2";
+
+package SteamProtocol;
+
+option optimize_for = LITE_RUNTIME;
+
+message AddAuthenticatorRequest {
+	optional fixed64 steamid = 1;
+	optional uint32 authenticator_type = 4;
+	optional string device_identifier = 5;
+	optional uint32 version = 8;
+}
+
+message AddAuthenticatorResponse {
+	optional bytes shared_secret = 1;
+	optional fixed64 serial_number = 2;
+	optional string revocation_code = 3;
+	optional string uri = 4;
+	optional uint64 server_time = 5;
+	optional string account_name = 6;
+	optional string token_gid = 7;
+	optional bytes identity_secret = 8;
+	optional bytes secret_1 = 9;
+	optional int32 status = 10;
+	optional string phone_number_hint = 11;
+	optional int32 confirm_type = 12;
+}
+
+message FinalizeAddAuthenticatorRequest {
+	optional fixed64 steamid = 1;
+	optional string authenticator_code = 2;
+	optional uint64 authenticator_time = 3;
+	optional string activation_code = 4;
+	optional bool validate_sms_code = 6;
+}
+
+message FinalizeAddAuthenticatorResponse {
+	optional bool success = 1;
+	optional uint64 server_time = 3;
+	optional int32 status = 4;
+}
+
+message RemoveAuthenticatorViaChallengeStartRequest {
+}
+
+message RemoveAuthenticatorViaChallengeStartResponse {
+	optional bool success = 1;
+}
+
+message RemoveAuthenticatorViaChallengeContinueRequest {
+	optional string sms_code = 1;
+	optional bool generate_new_token = 2;
+	optional uint32 version = 3;
+}
+
+message ReplacementToken {
+	optional bytes shared_secret = 1;
+	optional fixed64 serial_number = 2;
+	optional string revocation_code = 3;
+	optional string uri = 4;
+	optional uint64 server_time = 5;
+	optional string account_name = 6;
+	optional string token_gid = 7;
+	optional bytes identity_secret = 8;
+	optional bytes secret_1 = 9;
+	optional int32 status = 10;
+	optional uint32 steamguard_scheme = 11;
+	optional fixed64 steamid = 12;
+}
+
+message RemoveAuthenticatorViaChallengeContinueResponse {
+	optional bool success = 1;
+	optional ReplacementToken replacement_token = 2;
+}

@@ -1,28 +1,66 @@
-name: build
+name: release
 
 on:
   push:
-    branches:
-      - main
+    # No branch, pull request or manual trigger: a commit builds nothing, a pushed version tag builds and publishes.
     tags:
       - "v*"
-  pull_request:
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: build-${{ github.ref }}
-  # Tag builds are never cancelled midway: their files become the release.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: release-${{ github.ref }}
+  # A tag build is never cancelled midway: its files become the release.
+  cancel-in-progress: false
 
 env:
   CLANG_FORMAT_VERSION: "21.1.7"
 
 jobs:
+  meta:
+    name: Version
+    if: github.event.deleted != true
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The tag vMAJOR.MINOR.PATCH names the release and the files and is the version inside the program.
+      # project(VERSION) in CMakeLists.txt stays the version of local builds.
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            echo "::error::This workflow builds version tags only"
+            exit 1
+          fi
+          declared_version="$(sed -nE 's/^project\(SteamForge VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)"
+          if [[ -z "${declared_version}" ]]; then
+            echo "::error::project(SteamForge VERSION ...) not found in CMakeLists.txt"
+            exit 1
+          fi
+          version="${GITHUB_REF_NAME#v}"
+          if [[ ! "${version}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Release tags look like vMAJOR.MINOR.PATCH, for example v0.1.0"
+            exit 1
+          fi
+          # The Windows version resource keeps each part in 16 bits; refuse before hours of building Qt.
+          IFS=. read -r major minor patch <<< "${version}"
+          for version_part in "${major}" "${minor}" "${patch}"; do
+            if [[ "${#version_part}" -gt 5 || "${version_part}" -gt 65535 ]]; then
+              echo "::error::Each part of the version must be between 0 and 65535"
+              exit 1
+            fi
+          done
+          if [[ "${version}" != "${declared_version}" ]]; then
+            echo "::notice::Tag ${GITHUB_REF_NAME} builds version ${version}; CMakeLists.txt declares ${declared_version}"
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
   format:
     name: clang-format
+    needs: meta
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,34 +69,6 @@ jobs:
           python3 -m pip install --quiet "clang-format==${CLANG_FORMAT_VERSION}"
           clang-format --version
           find src tests \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print0 | xargs -0 clang-format --dry-run --Werror
-
-  meta:
-    name: Version
-    runs-on: ubuntu-24.04
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # A tag vMAJOR.MINOR.PATCH names the release, the files and the version inside the program.
-      # Without a tag the version is project(VERSION) from CMakeLists.txt, as in local builds.
-      - name: Determine version
-        id: version
-        run: |
-          declared_version="$(sed -nE 's/^project\(SteamForge VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)"
-          if [[ -z "${declared_version}" ]]; then
-            echo "project(SteamForge VERSION ...) not found in CMakeLists.txt" >&2
-            exit 1
-          fi
-          version="${declared_version}"
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            version="${GITHUB_REF_NAME#v}"
-            if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "Tag ${GITHUB_REF_NAME} is not vMAJOR.MINOR.PATCH" >&2
-              exit 1
-            fi
-          fi
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
-          echo "Version ${version} (CMakeLists.txt declares ${declared_version}, ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME})"
 
   windows:
     name: Windows (MSVC, static)
@@ -72,7 +82,8 @@ jobs:
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-archives
-      RELEASE_FILE: build/windows-release/SteamForge.exe
+      BUILT_FILE: build/windows-release/SteamForge.exe
+      RELEASE_FILE: SteamForge-${{ needs.meta.outputs.version }}-windows-x64.exe
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -99,35 +110,44 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/vcpkg-archives
-          key: vcpkg-windows-${{ hashFiles('vcpkg.json', 'triplets/x64-windows-static-release.cmake') }}
+          key: vcpkg-windows-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay-ports/**', 'triplets/x64-windows-static-release.cmake') }}
           restore-keys: |
             vcpkg-windows-
 
+      # vcpkg builds Qt and the other packages here.
       - name: Configure
+        id: configure
         run: cmake --preset windows-release "-DSTEAMFORGE_VERSION=${{ needs.meta.outputs.version }}"
 
+      # Saved even when a later step fails, so hours of Qt building are not lost; never after a failed package
+      # build, which would leave an incomplete set under this exact key.
       - name: Save vcpkg binary cache
-        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        if: always() && steps.configure.outcome == 'success' && steps.vcpkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/vcpkg-archives
-          key: vcpkg-windows-${{ hashFiles('vcpkg.json', 'triplets/x64-windows-static-release.cmake') }}
+          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
 
       - name: Build
         run: cmake --build --preset windows-release
 
       - name: Test
-        run: ctest --preset windows-release
+        run: ctest --preset windows-release --no-tests=error
 
-      - name: Check executable dependencies
+      - name: Check and name the executable
         shell: pwsh
         run: |
-          ./tools/ci/check-windows-dependencies.ps1 -ExecutablePath $env:RELEASE_FILE
+          ./tools/ci/check-windows-dependencies.ps1 -ExecutablePath $env:BUILT_FILE
+          Copy-Item $env:BUILT_FILE $env:RELEASE_FILE
+          $versionInfo = (Get-Item $env:RELEASE_FILE).VersionInfo
+          $version = "${{ needs.meta.outputs.version }}"
+          if ($versionInfo.FileVersion -ne $version -or $versionInfo.ProductVersion -ne $version) {
+            throw "The version inside the executable does not match the tag"
+          }
           "{0}: {1:N1} MB" -f $env:RELEASE_FILE, ((Get-Item $env:RELEASE_FILE).Length / 1MB)
 
       # Anyone can verify the file was built by this workflow: gh attestation verify <file> --repo <owner>/<repo>
       - name: Attest build provenance
-        if: github.ref_type == 'tag'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: ${{ env.RELEASE_FILE }}
@@ -153,7 +173,8 @@ jobs:
       VCPKG_ROOT: /opt/vcpkg
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-archives
       STEAMFORGE_VERSION: ${{ needs.meta.outputs.version }}
-      RELEASE_FILE: build/linux-release/SteamForge
+      BUILT_FILE: build/linux-release/SteamForge
+      RELEASE_FILE: SteamForge-${{ needs.meta.outputs.version }}-linux-x64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -168,30 +189,36 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/vcpkg-archives
-          key: vcpkg-linux-${{ hashFiles('vcpkg.json', 'triplets/x64-linux-static-release.cmake', 'tools/ci/install-linux-build-dependencies.sh') }}
+          key: vcpkg-linux-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'vcpkg-overlay-ports/**', 'triplets/x64-linux-static-release.cmake', 'tools/ci/install-linux-build-dependencies.sh') }}
           restore-keys: |
             vcpkg-linux-
 
-      - name: Build
-        run: tools/ci/build-linux.sh release
+      # vcpkg builds Qt and the other packages here.
+      - name: Configure
+        id: configure
+        run: tools/ci/build-linux.sh release configure
 
       - name: Save vcpkg binary cache
-        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        if: always() && steps.configure.outcome == 'success' && steps.vcpkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/vcpkg-archives
-          key: vcpkg-linux-${{ hashFiles('vcpkg.json', 'triplets/x64-linux-static-release.cmake', 'tools/ci/install-linux-build-dependencies.sh') }}
+          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
+
+      - name: Build
+        run: tools/ci/build-linux.sh release build
 
       - name: Test
-        run: ctest --preset linux-release
+        run: ctest --preset linux-release --no-tests=error
 
-      - name: Check executable dependencies
+      - name: Check and name the executable
         run: |
-          tools/ci/check-linux-dependencies.sh "${RELEASE_FILE}" 2.28
+          tools/ci/check-linux-dependencies.sh "${BUILT_FILE}" 2.28
+          cp "${BUILT_FILE}" "${RELEASE_FILE}"
+          chmod +x "${RELEASE_FILE}"
           ls -l "${RELEASE_FILE}"
 
       - name: Attest build provenance
-        if: github.ref_type == 'tag'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: ${{ env.RELEASE_FILE }}
@@ -204,7 +231,7 @@ jobs:
 
   release:
     name: Publish release
-    # Only a pushed tag creates a release; branch pushes, pull requests and manual runs stop at artifacts.
+    # Publishing needs the pushed tag and both platforms built, tested and attested. CI never creates tags.
     if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: [meta, windows, linux]
     runs-on: ubuntu-24.04
@@ -216,31 +243,61 @@ jobs:
           path: release-files
           merge-multiple: true
 
-      - name: Create or update the release
+      - name: Upload and publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILT_COMMIT: ${{ github.sha }}
           RELEASE_TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.meta.outputs.version }}
         run: |
-          mapfile -t release_files < <(find release-files -type f | sort)
-          if [[ "${#release_files[@]}" -ne 2 ]]; then
-            echo "Expected the Windows and Linux files, found: ${release_files[*]}" >&2
+          set -euo pipefail
+          release_files=(
+            "release-files/SteamForge-${VERSION}-windows-x64.exe"
+            "release-files/SteamForge-${VERSION}-linux-x64"
+          )
+          for release_file in "${release_files[@]}"; do
+            if [[ ! -s "${release_file}" ]]; then
+              echo "::error::Missing or empty release file: ${release_file}"
+              exit 1
+            fi
+          done
+
+          # An annotated tag points at a tag object; peel it to the commit. A tag moved or deleted during the build
+          # must not publish files built from another commit.
+          tag_reference="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}")"
+          object_type="$(jq -r '.object.type' <<< "${tag_reference}")"
+          object_sha="$(jq -r '.object.sha' <<< "${tag_reference}")"
+          while [[ "${object_type}" == "tag" ]]; do
+            tag_object="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}")"
+            object_type="$(jq -r '.object.type' <<< "${tag_object}")"
+            object_sha="$(jq -r '.object.sha' <<< "${tag_object}")"
+          done
+          if [[ "${object_type}" != "commit" || "${object_sha}" != "${BUILT_COMMIT}" ]]; then
+            echo "::error::Tag ${RELEASE_TAG} no longer points at the built commit ${BUILT_COMMIT}"
             exit 1
           fi
 
-          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
-            # A re-run attaches only missing files; published files are not replaced.
-            attached_names=" $(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name' | tr '\n' ' ') "
-            for release_file in "${release_files[@]}"; do
-              file_name="$(basename "${release_file}")"
-              if [[ "${attached_names}" == *" ${file_name} "* ]]; then
-                echo "Release ${RELEASE_TAG} already has ${file_name}"
-              else
-                gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" "${release_file}"
+          if release="$(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json isDraft,assets)"; then
+            if [[ "$(jq -r '.isDraft' <<< "${release}")" == "false" ]]; then
+              missing_files=0
+              for release_file in "${release_files[@]}"; do
+                if ! jq -e --arg name "$(basename "${release_file}")" '.assets | any(.name == $name)' > /dev/null <<< "${release}"; then
+                  missing_files=1
+                fi
+              done
+              if [[ "${missing_files}" -eq 0 ]]; then
+                echo "Release ${RELEASE_TAG} already has both files"
+                exit 0
               fi
-            done
-            exit 0
+              echo "::error::Release ${RELEASE_TAG} is already public without all files; publish a new version tag"
+              exit 1
+            fi
+          else
+            # --verify-tag never creates a tag. The release stays a draft until both files are attached.
+            gh release create "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --verify-tag \
+              --title "SteamForge ${RELEASE_TAG}" --generate-notes --draft
           fi
 
-          gh release create "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --verify-tag \
-            --title "SteamForge ${RELEASE_TAG}" --generate-notes \
-            "${release_files[@]}"
+          # A re-run can finish an interrupted draft but never changes a public release.
+          gh release upload "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" "${release_files[@]}" --clobber
+          gh release edit "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --draft=false

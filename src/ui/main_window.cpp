@@ -1,27 +1,124 @@
 #include "ui/main_window.h"
 
+#include "app/account_library.h"
+#include "app/account_profiles.h"
+#include "app/application_settings.h"
+#include "app/confirmation_monitor.h"
+#include "app/storage_encryption.h"
 #include "common/constants.h"
+#include "platform/desktop_notifications.h"
+#include "steam/steam_clock.h"
+#include "storage/authenticator_export.h"
+#include "storage/private_file.h"
+#include "ui/account_details_view.h"
+#include "ui/account_list_view.h"
+#include "ui/confirmations_dialog.h"
+#include "ui/guard_setup_dialog.h"
+#include "ui/illustration_view.h"
+#include "ui/import_dialog.h"
+#include "ui/login_approval_dialog.h"
+#include "ui/record_data_dialog.h"
+#include "ui/record_presentation.h"
+#include "ui/settings_dialog.h"
+#include "ui/steam_guard_qr_dialog.h"
 #include "ui/system_tray.h"
+#include "ui/widget_styles.h"
 
 namespace SteamForge {
 
 namespace {
-	constexpr QSize INITIAL_WINDOW_SIZE{1024, 640};
+	constexpr QSize ENCRYPTION_ICON_SIZE{18, 18};
+	constexpr QLatin1StringView LOCK_ICON_RESOURCE{":/styles/lock.svg"};
+	constexpr QLatin1StringView LOCK_OPEN_ICON_RESOURCE{":/styles/lock-open.svg"};
+	constexpr QLatin1StringView LOCK_ALERT_ICON_RESOURCE{":/styles/lock-alert.svg"};
+	// A second of difference is usual and changes no code.
+	constexpr qint64 NOTICEABLE_CLOCK_OFFSET_SECONDS = 2;
+	constexpr QSize INITIAL_WINDOW_SIZE{1024, 680};
+	constexpr QSize MINIMUM_WINDOW_SIZE{820, 560};
+	constexpr int ACCOUNT_LIST_WIDTH = 440;
+	constexpr int EMPTY_STATE_TEXT_WIDTH = 520;
+	constexpr int EMPTY_STATE_SPACING = 12;
+	constexpr int EMPTY_STATE_BUTTON_SPACING = 24;
+	constexpr int EMPTY_STATE_BUTTONS_GAP = 8;
+	constexpr QLatin1StringView WELCOME_ILLUSTRATION_RESOURCE{":/illustrations/welcome.svg"};
+	constexpr QSize WELCOME_ILLUSTRATION_SIZE{360, 220};
+	constexpr QLatin1StringView LOCKED_ILLUSTRATION_RESOURCE{":/illustrations/locked.svg"};
+	constexpr QSize LOCKED_ILLUSTRATION_SIZE{360, 190};
+	constexpr QMargins TOP_BAR_MARGINS{20, 10, 16, 10};
+	constexpr QMargins BANNER_MARGINS{16, 12, 16, 12};
+	constexpr int TOP_BAR_SPACING = 8;
+	// More would make a notification too long to read at a glance.
+	constexpr std::size_t NOTIFIED_CONFIRMATION_LIMIT = 3;
+
+	QString ConfirmationLine(const PendingConfirmation& confirmation) {
+		if (confirmation.headline.isEmpty()) {
+			return ConfirmationTypeText(confirmation);
+		}
+		return QObject::tr("%1: %2").arg(ConfirmationTypeText(confirmation), confirmation.headline);
+	}
 } // namespace
 
-MainWindow::MainWindow(QWidget* parent) :
-	QMainWindow(parent) {
+MainWindow::MainWindow(AccountLibrary& library, const SteamClock& clock, ConfirmationMonitor& monitor, SteamImageCache& images, AccountProfiles& profiles, StorageEncryption& encryption, ApplicationSettings& applicationSettings, DataLocation location, QWidget* parent) :
+	QMainWindow(parent),
+	accountLibrary(library),
+	steamClock(clock),
+	confirmationMonitor(monitor),
+	steamImageCache(images),
+	accountProfiles(profiles),
+	storageEncryption(encryption),
+	settings(applicationSettings),
+	dataLocation(std::move(location)) {
 	setWindowTitle(APPLICATION_NAME);
-	resize(INITIAL_WINDOW_SIZE);
+	setMinimumSize(MINIMUM_WINDOW_SIZE);
+	setAcceptDrops(true);
+	if (!restoreGeometry(applicationSettings.MainWindowGeometry())) {
+		resize(INITIAL_WINDOW_SIZE);
+	}
 
-	auto* emptyStateWidget = new QWidget(this);
-	auto* emptyStateLayout = new QVBoxLayout(emptyStateWidget);
-	auto* emptyStateLabel = new QLabel(tr("No accounts yet"), emptyStateWidget);
-	emptyStateLabel->setAlignment(Qt::AlignCenter);
-	emptyStateLayout->addWidget(emptyStateLabel);
+	auto* centralWidget = new QWidget(this);
+	pageStack = new QStackedWidget(centralWidget);
+	emptyStatePage = CreateEmptyStatePage();
+	accountsPage = CreateAccountsPage();
+	lockedPage = CreateLockedPage();
+	pageStack->addWidget(emptyStatePage);
+	pageStack->addWidget(accountsPage);
+	pageStack->addWidget(lockedPage);
 
-	setCentralWidget(emptyStateWidget);
+	loadProblemBanner = new QWidget(centralWidget);
+	loadProblemLabel = new QLabel(loadProblemBanner);
+	loadProblemLabel->setObjectName(PROBLEM_BANNER_STYLE);
+	loadProblemLabel->setWordWrap(true);
+	loadProblemDetailsButton = new QPushButton(loadProblemBanner);
+	auto* bannerLayout = new QHBoxLayout(loadProblemBanner);
+	bannerLayout->setContentsMargins(BANNER_MARGINS);
+	bannerLayout->addWidget(loadProblemLabel, 1);
+	bannerLayout->addWidget(loadProblemDetailsButton);
+
+	auto* centralLayout = new QVBoxLayout(centralWidget);
+	centralLayout->setContentsMargins(0, 0, 0, 0);
+	centralLayout->setSpacing(0);
+	centralLayout->addWidget(CreateTopBar());
+	centralLayout->addWidget(loadProblemBanner);
+	centralLayout->addWidget(pageStack, 1);
+	setCentralWidget(centralWidget);
+
+	timeStatusLabel = new QLabel(this);
+	statusBar()->addWidget(timeStatusLabel, 1);
+	statusBar()->setSizeGripEnabled(false);
+
+	connect(&library, &AccountLibrary::RecordsChanged, this, &MainWindow::UpdatePages);
+	connect(&library, &AccountLibrary::SessionChanged, this, &MainWindow::RefreshShownRecord);
+	connect(&clock, &SteamClock::StateChanged, this, &MainWindow::UpdateTimeStatus);
+	connect(loadProblemDetailsButton, &QPushButton::clicked, this, &MainWindow::ShowLoadProblemDetails);
+	connect(&monitor, &ConfirmationMonitor::AccountsChanged, this, &MainWindow::ConnectConfirmations);
+	connect(&monitor, &ConfirmationMonitor::ConfirmationsArrived, this, &MainWindow::NotifyConfirmations);
+	connect(&monitor, &ConfirmationMonitor::SignInRequired, this, &MainWindow::NotifySignInRequired);
+
 	CreateSystemTray();
+	desktopNotifications = new DesktopNotifications(systemTray != nullptr ? &systemTray->Icon() : nullptr, this);
+	connect(desktopNotifications, &DesktopNotifications::Activated, this, &MainWindow::OpenConfirmationsFromNotification);
+	RetranslateUi();
+	UpdatePages();
 }
 
 void MainWindow::BringToFront() {
@@ -43,12 +140,192 @@ void MainWindow::QuitApplication() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+	settings.SetMainWindowGeometry(saveGeometry());
 	if (!isQuitRequested && systemTray != nullptr && systemTray->IsShown()) {
 		hide();
 		event->ignore();
 		return;
 	}
 	QMainWindow::closeEvent(event);
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent* event) {
+	if (!DroppedFilePaths(*event->mimeData()).isEmpty()) {
+		event->acceptProposedAction();
+	}
+}
+
+void MainWindow::dropEvent(QDropEvent* event) {
+	const QStringList filePaths = DroppedFilePaths(*event->mimeData());
+	if (filePaths.isEmpty()) {
+		return;
+	}
+	event->acceptProposedAction();
+	// Deferred: a modal dialog must not run inside the drop handler of the platform drag loop.
+	QTimer::singleShot(0, this, [this, filePaths]() {
+		RunImportDialog(filePaths);
+	});
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+	if (event->type() == QEvent::LanguageChange) {
+		RetranslateUi();
+	}
+	QMainWindow::changeEvent(event);
+}
+
+QWidget* MainWindow::CreateTopBar() {
+	auto* topBar = new QWidget(this);
+	topBar->setObjectName(TOP_BAR_STYLE);
+	topBar->setAttribute(Qt::WA_StyledBackground, true);
+	topBarTitleLabel = new QLabel(topBar);
+	topBarTitleLabel->setObjectName(TOP_BAR_TITLE_STYLE);
+	encryptionButton = new QPushButton(topBar);
+	encryptionButton->setIconSize(ENCRYPTION_ICON_SIZE);
+	addAccountButton = new QPushButton(topBar);
+	SetButtonRole(*addAccountButton, ButtonRole::PRIMARY);
+	settingsButton = new QPushButton(topBar);
+	addAccountMenu = new QMenu(addAccountButton);
+	signInAction = addAccountMenu->addAction(QString());
+	importAction = addAccountMenu->addAction(QString());
+
+	auto* topBarLayout = new QHBoxLayout(topBar);
+	topBarLayout->setContentsMargins(TOP_BAR_MARGINS);
+	topBarLayout->setSpacing(TOP_BAR_SPACING);
+	topBarLayout->addWidget(topBarTitleLabel);
+	topBarLayout->addStretch();
+	topBarLayout->addWidget(encryptionButton);
+	topBarLayout->addWidget(addAccountButton);
+	topBarLayout->addWidget(settingsButton);
+
+	connect(encryptionButton, &QPushButton::clicked, this, &MainWindow::ShowEncryption);
+	connect(&storageEncryption, &StorageEncryption::StatusChanged, this, &MainWindow::UpdateEncryptionButton);
+	connect(&storageEncryption, &StorageEncryption::StatusChanged, this, &MainWindow::UpdatePages);
+	connect(addAccountButton, &QPushButton::clicked, this, &MainWindow::ShowAddAccountMenu);
+	connect(signInAction, &QAction::triggered, this, &MainWindow::OpenNewAccountLogin);
+	connect(importAction, &QAction::triggered, this, &MainWindow::OpenImportDialog);
+	connect(settingsButton, &QPushButton::clicked, this, &MainWindow::OpenSettingsDialog);
+	return topBar;
+}
+
+QWidget* MainWindow::CreateEmptyStatePage() {
+	auto* page = new QWidget(pageStack);
+	auto* illustration = new IllustrationView(WELCOME_ILLUSTRATION_RESOURCE, WELCOME_ILLUSTRATION_SIZE, page);
+	emptyStateTitleLabel = new QLabel(page);
+	emptyStateTitleLabel->setObjectName(EMPTY_STATE_TITLE_STYLE);
+	emptyStateTitleLabel->setAlignment(Qt::AlignCenter);
+	emptyStateTextLabel = new QLabel(page);
+	emptyStateTextLabel->setObjectName(EMPTY_STATE_TEXT_STYLE);
+	emptyStateTextLabel->setAlignment(Qt::AlignCenter);
+	emptyStateTextLabel->setWordWrap(true);
+	emptyStateTextLabel->setFixedWidth(EMPTY_STATE_TEXT_WIDTH);
+	emptyStateSignInButton = new QPushButton(page);
+	SetButtonRole(*emptyStateSignInButton, ButtonRole::PRIMARY);
+	emptyStateImportButton = new QPushButton(page);
+	auto* emptyStateButtonsLayout = new QHBoxLayout();
+	emptyStateButtonsLayout->setSpacing(EMPTY_STATE_BUTTONS_GAP);
+	emptyStateButtonsLayout->addStretch();
+	emptyStateButtonsLayout->addWidget(emptyStateSignInButton);
+	emptyStateButtonsLayout->addWidget(emptyStateImportButton);
+	emptyStateButtonsLayout->addStretch();
+
+	auto* pageLayout = new QVBoxLayout(page);
+	pageLayout->setSpacing(EMPTY_STATE_SPACING);
+	pageLayout->addStretch();
+	pageLayout->addWidget(illustration, 0, Qt::AlignHCenter);
+	pageLayout->addWidget(emptyStateTitleLabel, 0, Qt::AlignHCenter);
+	// Centered by stretches: an aligned item would lose the height of its wrapped lines.
+	auto* emptyStateTextLayout = new QHBoxLayout();
+	emptyStateTextLayout->addStretch();
+	emptyStateTextLayout->addWidget(emptyStateTextLabel);
+	emptyStateTextLayout->addStretch();
+	pageLayout->addLayout(emptyStateTextLayout);
+	pageLayout->addSpacing(EMPTY_STATE_BUTTON_SPACING);
+	pageLayout->addLayout(emptyStateButtonsLayout);
+	pageLayout->addStretch();
+
+	connect(emptyStateSignInButton, &QPushButton::clicked, this, &MainWindow::OpenNewAccountLogin);
+	connect(emptyStateImportButton, &QPushButton::clicked, this, &MainWindow::OpenImportDialog);
+	return page;
+}
+
+QWidget* MainWindow::CreateLockedPage() {
+	auto* page = new QWidget(pageStack);
+	auto* illustration = new IllustrationView(LOCKED_ILLUSTRATION_RESOURCE, LOCKED_ILLUSTRATION_SIZE, page);
+	lockedTitleLabel = new QLabel(page);
+	lockedTitleLabel->setObjectName(EMPTY_STATE_TITLE_STYLE);
+	lockedTitleLabel->setAlignment(Qt::AlignCenter);
+	lockedTextLabel = new QLabel(page);
+	lockedTextLabel->setObjectName(EMPTY_STATE_TEXT_STYLE);
+	lockedTextLabel->setAlignment(Qt::AlignCenter);
+	lockedTextLabel->setWordWrap(true);
+	lockedTextLabel->setFixedWidth(EMPTY_STATE_TEXT_WIDTH);
+	unlockButton = new QPushButton(page);
+	SetButtonRole(*unlockButton, ButtonRole::PRIMARY);
+
+	auto* pageLayout = new QVBoxLayout(page);
+	pageLayout->setSpacing(EMPTY_STATE_SPACING);
+	pageLayout->addStretch();
+	pageLayout->addWidget(illustration, 0, Qt::AlignHCenter);
+	pageLayout->addWidget(lockedTitleLabel, 0, Qt::AlignHCenter);
+	auto* lockedTextLayout = new QHBoxLayout();
+	lockedTextLayout->addStretch();
+	lockedTextLayout->addWidget(lockedTextLabel);
+	lockedTextLayout->addStretch();
+	pageLayout->addLayout(lockedTextLayout);
+	pageLayout->addSpacing(EMPTY_STATE_BUTTON_SPACING);
+	pageLayout->addWidget(unlockButton, 0, Qt::AlignHCenter);
+	pageLayout->addStretch();
+
+	connect(unlockButton, &QPushButton::clicked, this, &MainWindow::Unlock);
+	return page;
+}
+
+void MainWindow::UnlockIfLocked() {
+	if (storageEncryption.Status() == EncryptionStatus::LOCKED) {
+		// After the window has painted, so the prompt of the system appears over it.
+		QTimer::singleShot(0, this, &MainWindow::Unlock);
+	}
+}
+
+void MainWindow::Unlock() {
+	const std::expected<void, EncryptionFailure> unlocked = storageEncryption.Unlock();
+	// A dismissed prompt leaves the lock screen with its button; other failures are explained.
+	if (!unlocked.has_value() && unlocked.error().keyStoreFailure != KeyStoreFailure::DISMISSED) {
+		QMessageBox::critical(this, tr("Unlock"), EncryptionFailureText(unlocked.error()));
+	}
+}
+
+QWidget* MainWindow::CreateAccountsPage() {
+	auto* page = new QWidget(pageStack);
+	accountListView = new AccountListView(steamClock, accountProfiles, page);
+	accountListView->setFixedWidth(ACCOUNT_LIST_WIDTH);
+	accountDetailsView = new AccountDetailsView(accountProfiles, page);
+
+	auto* pageLayout = new QHBoxLayout(page);
+	pageLayout->setContentsMargins(0, 0, 0, 0);
+	pageLayout->setSpacing(0);
+	pageLayout->addWidget(accountListView);
+	pageLayout->addWidget(accountDetailsView, 1);
+
+	connect(accountListView, &AccountListView::RecordSelected, this, &MainWindow::ShowRecord);
+	connect(accountListView, &AccountListView::RevealChanged, this, [this](const QUuid& recordId, bool isRevealed) {
+		if (accountDetailsView->ShownRecordId() == recordId) {
+			accountDetailsView->SetAccountNameHidden(!isRevealed);
+		}
+	});
+	connect(accountDetailsView, &AccountDetailsView::RemoveRequested, this, &MainWindow::ConfirmRemoval);
+	connect(accountDetailsView, &AccountDetailsView::AddDataRequested, this, &MainWindow::OpenRecordDataDialog);
+	connect(accountDetailsView, &AccountDetailsView::ExportRequested, this, &MainWindow::ExportRecord);
+	connect(accountDetailsView, &AccountDetailsView::QrCodeRequested, this, &MainWindow::ShowSteamGuardQr);
+	connect(accountDetailsView, &AccountDetailsView::SignInRequested, this, &MainWindow::OpenLoginDialog);
+	connect(accountDetailsView, &AccountDetailsView::ApproveSignInRequested, this, &MainWindow::OpenLoginApprovalDialog);
+	connect(accountDetailsView, &AccountDetailsView::ConfirmationsRequested, this, &MainWindow::OpenConfirmationsDialog);
+	connect(accountDetailsView, &AccountDetailsView::ImportRequested, this, &MainWindow::OpenImportDialog);
+	connect(accountDetailsView, &AccountDetailsView::SignOutRequested, this, &MainWindow::ConfirmSignOut);
+	connect(accountDetailsView, &AccountDetailsView::SetUpGuardRequested, this, &MainWindow::OpenGuardSetupDialog);
+	connect(accountDetailsView, &AccountDetailsView::MoveGuardRequested, this, &MainWindow::OpenGuardMoveLogin);
+	return page;
 }
 
 void MainWindow::CreateSystemTray() {
@@ -59,6 +336,597 @@ void MainWindow::CreateSystemTray() {
 	connect(systemTray, &SystemTray::OpenRequested, this, &MainWindow::BringToFront);
 	connect(systemTray, &SystemTray::QuitRequested, this, &MainWindow::QuitApplication);
 	systemTray->Show();
+}
+
+void MainWindow::RetranslateUi() {
+	topBarTitleLabel->setText(tr("Accounts"));
+	lockedTitleLabel->setText(tr("SteamForge is locked"));
+	if (storageEncryption.Protection() == KeyProtection::KEYRING_PASSWORD) {
+		lockedTextLabel->setText(tr("The data is protected with the password of the SteamForge keyring. To be asked for it every time, untick “Automatically unlock…” in the system window."));
+	} else {
+		lockedTextLabel->setText(tr("The data is protected with Windows Hello. Unlock it with your PIN, face or fingerprint."));
+	}
+	unlockButton->setText(tr("Unlock"));
+	UpdateEncryptionButton();
+	addAccountButton->setText(tr("Add account"));
+	settingsButton->setText(tr("Settings"));
+	emptyStateTitleLabel->setText(tr("No accounts yet"));
+	emptyStateTextLabel->setText(tr("Sign in to a Steam account to set up Steam Guard or move it here from your phone, or import an authenticator from Steam Desktop Authenticator or WinAuth."));
+	emptyStateSignInButton->setText(tr("Sign in to Steam"));
+	emptyStateImportButton->setText(tr("Import from files"));
+	signInAction->setText(tr("Sign in to a Steam account…"));
+	importAction->setText(tr("Import from files…"));
+	loadProblemDetailsButton->setText(tr("Details"));
+	if (systemTray != nullptr) {
+		systemTray->RetranslateUi();
+	}
+	UpdateLoadProblems();
+	UpdateTimeStatus();
+}
+
+void MainWindow::UpdatePages() {
+	// Locked, the library is not loaded: nothing may be forgotten or closed for accounts that only look missing.
+	if (storageEncryption.Status() == EncryptionStatus::LOCKED) {
+		pageStack->setCurrentWidget(lockedPage);
+		addAccountButton->setVisible(false);
+		return;
+	}
+	const bool hasRecords = !accountLibrary.Records().empty();
+	pageStack->setCurrentWidget(hasRecords ? accountsPage : emptyStatePage);
+	addAccountButton->setVisible(hasRecords);
+	UpdateLoadProblems();
+	CloseConfirmationsOfRemovedRecords();
+	ForgetProfilesOfRemovedRecords();
+	if (!hasRecords) {
+		return;
+	}
+
+	accountListView->SetRecords(accountLibrary.Records());
+	UpdateConfirmationIndicators();
+	const std::optional<QUuid> selectedRecordId = accountListView->SelectedRecordId();
+	const QUuid recordId = selectedRecordId.value_or(accountLibrary.Records().front().id);
+	accountListView->SelectRecord(recordId);
+	ShowRecord(recordId);
+}
+
+void MainWindow::UpdateEncryptionButton() {
+	// The lock screen has its own button for unlocking.
+	encryptionButton->setVisible(storageEncryption.Status() != EncryptionStatus::LOCKED);
+	switch (storageEncryption.Status()) {
+		case EncryptionStatus::OFF:
+			encryptionButton->setIcon(QIcon(LOCK_OPEN_ICON_RESOURCE));
+			encryptionButton->setText(tr("Turn on encryption"));
+			break;
+		case EncryptionStatus::ON:
+			encryptionButton->setIcon(QIcon(LOCK_ICON_RESOURCE));
+			encryptionButton->setText(tr("Encryption is on"));
+			break;
+		case EncryptionStatus::LOCKED:
+			encryptionButton->setIcon(QIcon(LOCK_ICON_RESOURCE));
+			encryptionButton->setText(tr("Unlock"));
+			break;
+		case EncryptionStatus::KEY_UNAVAILABLE:
+			encryptionButton->setIcon(QIcon(LOCK_ALERT_ICON_RESOURCE));
+			encryptionButton->setText(tr("Encryption key unavailable"));
+			break;
+		case EncryptionStatus::UNSUPPORTED:
+			encryptionButton->setIcon(QIcon(LOCK_OPEN_ICON_RESOURCE));
+			encryptionButton->setText(tr("Encryption unavailable"));
+			break;
+	}
+}
+
+void MainWindow::ShowEncryption() {
+	switch (storageEncryption.Status()) {
+		case EncryptionStatus::OFF:
+			OfferEncryption();
+			return;
+		case EncryptionStatus::ON:
+			ShowEncryptionOn();
+			return;
+		case EncryptionStatus::LOCKED:
+			Unlock();
+			return;
+		case EncryptionStatus::KEY_UNAVAILABLE: {
+			QMessageBox notice(QMessageBox::Warning, tr("Encryption"), tr("The encryption key is not available."), QMessageBox::Ok, this);
+			notice.setInformativeText(tr("The encrypted files stay unchanged in %1. They open again under the same user account on the computer where encryption was turned on, once the system key store is unlocked. Without it, import the authenticators again from their .maFile copies.").arg(QDir::toNativeSeparators(dataLocation.directoryPath)));
+			notice.exec();
+			return;
+		}
+		case EncryptionStatus::UNSUPPORTED: {
+			QMessageBox notice(QMessageBox::Information, tr("Encryption"), tr("This system has nowhere to keep the encryption key."), QMessageBox::Ok, this);
+			notice.setInformativeText(tr("The key is kept in the keyring of the system, such as GNOME Keyring or KWallet. Start one of them, then turn on encryption."));
+			notice.exec();
+			return;
+		}
+	}
+}
+
+void MainWindow::OfferEncryption() {
+	const KeyProtection preferredProtection = storageEncryption.PreferredProtection();
+	QString protectionFact = tr("The keyring of the system keeps the key, so no password is asked.");
+	if (preferredProtection == KeyProtection::WINDOWS_HELLO) {
+		protectionFact = tr("Windows Hello guards the key: SteamForge asks for your PIN, face or fingerprint at every start.");
+	} else if (preferredProtection == KeyProtection::KEYRING_PASSWORD) {
+		protectionFact = tr("The key goes to a separate SteamForge keyring. The system asks you to choose its password now and asks for it at every start.");
+	}
+	QStringList facts{protectionFact};
+	if (preferredProtection == KeyProtection::KEYRING_PASSWORD) {
+		facts.append(tr("In the system window, untick “Automatically unlock…”, otherwise the password is asked only once."));
+	}
+	facts.append({
+		tr("Protects the data when the folder is copied, backed up or synced to a cloud."),
+		tr("Does not protect from programs running under your user account."),
+		tr("A data folder moved to another computer or user account does not open there: move accounts with the export to .maFile."),
+	});
+	QStringList factLines;
+	for (const QString& fact : facts) {
+		factLines.append(QStringLiteral("• ") + fact);
+	}
+	QMessageBox offer(QMessageBox::Question, tr("Turn on encryption"), tr("Encrypt the authenticators and Steam sign-ins on this computer?"), QMessageBox::NoButton, this);
+	offer.setInformativeText(factLines.join(QLatin1Char('\n')));
+	QPushButton* encryptButton = offer.addButton(tr("Encrypt"), QMessageBox::AcceptRole);
+	SetButtonRole(*encryptButton, ButtonRole::PRIMARY);
+	offer.setDefaultButton(offer.addButton(QMessageBox::Cancel));
+	offer.exec();
+	if (offer.clickedButton() != encryptButton) {
+		return;
+	}
+	std::expected<void, EncryptionFailure> enabled = storageEncryption.Enable(preferredProtection);
+	if (!enabled.has_value() && enabled.error().keyStoreFailure == KeyStoreFailure::NOT_SET_UP && preferredProtection != KeyProtection::USER_ACCOUNT) {
+		if (!OfferEncryptionWithoutPrompt(preferredProtection)) {
+			return;
+		}
+		enabled = storageEncryption.Enable(KeyProtection::USER_ACCOUNT);
+	}
+	if (!enabled.has_value()) {
+		if (enabled.error().keyStoreFailure != KeyStoreFailure::DISMISSED) {
+			QMessageBox::critical(this, tr("Turn on encryption"), EncryptionFailureText(enabled.error()));
+		}
+		return;
+	}
+	Notify(tr("Encryption is on"), tr("The authenticators and Steam sign-ins on this computer are stored encrypted."));
+}
+
+bool MainWindow::OfferEncryptionWithoutPrompt(KeyProtection missingProtection) {
+	const bool isWindowsHello = missingProtection == KeyProtection::WINDOWS_HELLO;
+	QMessageBox fallback(QMessageBox::Question, tr("Turn on encryption"), MissingProtectionText(missingProtection), QMessageBox::NoButton, this);
+	if (isWindowsHello) {
+		fallback.setInformativeText(tr("Set up a PIN in Windows Settings, Accounts, Sign-in options, and try again. Or turn on encryption without Windows Hello: Windows then keeps the key for your user account and asks nothing at the start."));
+	} else {
+		fallback.setInformativeText(tr("Encryption can use the main keyring instead. It opens together with your sign-in to the system, so no password is asked at the start."));
+	}
+	const QPushButton* fallbackButton = fallback.addButton(isWindowsHello ? tr("Encrypt without Windows Hello") : tr("Encrypt with the main keyring"), QMessageBox::AcceptRole);
+	fallback.setDefaultButton(fallback.addButton(QMessageBox::Cancel));
+	fallback.exec();
+	return fallback.clickedButton() == fallbackButton;
+}
+
+void MainWindow::ShowEncryptionOn() {
+	QMessageBox status(QMessageBox::Information, tr("Encryption"), tr("The authenticators and Steam sign-ins on this computer are encrypted."), QMessageBox::NoButton, this);
+	switch (storageEncryption.Protection()) {
+		case KeyProtection::WINDOWS_HELLO:
+			status.setInformativeText(tr("Windows Hello guards the key and is asked at every start and to turn encryption off. Turned off, the data is stored on this computer without encryption again."));
+			break;
+		case KeyProtection::KEYRING_PASSWORD:
+			status.setInformativeText(tr("The key is in the SteamForge keyring. Its password is asked at every start and to turn encryption off. Turned off, the data is stored on this computer without encryption again, and the SteamForge keyring is deleted."));
+			break;
+		case KeyProtection::USER_ACCOUNT:
+#ifdef Q_OS_WIN
+			status.setInformativeText(tr("Windows keeps the key for your user account. Turned off, the data is stored on this computer without encryption again."));
+#else
+			status.setInformativeText(tr("The keyring of the system keeps the key. Turned off, the data is stored on this computer without encryption again."));
+#endif
+			break;
+	}
+	const QPushButton* turnOffButton = status.addButton(tr("Turn off encryption"), QMessageBox::DestructiveRole);
+	status.setDefaultButton(status.addButton(QMessageBox::Close));
+	status.exec();
+	if (status.clickedButton() != turnOffButton) {
+		return;
+	}
+	const std::expected<void, EncryptionFailure> disabled = storageEncryption.Disable();
+	if (!disabled.has_value()) {
+		if (disabled.error().keyStoreFailure != KeyStoreFailure::DISMISSED) {
+			QMessageBox::critical(this, tr("Turn off encryption"), EncryptionFailureText(disabled.error()));
+		}
+		return;
+	}
+	Notify(tr("Encryption is off"), tr("The data on this computer is stored without encryption."));
+}
+
+QString MainWindow::MissingProtectionText(KeyProtection protection) const {
+	if (protection == KeyProtection::KEYRING_PASSWORD) {
+		return tr("The keyring of the system cannot make a separate keyring.");
+	}
+	return tr("Windows Hello is not set up on this computer.");
+}
+
+QString MainWindow::EncryptionFailureText(const EncryptionFailure& failure) const {
+	if (failure.unreadableFile.has_value()) {
+		return tr("Not every file opens, and this change would leave it unreadable for good: %1 Nothing has changed.").arg(StorageErrorText(*failure.unreadableFile));
+	}
+	if (failure.storageError.has_value()) {
+		return tr("Not every file could be rewritten: %1 The change continues at the next start.").arg(StorageErrorText(*failure.storageError));
+	}
+	switch (failure.keyStoreFailure.value_or(KeyStoreFailure::FAILED)) {
+		case KeyStoreFailure::UNAVAILABLE:
+			return tr("This system has nowhere to keep the encryption key.");
+		case KeyStoreFailure::DISMISSED:
+			return tr("The confirmation was cancelled. Nothing has changed.");
+		case KeyStoreFailure::NOT_SET_UP:
+			return MissingProtectionText(storageEncryption.PreferredProtection());
+		case KeyStoreFailure::NOT_FOUND:
+		case KeyStoreFailure::UNREADABLE:
+			return tr("The encryption key could not be read.");
+		case KeyStoreFailure::FAILED:
+			break;
+	}
+	return tr("The system did not keep the encryption key. Nothing has changed.");
+}
+
+void MainWindow::ForgetProfilesOfRemovedRecords() {
+	QSet<quint64> steamIds;
+	for (const AuthenticatorRecord& record : accountLibrary.Records()) {
+		if (record.account.steamId.has_value()) {
+			steamIds.insert(*record.account.steamId);
+		}
+	}
+	accountProfiles.KeepOnly(steamIds);
+}
+
+void MainWindow::UpdateLoadProblems() {
+	const auto problemCount = static_cast<int>(accountLibrary.LoadProblems().size());
+	loadProblemBanner->setVisible(problemCount > 0);
+	loadProblemLabel->setText(tr("Account files that could not be read: %n. They were skipped and left unchanged.", nullptr, problemCount));
+}
+
+void MainWindow::UpdateTimeStatus() {
+	switch (steamClock.State()) {
+		case SteamClockState::NOT_SYNCHRONIZED:
+			timeStatusLabel->setText(tr("Checking the time with Steam…"));
+			break;
+		case SteamClockState::SYNCHRONIZED: {
+			// The offset is Steam time minus local time: positive when this computer's clock is behind.
+			const auto offsetSeconds = static_cast<qint64>(std::chrono::round<std::chrono::seconds>(steamClock.Offset()).count());
+			if (std::abs(offsetSeconds) < NOTICEABLE_CLOCK_OFFSET_SECONDS) {
+				timeStatusLabel->setText(tr("Time is in sync with Steam."));
+			} else if (offsetSeconds > 0) {
+				timeStatusLabel->setText(tr("Time is in sync with Steam. This computer's clock is %1 s behind, and the codes allow for it.").arg(offsetSeconds));
+			} else {
+				timeStatusLabel->setText(tr("Time is in sync with Steam. This computer's clock is %1 s ahead, and the codes allow for it.").arg(-offsetSeconds));
+			}
+			break;
+		}
+		case SteamClockState::SYNCHRONIZATION_FAILED:
+			timeStatusLabel->setText(tr("Could not check the time with Steam, so codes use the clock of this computer for now. We'll try again automatically."));
+			break;
+	}
+}
+
+void MainWindow::ShowRecord(const QUuid& recordId) {
+	if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
+		accountDetailsView->SetAccountNameHidden(!accountListView->IsRevealed(recordId));
+		accountDetailsView->ShowRecord(*record, accountLibrary.FindSession(recordId), confirmationMonitor.Find(recordId));
+	}
+}
+
+void MainWindow::RefreshShownRecord(const QUuid& recordId) {
+	if (accountDetailsView->ShownRecordId() == recordId) {
+		ShowRecord(recordId);
+	}
+}
+
+void MainWindow::ShowAddAccountMenu() {
+	addAccountMenu->exec(addAccountButton->mapToGlobal(QPoint(0, addAccountButton->height())));
+}
+
+void MainWindow::OpenNewAccountLogin() {
+	AuthenticatorRecord newAccount;
+	newAccount.id = QUuid::createUuid();
+	RunLoginDialog(newAccount, LoginPurpose::SIGN_IN);
+}
+
+void MainWindow::OpenLoginDialog(const QUuid& recordId) {
+	if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
+		RunLoginDialog(*record, LoginPurpose::SIGN_IN);
+	}
+}
+
+void MainWindow::OpenGuardMoveLogin(const QUuid& recordId) {
+	if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
+		RunLoginDialog(*record, LoginPurpose::MOVE_GUARD);
+	}
+}
+
+void MainWindow::RunLoginDialog(const AuthenticatorRecord& loginRecord, LoginPurpose purpose) {
+	LoginDialog loginDialog(accountLibrary, steamClock, storageEncryption, loginRecord, AccountTitleFor(loginRecord), purpose, this);
+	connect(&loginDialog, &LoginDialog::EncryptionRequested, this, &MainWindow::OfferEncryption);
+	if (loginDialog.exec() != QDialog::Accepted) {
+		return;
+	}
+	if (const std::optional<QUuid> signedInRecordId = loginDialog.SignedInRecordId(); signedInRecordId.has_value()) {
+		accountListView->SelectRecord(*signedInRecordId);
+		ShowRecord(*signedInRecordId);
+	}
+}
+
+void MainWindow::OpenGuardSetupDialog(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	const std::optional<AccountSession> session = accountLibrary.FindSession(recordId);
+	if (record == nullptr || !session.has_value()) {
+		return;
+	}
+	GuardSetupDialog guardSetupDialog(accountLibrary, steamClock, *record, AccountTitleFor(*record), *session, this);
+	guardSetupDialog.exec();
+}
+
+void MainWindow::OpenLoginApprovalDialog(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	const std::optional<AccountSession> session = accountLibrary.FindSession(recordId);
+	if (record == nullptr || !session.has_value()) {
+		return;
+	}
+	// Opened without a nested event loop: the dialog hides itself while it takes the screenshot.
+	auto* loginApprovalDialog = new LoginApprovalDialog(accountLibrary, *record, AccountTitleFor(*record), *session, this);
+	loginApprovalDialog->setAttribute(Qt::WA_DeleteOnClose);
+	// Queued, so the sign-in opens after the approval dialog has finished closing.
+	connect(loginApprovalDialog, &LoginApprovalDialog::SignInAgainRequested, this, &MainWindow::OpenLoginDialog, Qt::QueuedConnection);
+	loginApprovalDialog->open();
+}
+
+void MainWindow::OpenConfirmationsDialog(const QUuid& recordId) {
+	if (const QPointer<ConfirmationsDialog> openDialog = confirmationsDialogs.value(recordId); openDialog != nullptr) {
+		openDialog->show();
+		openDialog->raise();
+		openDialog->activateWindow();
+		return;
+	}
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr) {
+		return;
+	}
+	// Not modal: confirmations of several accounts can stay open side by side, each fixed to its account.
+	auto* confirmationsDialog = new ConfirmationsDialog(confirmationMonitor, steamImageCache, *record, AccountTitleFor(*record), this);
+	confirmationsDialog->setAttribute(Qt::WA_DeleteOnClose);
+	// Queued, so the sign-in opens after the click in the confirmations window has finished.
+	connect(confirmationsDialog, &ConfirmationsDialog::SignInRequested, this, &MainWindow::OpenLoginDialog, Qt::QueuedConnection);
+	confirmationsDialogs.insert(recordId, confirmationsDialog);
+	confirmationsDialog->show();
+}
+
+void MainWindow::OpenConfirmationsFromNotification(const QUuid& recordId) {
+	// A notification about the program rather than an account only shows the window.
+	if (recordId.isNull()) {
+		BringToFront();
+		return;
+	}
+	if (accountLibrary.FindRecord(recordId) == nullptr) {
+		return;
+	}
+	BringToFront();
+	accountListView->SelectRecord(recordId);
+	if (confirmationMonitor.Find(recordId) != nullptr) {
+		OpenConfirmationsDialog(recordId);
+	}
+}
+
+void MainWindow::ConnectConfirmations() {
+	for (const AuthenticatorRecord& record : accountLibrary.Records()) {
+		if (const AccountConfirmations* confirmations = confirmationMonitor.Find(record.id); confirmations != nullptr) {
+			connect(confirmations, &AccountConfirmations::Changed, this, &MainWindow::UpdateConfirmationIndicators, Qt::UniqueConnection);
+		}
+	}
+	UpdateConfirmationIndicators();
+}
+
+void MainWindow::UpdateConfirmationIndicators() {
+	for (const AuthenticatorRecord& record : accountLibrary.Records()) {
+		const AccountConfirmations* confirmations = confirmationMonitor.Find(record.id);
+		const int waitingCount = confirmations != nullptr ? static_cast<int>(confirmations->Confirmations().size()) : 0;
+		accountListView->SetConfirmationCount(record.id, waitingCount);
+	}
+	if (const std::optional<QUuid> shownRecordId = accountDetailsView->ShownRecordId(); shownRecordId.has_value()) {
+		ShowRecord(*shownRecordId);
+	}
+}
+
+void MainWindow::NotifyConfirmations(const QUuid& recordId, const std::vector<PendingConfirmation>& newConfirmations) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr || newConfirmations.empty()) {
+		return;
+	}
+	if (const QPointer<ConfirmationsDialog> openDialog = confirmationsDialogs.value(recordId); openDialog != nullptr && openDialog->isActiveWindow()) {
+		return;
+	}
+	const auto newCount = static_cast<int>(newConfirmations.size());
+	QStringList lines;
+	for (const PendingConfirmation& confirmation : newConfirmations | std::views::take(NOTIFIED_CONFIRMATION_LIMIT)) {
+		lines.append(ConfirmationLine(confirmation));
+	}
+	if (newConfirmations.size() > NOTIFIED_CONFIRMATION_LIMIT) {
+		lines.append(tr("and %n more", nullptr, newCount - static_cast<int>(NOTIFIED_CONFIRMATION_LIMIT)));
+	}
+	desktopNotifications->Show(tr("%n new confirmations for %1", nullptr, newCount).arg(AccountTitleFor(*record)), lines.join(QLatin1Char('\n')), recordId);
+}
+
+// The Steam name once Steam has told it, so the account name stays out of sight; notifications show over other windows too.
+QString MainWindow::AccountTitleFor(const AuthenticatorRecord& record) {
+	return AccountTitle(record, accountProfiles.Profile(record.account.steamId).personaName);
+}
+
+void MainWindow::NotifySignInRequired(const QUuid& recordId) {
+	if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
+		desktopNotifications->Show(tr("Sign in again: %1").arg(AccountTitleFor(*record)), tr("Steam no longer accepts the saved sign-in. Sign in again to keep getting confirmations."), recordId);
+	}
+}
+
+void MainWindow::CloseConfirmationsOfRemovedRecords() {
+	for (auto dialogIterator = confirmationsDialogs.begin(); dialogIterator != confirmationsDialogs.end();) {
+		if (dialogIterator.value() != nullptr && accountLibrary.FindRecord(dialogIterator.key()) != nullptr) {
+			++dialogIterator;
+			continue;
+		}
+		if (dialogIterator.value() != nullptr) {
+			dialogIterator.value()->close();
+		}
+		dialogIterator = confirmationsDialogs.erase(dialogIterator);
+	}
+}
+
+void MainWindow::ConfirmSignOut(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr) {
+		return;
+	}
+	QMessageBox confirmation(QMessageBox::Question, tr("Sign out of Steam"), tr("Remove the saved Steam sign-in of %1 from this computer?").arg(AccountTitleFor(*record)), QMessageBox::NoButton, this);
+	confirmation.setInformativeText(tr("Confirmations, trades and approving sign-ins need a new sign-in afterwards. Steam Guard codes keep working."));
+	const QPushButton* signOutButton = confirmation.addButton(tr("Sign out"), QMessageBox::AcceptRole);
+	confirmation.setDefaultButton(confirmation.addButton(QMessageBox::Cancel));
+	confirmation.exec();
+	if (confirmation.clickedButton() != signOutButton) {
+		return;
+	}
+	if (const std::expected<void, StorageError> removed = accountLibrary.RemoveSession(recordId); !removed.has_value()) {
+		QMessageBox::critical(this, tr("Sign out of Steam"), StorageErrorText(removed.error()));
+	}
+}
+
+void MainWindow::OpenImportDialog() {
+	RunImportDialog({});
+}
+
+void MainWindow::RunImportDialog(const QStringList& filePaths) {
+	ImportDialog importDialog(accountLibrary, this);
+	if (!filePaths.isEmpty()) {
+		importDialog.AddFiles(filePaths);
+	}
+	if (importDialog.exec() != QDialog::Accepted || importDialog.ImportedRecordIds().empty()) {
+		return;
+	}
+	const std::vector<QUuid>& importedRecordIds = importDialog.ImportedRecordIds();
+	accountListView->SelectRecord(importedRecordIds.front());
+	const bool isEveryRecordReady = std::ranges::all_of(importedRecordIds, [this](const QUuid& recordId) {
+		const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+		return record != nullptr && DetermineCapabilities(*record).canSignConfirmations && accountLibrary.FindSession(recordId).has_value();
+	});
+	const auto importedCount = static_cast<int>(importedRecordIds.size());
+	const QString nextStep = isEveryRecordReady ? tr("Codes and confirmations work already.") : tr("The panel on the right shows what is left to set up.");
+	Notify(tr("Accounts added: %n", nullptr, importedCount), nextStep);
+}
+
+void MainWindow::Notify(const QString& title, const QString& text) {
+	desktopNotifications->Show(title, text, QUuid());
+}
+
+void MainWindow::ShowSteamGuardQr(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr || !DetermineCapabilities(*record).canGenerateCodes) {
+		return;
+	}
+	SteamGuardQrDialog qrDialog(AccountTitleFor(*record), SteamGuardUri(*record), this);
+	qrDialog.exec();
+}
+
+void MainWindow::ExportRecord(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr) {
+		return;
+	}
+	const RecordCapabilities capabilities = DetermineCapabilities(*record);
+	QStringList contents{tr("Steam Guard codes")};
+	if (capabilities.canSignConfirmations) {
+		contents.append(tr("trade and market confirmations"));
+	}
+	if (capabilities.hasRevocationCode) {
+		contents.append(tr("the recovery code"));
+	}
+	QMessageBox warning(QMessageBox::Warning, tr("Export to .maFile"), tr("The file holds the secrets of %1 without encryption: with it anyone can get its Steam Guard codes and confirm its trades. Keep it as safely as a password.").arg(AccountTitleFor(*record)), QMessageBox::Cancel, this);
+	warning.setInformativeText(tr("The file contains: %1. The Steam sign-in is not exported: Steam Desktop Authenticator asks to sign in when it imports the file.").arg(contents.join(QStringLiteral(", "))));
+	const QPushButton* saveButton = warning.addButton(tr("Choose where to save…"), QMessageBox::AcceptRole);
+	warning.setDefaultButton(QMessageBox::Cancel);
+	warning.exec();
+	if (warning.clickedButton() != saveButton) {
+		return;
+	}
+	const QString suggestedPath = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(MaFileName(*record));
+	const QString filePath = QFileDialog::getSaveFileName(this, tr("Export to .maFile"), suggestedPath, tr("Steam Desktop Authenticator files (*.maFile)"));
+	if (filePath.isEmpty()) {
+		return;
+	}
+	if (const std::expected<void, StorageError> written = WriteOwnerOnlyFile(filePath, ExportMaFile(*record)); !written.has_value()) {
+		QMessageBox::critical(this, tr("Export to .maFile"), StorageErrorText(written.error()));
+		return;
+	}
+	QMessageBox::information(this, tr("Export to .maFile"), tr("The authenticator of %1 is saved to %2.").arg(AccountTitleFor(*record), QDir::toNativeSeparators(filePath)));
+}
+
+void MainWindow::OpenSettingsDialog() {
+	SettingsDialog settingsDialog(settings.Language(), dataLocation, storageEncryption.Status(), this);
+	connect(&settingsDialog, &SettingsDialog::LanguageSelected, this, &MainWindow::LanguageChangeRequested);
+	settingsDialog.exec();
+}
+
+void MainWindow::ConfirmRemoval(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr) {
+		return;
+	}
+	const RecordCapabilities capabilities = DetermineCapabilities(*record);
+	QStringList consequences{
+		tr("The file with the secrets is deleted from this computer, and the codes and confirmations of this account no longer appear here."),
+		tr("Steam Guard stays on the Steam account: removing the record here does not turn it off."),
+	};
+	if (accountLibrary.FindSession(recordId).has_value()) {
+		consequences.append(tr("The saved Steam sign-in is removed from this computer as well."));
+	}
+	consequences.append(capabilities.hasRevocationCode ? tr("Without another copy of the secrets or the recovery code you can lose access to the account.") : tr("No recovery code is saved: without another copy of the secrets you can lose access to the account."));
+	QStringList consequenceLines;
+	for (const QString& consequence : consequences) {
+		consequenceLines.append(QStringLiteral("• ") + consequence);
+	}
+	if (capabilities.canGenerateCodes) {
+		consequenceLines.append(QString());
+		consequenceLines.append(tr("Recommended: export the authenticator to a .maFile first and keep it as safely as a password."));
+	}
+
+	QMessageBox confirmation(QMessageBox::Warning, tr("Remove account"), tr("Remove %1 from SteamForge?").arg(AccountTitleFor(*record)), QMessageBox::NoButton, this);
+	confirmation.setInformativeText(consequenceLines.join(QLatin1Char('\n')));
+	const QPushButton* exportButton = capabilities.canGenerateCodes ? confirmation.addButton(tr("Export first…"), QMessageBox::ActionRole) : nullptr;
+	QPushButton* removeButton = confirmation.addButton(tr("Remove"), QMessageBox::DestructiveRole);
+	SetButtonRole(*removeButton, ButtonRole::PRIMARY);
+	confirmation.setDefaultButton(confirmation.addButton(QMessageBox::Cancel));
+	confirmation.exec();
+	if (exportButton != nullptr && confirmation.clickedButton() == exportButton) {
+		ExportRecord(recordId);
+		return;
+	}
+	if (confirmation.clickedButton() != removeButton) {
+		return;
+	}
+
+	if (const std::expected<void, StorageError> removed = accountLibrary.Remove(recordId); !removed.has_value()) {
+		QMessageBox::critical(this, tr("Remove account"), StorageErrorText(removed.error()));
+	}
+}
+
+void MainWindow::OpenRecordDataDialog(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr) {
+		return;
+	}
+	RecordDataDialog recordDataDialog(accountLibrary, *record, AccountTitleFor(*record), accountLibrary.FindSession(recordId), this);
+	recordDataDialog.exec();
+}
+
+void MainWindow::ShowLoadProblemDetails() {
+	QStringList problemTexts;
+	for (const StorageError& problem : accountLibrary.LoadProblems()) {
+		problemTexts.append(StorageErrorText(problem));
+	}
+	QMessageBox details(QMessageBox::Warning, tr("Unreadable account files"), tr("These files were skipped and left unchanged in %1:").arg(QDir::toNativeSeparators(accountLibrary.StorageDirectory())), QMessageBox::Ok, this);
+	details.setInformativeText(problemTexts.join(QLatin1Char('\n')));
+	details.exec();
 }
 
 } // namespace SteamForge

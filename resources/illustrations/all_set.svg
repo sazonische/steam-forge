@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="190" viewBox="0 0 360 190">
+	<defs>
+		<radialGradient id="greenGlow" cx="0.5" cy="0.5" r="0.5">
+			<stop offset="0" stop-color="#59bf40" stop-opacity="0.42"/>
+			<stop offset="0.55" stop-color="#59bf40" stop-opacity="0.1"/>
+			<stop offset="1" stop-color="#59bf40" stop-opacity="0"/>
+		</radialGradient>
+		<radialGradient id="blueGlow" cx="0.5" cy="0.5" r="0.5">
+			<stop offset="0" stop-color="#1a9fff" stop-opacity="0.35"/>
+			<stop offset="1" stop-color="#1a9fff" stop-opacity="0"/>
+		</radialGradient>
+		<linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#47bfff"/>
+			<stop offset="1" stop-color="#1a6eff"/>
+		</linearGradient>
+		<linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#7fd65a"/>
+			<stop offset="1" stop-color="#3f9a2a"/>
+		</linearGradient>
+		<linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#2d333d"/>
+			<stop offset="1" stop-color="#262b33"/>
+		</linearGradient>
+		<linearGradient id="code" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#06bfff"/>
+			<stop offset="1" stop-color="#2d73ff"/>
+		</linearGradient>
+	</defs>
+	<circle cx="180" cy="92" r="118" fill="url(#greenGlow)"/>
+	<ellipse cx="180" cy="168" rx="70" ry="7" fill="#59bf40" opacity="0.14"/>
+	<rect x="34" y="78" width="96" height="54" rx="8" fill="url(#card)" stroke="#3d4450" stroke-width="1.5"/>
+	<rect x="46" y="89" width="36" height="5" rx="2.5" fill="#67707b"/>
+	<rect x="46" y="100" width="12" height="19" rx="2.5" fill="url(#code)"/>
+	<rect x="61" y="100" width="12" height="19" rx="2.5" fill="url(#code)"/>
+	<rect x="76" y="100" width="12" height="19" rx="2.5" fill="url(#code)"/>
+	<rect x="91" y="100" width="12" height="19" rx="2.5" fill="url(#code)"/>
+	<rect x="106" y="100" width="12" height="19" rx="2.5" fill="url(#code)"/>
+	<rect x="230" y="78" width="96" height="54" rx="8" fill="url(#card)" stroke="#3d4450" stroke-width="1.5"/>
+	<rect x="242" y="90" width="30" height="30" rx="4" fill="#3d293f"/>
+	<rect x="242" y="117" width="30" height="3" rx="1.5" fill="#d32ce6"/>
+	<rect x="280" y="94" width="34" height="5" rx="2.5" fill="#dcdedf"/>
+	<rect x="280" y="105" width="24" height="4" rx="2" fill="#67707b"/>
+	<circle cx="180" cy="88" r="72" fill="url(#blueGlow)"/>
+	<path d="M180 22 L228 41 V79 C228 113 207 136 180 150 C153 136 132 113 132 79 V41 Z" fill="url(#shield)" stroke="#8fd6ff" stroke-opacity="0.55" stroke-width="2" stroke-linejoin="round"/>
+	<path d="M180 30 L140 46 V79 C140 108 157 128 180 141 Z" fill="#ffffff" opacity="0.1"/>
+	<circle cx="180" cy="86" r="31" fill="url(#badge)" stroke="#ffffff" stroke-opacity="0.85" stroke-width="3"/>
+	<path d="M166 87 L176 97 L195 77" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+	<path d="M60 44 l1.8 -5 l1.8 5 l5 1.8 l-5 1.8 l-1.8 5 l-1.8 -5 l-5 -1.8 z" fill="#7fd65a" opacity="0.85"/>
+	<path d="M296 40 l1.5 -4.2 l1.5 4.2 l4.2 1.5 l-4.2 1.5 l-1.5 4.2 l-1.5 -4.2 l-4.2 -1.5 z" fill="#47bfff" opacity="0.8"/>
+	<path d="M258 160 l1.2 -3.4 l1.2 3.4 l3.4 1.2 l-3.4 1.2 l-1.2 3.4 l-1.2 -3.4 l-3.4 -1.2 z" fill="#7fd65a" opacity="0.6"/>
+	<circle cx="104" cy="156" r="2.2" fill="#7fd65a" opacity="0.6"/>
+	<circle cx="236" cy="30" r="2" fill="#47bfff" opacity="0.6"/>
+	<circle cx="120" cy="34" r="1.8" fill="#7fd65a" opacity="0.5"/>
+</svg>

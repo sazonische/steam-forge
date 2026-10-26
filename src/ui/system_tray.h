@@ -10,9 +10,12 @@ public:
 
 	[[nodiscard]] static bool IsAvailable();
 	[[nodiscard]] bool IsShown() const;
+	// Windows shows notifications from it.
+	[[nodiscard]] QSystemTrayIcon& Icon();
 
 	void Show();
 	void Hide();
+	void RetranslateUi();
 
 Q_SIGNALS:
 	void OpenRequested();
@@ -23,6 +26,8 @@ private:
 
 	QMenu trayMenu;
 	QSystemTrayIcon trayIcon;
+	QAction* openAction = nullptr;
+	QAction* quitAction = nullptr;
 };
 
 } // namespace SteamForge

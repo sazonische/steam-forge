@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200" viewBox="0 0 360 200">
+	<defs>
+		<radialGradient id="blueGlow" cx="0.5" cy="0.5" r="0.5">
+			<stop offset="0" stop-color="#1a9fff" stop-opacity="0.3"/>
+			<stop offset="0.6" stop-color="#1a9fff" stop-opacity="0.07"/>
+			<stop offset="1" stop-color="#1a9fff" stop-opacity="0"/>
+		</radialGradient>
+		<radialGradient id="warmGlow" cx="0.5" cy="0.5" r="0.5">
+			<stop offset="0" stop-color="#ffc82c" stop-opacity="0.35"/>
+			<stop offset="0.55" stop-color="#ffc82c" stop-opacity="0.08"/>
+			<stop offset="1" stop-color="#ffc82c" stop-opacity="0"/>
+		</radialGradient>
+		<linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#2d333d"/>
+			<stop offset="1" stop-color="#262b33"/>
+		</linearGradient>
+		<linearGradient id="button" x1="0" y1="0" x2="1" y2="0">
+			<stop offset="0" stop-color="#06bfff"/>
+			<stop offset="1" stop-color="#2d73ff"/>
+		</linearGradient>
+		<linearGradient id="lock" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#ffd95e"/>
+			<stop offset="1" stop-color="#e8a600"/>
+		</linearGradient>
+	</defs>
+	<circle cx="170" cy="104" r="110" fill="url(#blueGlow)"/>
+	<rect x="78" y="34" width="156" height="128" rx="8" fill="url(#card)" stroke="#3d4450" stroke-width="1.5"/>
+	<circle cx="106" cy="62" r="13" fill="#3e4e69"/>
+	<circle cx="106" cy="58.5" r="4.5" fill="#b8bcbf"/>
+	<path d="M97.5 70.5 a8.5 6.5 0 0 1 17 0 z" fill="#b8bcbf"/>
+	<rect x="128" y="55" width="62" height="6" rx="3" fill="#dcdedf"/>
+	<rect x="128" y="66" width="40" height="5" rx="2.5" fill="#67707b"/>
+	<rect x="92" y="88" width="128" height="15" rx="3" fill="#32353c"/>
+	<rect x="92" y="109" width="128" height="15" rx="3" fill="#32353c"/>
+	<circle cx="101" cy="116.5" r="2.2" fill="#8b929a"/>
+	<circle cx="109" cy="116.5" r="2.2" fill="#8b929a"/>
+	<circle cx="117" cy="116.5" r="2.2" fill="#8b929a"/>
+	<circle cx="125" cy="116.5" r="2.2" fill="#8b929a"/>
+	<circle cx="133" cy="116.5" r="2.2" fill="#8b929a"/>
+	<rect x="92" y="134" width="128" height="17" rx="3" fill="url(#button)"/>
+	<circle cx="258" cy="122" r="66" fill="url(#warmGlow)"/>
+	<path d="M240 104 V90 C240 72 276 72 276 90 V104" fill="none" stroke="#c9d1d9" stroke-width="8" stroke-linecap="round"/>
+	<rect x="226" y="100" width="64" height="52" rx="9" fill="url(#lock)"/>
+	<rect x="226" y="100" width="64" height="10" rx="5" fill="#ffffff" opacity="0.18"/>
+	<circle cx="258" cy="120" r="6.5" fill="#6b4d00"/>
+	<rect x="255.5" y="123" width="5" height="13" rx="2" fill="#6b4d00"/>
+	<circle cx="314" cy="62" r="10" fill="none" stroke="#ffc82c" stroke-width="5"/>
+	<path d="M307 69 L289 87 M296 80 l5 5 M291 85 l4 4" fill="none" stroke="#ffc82c" stroke-width="5" stroke-linecap="round"/>
+	<path d="M56 54 l1.6 -4.6 l1.6 4.6 l4.6 1.6 l-4.6 1.6 l-1.6 4.6 l-1.6 -4.6 l-4.6 -1.6 z" fill="#47bfff" opacity="0.8"/>
+	<path d="M322 140 l1.4 -4 l1.4 4 l4 1.4 l-4 1.4 l-1.4 4 l-1.4 -4 l-4 -1.4 z" fill="#ffc82c" opacity="0.8"/>
+	<circle cx="50" cy="140" r="2" fill="#47bfff" opacity="0.5"/>
+	<circle cx="296" cy="30" r="2.5" fill="#ffc82c" opacity="0.6"/>
+</svg>

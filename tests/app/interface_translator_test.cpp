@@ -10,6 +10,7 @@ private Q_SLOTS:
 
 		QCOMPARE(QCoreApplication::translate("SteamForge::MainWindow", "No accounts yet"), QStringLiteral("Аккаунтов пока нет"));
 		QVERIFY(QCoreApplication::translate("QPlatformTheme", "Cancel") != QStringLiteral("Cancel"));
+		QCOMPARE(QLocale().language(), QLocale::Russian);
 	}
 
 	void EnglishRestoresSourceStrings() {
@@ -18,6 +19,7 @@ private Q_SLOTS:
 		QVERIFY(interfaceTranslator.Apply(SteamForge::InterfaceLanguage::ENGLISH));
 
 		QCOMPARE(QCoreApplication::translate("SteamForge::MainWindow", "No accounts yet"), QStringLiteral("No accounts yet"));
+		QCOMPARE(QLocale().language(), QLocale::English);
 	}
 
 	void DestroyedTranslatorLeavesNoTranslation() {

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Usage: tools/ci/build-linux.sh [release|dev]
+# Usage: tools/ci/build-linux.sh [release|dev] [all|configure|build]
+# CI runs configure and build as separate steps, so the vcpkg packages are cached even when the build fails.
 set -euo pipefail
 
 build_mode="${1:-release}"
+build_step="${2:-all}"
 case "${build_mode}" in
 	release)
 		preset_name="linux-release"
@@ -12,6 +14,13 @@ case "${build_mode}" in
 		;;
 	*)
 		echo "Unknown mode '${build_mode}'. Use release or dev." >&2
+		exit 1
+		;;
+esac
+case "${build_step}" in
+	all | configure | build) ;;
+	*)
+		echo "Unknown step '${build_step}'. Use all, configure or build." >&2
 		exit 1
 		;;
 esac
@@ -43,6 +52,10 @@ if [[ -n "${STEAMFORGE_VERSION:-}" ]]; then
 fi
 
 cd "${repository_root}"
-# Container builds share the source tree with the host; keep the host's clangd database intact.
-cmake --preset "${preset_name}" "${configure_arguments[@]}"
-cmake --build --preset "${preset_name}"
+if [[ "${build_step}" != "build" ]]; then
+	# Container builds share the source tree with the host; keep the host's clangd database intact.
+	cmake --preset "${preset_name}" "${configure_arguments[@]}"
+fi
+if [[ "${build_step}" != "configure" ]]; then
+	cmake --build --preset "${preset_name}"
+fi
