@@ -2558,6 +2558,11 @@
         <translation>Данные на этом компьютере хранятся без шифрования.</translation>
     </message>
     <message>
+        <location filename="../src/ui/main_window.cpp" line="766"/>
+        <source>The keyring of the system cannot make a separate keyring that stays locked.</source>
+        <translation>Связка ключей системы не может создать отдельную связку, которая остаётся запертой.</translation>
+    </message>
+    <message>
         <location filename="../src/ui/main_window.cpp" line="782"/>
         <source>The confirmation was cancelled. Nothing has changed.</source>
         <translation>Подтверждение отменено. Ничего не изменилось.</translation>
@@ -2830,11 +2835,6 @@
         <location filename="../src/ui/main_window.cpp" line="747"/>
         <source>The authenticators and Steam sign-ins are then kept in the data folder unencrypted, as before encryption was turned on.</source>
         <translation>Аутентификаторы и входы в Steam будут храниться в папке данных незашифрованными, как до включения шифрования.</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/main_window.cpp" line="766"/>
-        <source>The keyring of the system cannot make a separate keyring.</source>
-        <translation>Связка ключей системы не может создать отдельную связку.</translation>
     </message>
     <message>
         <location filename="../src/ui/main_window.cpp" line="773"/>
@@ -3456,77 +3456,77 @@
 <context>
     <name>SteamForge::SteamGuardQrDialog</name>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="79"/>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="207"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="81"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="212"/>
         <source>QR code of Steam Guard</source>
         <translation>QR-код Steam Guard</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="82"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="84"/>
         <source>With this code anyone gets the Steam Guard codes of %1. Show it only to your own authenticator app.</source>
         <translation>С этим кодом любой сможет получать коды Steam Guard аккаунта %1. Показывайте его только своему приложению-аутентификатору.</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="87"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="89"/>
         <source>The app you add the account to:</source>
         <translation>Приложение, в которое добавляете аккаунт:</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="89"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="91"/>
         <source>Stratum, 2FAS for iPhone, KeePassDX</source>
         <translation>Stratum, 2FAS для iPhone, KeePassDX</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="90"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="92"/>
         <source>Aegis, Ente, 2FAS for Android</source>
         <translation>Aegis, Ente, 2FAS для Android</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="113"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="116"/>
         <source>Show QR code</source>
         <translation>Показать QR-код</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="128"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="131"/>
         <source>Hide QR code</source>
         <translation>Скрыть QR-код</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="135"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="138"/>
         <source>The app must support Steam Guard. Check that it shows the same five-character code as SteamForge; if it does not, try the other tab.</source>
         <translation>Приложение должно поддерживать Steam Guard. Проверьте, что оно показывает тот же код из пяти символов, что и SteamForge; если нет, попробуйте другую вкладку.</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="139"/>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="164"/>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="218"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="142"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="167"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="223"/>
         <source>Copy QR code</source>
         <translation>Скопировать QR-код</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="140"/>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="165"/>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="219"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="143"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="168"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="224"/>
         <source>Copy link</source>
         <translation>Скопировать ссылку</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="141"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="144"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="169"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="172"/>
         <source>QR code copied</source>
         <translation>QR-код скопирован</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="173"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="176"/>
         <source>Link copied</source>
         <translation>Ссылка скопирована</translation>
     </message>
     <message>
-        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="207"/>
+        <location filename="../src/ui/steam_guard_qr_dialog.cpp" line="212"/>
         <source>Hidden QR code</source>
         <translation>Скрытый QR-код</translation>
     </message>

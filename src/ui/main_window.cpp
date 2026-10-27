@@ -763,7 +763,7 @@ void MainWindow::TurnOffEncryption() {
 
 QString MainWindow::MissingProtectionText(KeyProtection protection) {
 	if (protection == KeyProtection::KEYRING_PASSWORD) {
-		return tr("The keyring of the system cannot make a separate keyring.");
+		return tr("The keyring of the system cannot make a separate keyring that stays locked.");
 	}
 	return tr("Windows Hello is not set up on this computer.");
 }

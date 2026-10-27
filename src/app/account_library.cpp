@@ -25,6 +25,10 @@ void AccountLibrary::Load() {
 		sessions.insert(session.recordId, std::move(session));
 	}
 	std::ranges::move(sessionLoadResult.problems, std::back_inserter(loadProblems));
+
+	StoreLoadResult backupLoadResult = backupStore.LoadAll();
+	backups = std::move(backupLoadResult.records);
+	backupProblems = std::move(backupLoadResult.problems);
 	Q_EMIT RecordsChanged();
 }
 
@@ -88,11 +92,19 @@ std::expected<void, StorageError> AccountLibrary::Remove(const QUuid& recordId) 
 	return {};
 }
 
-std::expected<void, StorageError> AccountLibrary::SaveBackup(const AuthenticatorRecord& record) const {
+std::expected<void, StorageError> AccountLibrary::SaveBackup(const AuthenticatorRecord& record) {
 	// A new ID, so several backups of one record stay apart.
 	AuthenticatorRecord backup = record;
 	backup.id = QUuid::createUuid();
-	return backupStore.Save(backup);
+	if (std::expected<void, StorageError> saved = backupStore.Save(backup); !saved.has_value()) {
+		return saved;
+	}
+	backups.push_back(std::move(backup));
+	return {};
+}
+
+const std::vector<StorageError>& AccountLibrary::BackupProblems() const {
+	return backupProblems;
 }
 
 void AccountLibrary::SetDataKey(const std::optional<DataKey>& key) {
@@ -109,6 +121,11 @@ std::expected<void, StorageError> AccountLibrary::RewriteFiles() const {
 	}
 	for (const AccountSession& session : sessions) {
 		if (std::expected<void, StorageError> saved = sessionStore.Save(session); !saved.has_value()) {
+			return saved;
+		}
+	}
+	for (const AuthenticatorRecord& backup : backups) {
+		if (std::expected<void, StorageError> saved = backupStore.Save(backup); !saved.has_value()) {
 			return saved;
 		}
 	}

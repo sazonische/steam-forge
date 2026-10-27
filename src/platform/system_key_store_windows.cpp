@@ -304,7 +304,10 @@ namespace {
 			}
 			ApplyPromptContext(helloKey.Get());
 			DWORD gestureRequired = GESTURE_REQUIRED;
-			NCryptSetProperty(helloKey.Get(), NCRYPT_PIN_CACHE_IS_GESTURE_REQUIRED_PROPERTY, reinterpret_cast<PBYTE>(&gestureRequired), sizeof(gestureRequired), 0);
+			// Refused, a recent Windows Hello sign-in would open the key without asking.
+			if (NCryptSetProperty(helloKey.Get(), NCRYPT_PIN_CACHE_IS_GESTURE_REQUIRED_PROPERTY, reinterpret_cast<PBYTE>(&gestureRequired), sizeof(gestureRequired), 0) != ERROR_SUCCESS) {
+				return std::unexpected(KeyStoreFailure::NOT_SET_UP);
+			}
 			QByteArray keyBytes(static_cast<qsizetype>(HELLO_WRAPPED_KEY_LENGTH), Qt::Uninitialized);
 			DWORD keyLength = 0;
 			// Asks for the PIN, face or fingerprint.

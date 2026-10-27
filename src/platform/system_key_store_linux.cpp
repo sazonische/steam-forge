@@ -48,6 +48,7 @@ namespace {
 	constexpr QLatin1StringView PROPERTIES_INTERFACE{"org.freedesktop.DBus.Properties"};
 	constexpr QLatin1StringView COLLECTIONS_PROPERTY{"Collections"};
 	constexpr QLatin1StringView ITEMS_PROPERTY{"Items"};
+	constexpr QLatin1StringView LOCKED_PROPERTY{"Locked"};
 	constexpr QLatin1StringView DEFAULT_ALIAS{"default"};
 	// The session bus is private to the user; libsecret also falls back to plain transfer.
 	constexpr QLatin1StringView PLAIN_ALGORITHM{"plain"};
@@ -124,6 +125,16 @@ namespace {
 			if (found->unlocked.isEmpty() && found->locked.isEmpty()) {
 				return std::unexpected(KeyStoreFailure::NOT_FOUND);
 			}
+			// Left open since the last use, the keyring is locked first, so its password is asked now as well.
+			if (protection == KeyProtection::KEYRING_PASSWORD && !found->unlocked.isEmpty()) {
+				if (!LockOwnKeyring(found->unlocked.front()).has_value()) {
+					return std::unexpected(KeyStoreFailure::NOT_SET_UP);
+				}
+				found = Search(vaultId);
+				if (!found.has_value()) {
+					return std::unexpected(found.error());
+				}
+			}
 			if (found->unlocked.isEmpty()) {
 				if (const std::expected<void, KeyStoreFailure> unlocked = Unlock(found->locked); !unlocked.has_value()) {
 					return std::unexpected(unlocked.error());
@@ -134,9 +145,9 @@ namespace {
 				}
 			}
 			std::expected<DataKey, KeyStoreFailure> key = ReadItem(found->unlocked.front());
-			if (protection == KeyProtection::KEYRING_PASSWORD) {
-				// Locked again right away, so the next start asks for the password even after a crash.
-				LockOwnKeyring(found->unlocked.front());
+			// Locked again right away, so the next start asks for the password even after a crash.
+			if (protection == KeyProtection::KEYRING_PASSWORD && !LockOwnKeyring(found->unlocked.front()).has_value()) {
+				qWarning("The SteamForge keyring did not lock; the next use locks it before reading the key.");
 			}
 			return key;
 		}
@@ -151,9 +162,9 @@ namespace {
 			}
 			const QList<QDBusObjectPath> items = found->unlocked + found->locked;
 			if (protection == KeyProtection::KEYRING_PASSWORD && !items.isEmpty()) {
-				if (const std::optional<QDBusObjectPath> ownKeyring = OwnKeyringHolding(items); ownKeyring.has_value()) {
-					// The keyring was made for this key alone; deleting it needs no password.
-					return DeleteObject(*ownKeyring, COLLECTION_INTERFACE);
+				// The keyring was made for this key alone; deleting it needs no password. Otherwise only the items go.
+				if (const std::expected<std::optional<QDBusObjectPath>, KeyStoreFailure> ownKeyring = OwnKeyringHolding(items); ownKeyring.has_value() && ownKeyring->has_value()) {
+					return DeleteObject(**ownKeyring, COLLECTION_INTERFACE);
 				}
 			}
 			for (const QDBusObjectPath& item : items) {
@@ -190,13 +201,21 @@ namespace {
 				return std::unexpected(collection.error());
 			}
 			if (const std::expected<void, KeyStoreFailure> stored = StoreItem(*collection, vaultId, key); !stored.has_value()) {
-				if (!DeleteObject(*collection, COLLECTION_INTERFACE).has_value()) {
-					qWarning("The unused SteamForge keyring could not be deleted.");
-				}
+				DiscardOwnKeyring(*collection);
 				return stored;
 			}
-			Lock(*collection);
+			// A keyring that stays open would hand out the key without its password.
+			if (!Lock(*collection).has_value()) {
+				DiscardOwnKeyring(*collection);
+				return std::unexpected(KeyStoreFailure::NOT_SET_UP);
+			}
 			return {};
+		}
+
+		void DiscardOwnKeyring(const QDBusObjectPath& collection) {
+			if (!DeleteObject(collection, COLLECTION_INTERFACE).has_value()) {
+				qWarning("The unused SteamForge keyring could not be deleted.");
+			}
 		}
 
 		// The keyring asks the user to choose the password of the new collection.
@@ -238,18 +257,19 @@ namespace {
 			return created.front();
 		}
 
-		// Only the keyring made for the key: locking the main keyring would make other programs ask for it.
-		std::optional<QDBusObjectPath> OwnKeyringHolding(const QList<QDBusObjectPath>& keyItems) {
+		// Only the keyring made for the key: locking the main keyring would make other programs ask for it. No keyring
+		// means a shared one; a keyring that could not be checked is a failure, not a shared keyring.
+		std::expected<std::optional<QDBusObjectPath>, KeyStoreFailure> OwnKeyringHolding(const QList<QDBusObjectPath>& keyItems) {
 			const std::optional<QDBusObjectPath> collection = CollectionOf(keyItems.front());
 			if (!collection.has_value()) {
-				return std::nullopt;
+				return std::unexpected(KeyStoreFailure::FAILED);
 			}
 			if (const std::expected<QDBusObjectPath, KeyStoreFailure> defaultCollection = DefaultCollection(); defaultCollection.has_value() && *defaultCollection == *collection) {
 				return std::nullopt;
 			}
 			const std::optional<QList<QDBusObjectPath>> collectionItems = ObjectPathsProperty(*collection, COLLECTION_INTERFACE, ITEMS_PROPERTY);
 			if (!collectionItems.has_value()) {
-				return std::nullopt;
+				return std::unexpected(KeyStoreFailure::FAILED);
 			}
 			for (const QDBusObjectPath& item : *collectionItems) {
 				if (!keyItems.contains(item)) {
@@ -259,17 +279,45 @@ namespace {
 			return collection;
 		}
 
-		void LockOwnKeyring(const QDBusObjectPath& keyItem) {
-			if (const std::optional<QDBusObjectPath> ownKeyring = OwnKeyringHolding({keyItem}); ownKeyring.has_value()) {
-				Lock(*ownKeyring);
+		std::expected<void, KeyStoreFailure> LockOwnKeyring(const QDBusObjectPath& keyItem) {
+			const std::expected<std::optional<QDBusObjectPath>, KeyStoreFailure> ownKeyring = OwnKeyringHolding({keyItem});
+			if (!ownKeyring.has_value()) {
+				return std::unexpected(ownKeyring.error());
 			}
+			if (!ownKeyring->has_value()) {
+				return {};
+			}
+			return Lock(**ownKeyring);
 		}
 
-		// Keyrings lock without asking anything.
-		void Lock(const QDBusObjectPath& collection) {
+		// Keyrings usually lock without asking; a service may still answer with a prompt. The result is read from the
+		// collection itself, since the reply lists only what locked without a prompt.
+		std::expected<void, KeyStoreFailure> Lock(const QDBusObjectPath& collection) {
 			QDBusMessage call = Method(SECRETS_PATH, SERVICE_INTERFACE, QStringLiteral("Lock"));
 			call << QVariant::fromValue(QList<QDBusObjectPath>{collection});
-			connection.call(call);
+			const QDBusMessage reply = connection.call(call);
+			if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().size() < 2) {
+				return std::unexpected(KeyStoreFailure::FAILED);
+			}
+			if (const QDBusObjectPath prompt = qdbus_cast<QDBusObjectPath>(reply.arguments().at(1)); prompt.path() != NO_OBJECT_PATH) {
+				if (const std::expected<void, KeyStoreFailure> prompted = RunPrompt(prompt); !prompted.has_value()) {
+					return prompted;
+				}
+			}
+			if (!IsLocked(collection)) {
+				return std::unexpected(KeyStoreFailure::FAILED);
+			}
+			return {};
+		}
+
+		bool IsLocked(const QDBusObjectPath& collection) {
+			QDBusMessage call = QDBusMessage::createMethodCall(SECRETS_SERVICE, collection.path(), PROPERTIES_INTERFACE, QStringLiteral("Get"));
+			call << QString(COLLECTION_INTERFACE) << QString(LOCKED_PROPERTY);
+			const QDBusMessage reply = connection.call(call);
+			if (reply.type() != QDBusMessage::ReplyMessage || reply.arguments().isEmpty()) {
+				return false;
+			}
+			return qdbus_cast<QDBusVariant>(reply.arguments().front()).variant().toBool();
 		}
 
 		std::expected<void, KeyStoreFailure> StoreItem(const QDBusObjectPath& collection, const QString& vaultId, const DataKey& key) {

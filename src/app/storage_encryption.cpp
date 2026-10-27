@@ -49,6 +49,21 @@ namespace {
 		return problem.kind == StorageErrorKind::KEY_UNAVAILABLE || problem.kind == StorageErrorKind::UNSEALING_FAILED;
 	}
 
+	bool IsAnyProblem(const StorageError& /*problem*/) {
+		return true;
+	}
+
+	// The accounts, the sign-ins and the backups alike.
+	template<std::predicate<const StorageError&> Predicate>
+	std::optional<StorageError> FindUnreadableFile(const AccountLibrary& library, Predicate matches) {
+		for (const std::vector<StorageError>* problems : {&library.LoadProblems(), &library.BackupProblems()}) {
+			if (const auto found = std::ranges::find_if(*problems, matches); found != problems->end()) {
+				return *found;
+			}
+		}
+		return std::nullopt;
+	}
+
 	KeyProtection ParseProtection(const QString& name) {
 		if (name == WINDOWS_HELLO_PROTECTION) {
 			return KeyProtection::WINDOWS_HELLO;
@@ -174,7 +189,7 @@ std::expected<void, EncryptionFailure> StorageEncryption::Enable(KeyProtection p
 	}
 	// Sealed files that do not open belong to a key the state no longer names, such as after encryption.json was
 	// deleted. A new key would replace the stored one, and they would stay closed for good.
-	if (const auto sealedFile = std::ranges::find_if(accountLibrary.LoadProblems(), IsSealedWithAnotherKey); sealedFile != accountLibrary.LoadProblems().end()) {
+	if (const std::optional<StorageError> sealedFile = FindUnreadableFile(accountLibrary, IsSealedWithAnotherKey); sealedFile.has_value()) {
 		return std::unexpected(UnreadableFileFailure(*sealedFile));
 	}
 	std::optional<DataKey> newKey = DataKey::Generate();
@@ -207,8 +222,8 @@ std::expected<void, EncryptionFailure> StorageEncryption::Disable() {
 		return std::unexpected(KeyStoreError(KeyStoreFailure::FAILED));
 	}
 	// Files that could not be read stay sealed: removing the key would lose them for good.
-	if (!accountLibrary.LoadProblems().empty()) {
-		return std::unexpected(UnreadableFileFailure(accountLibrary.LoadProblems().front()));
+	if (const std::optional<StorageError> unreadableFile = FindUnreadableFile(accountLibrary, IsAnyProblem); unreadableFile.has_value()) {
+		return std::unexpected(UnreadableFileFailure(*unreadableFile));
 	}
 	// Turning the protection off is confirmed like opening the data.
 	if (AsksUser(keyProtection)) {
@@ -253,6 +268,10 @@ std::expected<void, EncryptionFailure> StorageEncryption::CompleteEnabling() {
 }
 
 std::expected<void, EncryptionFailure> StorageEncryption::CompleteDisabling() {
+	// Checked again after a restart: a file that did not open this time keeps the key until it does.
+	if (const std::optional<StorageError> unreadableFile = FindUnreadableFile(accountLibrary, IsAnyProblem); unreadableFile.has_value()) {
+		return std::unexpected(UnreadableFileFailure(*unreadableFile));
+	}
 	accountLibrary.SetDataKey(std::nullopt);
 	if (const std::expected<void, StorageError> rewritten = accountLibrary.RewriteFiles(); !rewritten.has_value()) {
 		// Some files are plain now and the rest still sealed: the key stays until the next try.

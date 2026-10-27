@@ -9,8 +9,8 @@ enum class KeyStoreFailure {
 	UNAVAILABLE,
 	// The user dismissed the prompt of the keyring or of Windows Hello.
 	DISMISSED,
-	// The protection that asks the user is missing: Windows Hello without a PIN, face or fingerprint, or a keyring
-	// that cannot make a separate keyring.
+	// The protection that asks the user is missing or cannot be enforced: Windows Hello without a PIN, face or
+	// fingerprint, or a keyring that cannot make a separate keyring and keep it locked.
 	NOT_SET_UP,
 	NOT_FOUND,
 	// Present, but not for this user account or computer, or damaged.

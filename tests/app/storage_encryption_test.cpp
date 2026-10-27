@@ -6,6 +6,7 @@ namespace {
 constexpr quint64 RECORD_STEAM_ID = 76561198000000001;
 constexpr QLatin1StringView ACCOUNTS_DIRECTORY{"accounts"};
 constexpr QLatin1StringView SESSIONS_DIRECTORY{"sessions"};
+constexpr QLatin1StringView BACKUPS_DIRECTORY{"backups"};
 constexpr QLatin1StringView STATE_FILE{"encryption.json"};
 constexpr QByteArrayView SEALED_MARKER{"steamforge-sealed"};
 constexpr QByteArrayView REFRESH_TOKEN{"synthetic.refresh.token"};
@@ -54,6 +55,29 @@ QString RecordFile(const QTemporaryDir& directory, const QUuid& recordId) {
 
 QString SessionFile(const QTemporaryDir& directory, const QUuid& recordId) {
 	return QDir(directory.filePath(SESSIONS_DIRECTORY)).filePath(recordId.toString(QUuid::WithoutBraces) + QStringLiteral(".json"));
+}
+
+QStringList BackupFiles(const QTemporaryDir& directory) {
+	const QDir backups(directory.filePath(BACKUPS_DIRECTORY));
+	QStringList filePaths;
+	for (const QString& fileName : backups.entryList({QStringLiteral("*.json")}, QDir::Files, QDir::Name)) {
+		filePaths.append(backups.filePath(fileName));
+	}
+	return filePaths;
+}
+
+bool AreAllBackupsSealed(const QTemporaryDir& directory) {
+	const QStringList filePaths = BackupFiles(directory);
+	return !filePaths.isEmpty() && std::ranges::all_of(filePaths, [](const QString& filePath) {
+		return FileBytes(filePath).contains(SEALED_MARKER.toByteArray());
+	});
+}
+
+bool AreAllBackupsPlain(const QTemporaryDir& directory) {
+	const QStringList filePaths = BackupFiles(directory);
+	return !filePaths.isEmpty() && std::ranges::all_of(filePaths, [](const QString& filePath) {
+		return FileBytes(filePath).contains("synthetic_login");
+	});
 }
 
 // A library with one record and its sign-in, written as plain files.
@@ -136,6 +160,97 @@ private Q_SLOTS:
 		QVERIFY(FileBytes(SessionFile(directory, record.id)).contains(REFRESH_TOKEN.toByteArray()));
 		QVERIFY(!QFileInfo::exists(directory.filePath(STATE_FILE)));
 		QCOMPARE(keyStore.KeyCount(), qsizetype{0});
+	}
+
+	// Backups of replaced Steam Guards change format with the accounts: a backup left sealed would lose its key.
+	void KeepsBackupsOpenThroughEveryChange() {
+		const QTemporaryDir directory;
+		const SteamForge::AuthenticatorRecord record = AddPlainAccount(directory);
+		FakeKeyStore keyStore;
+		{
+			const std::unique_ptr<SteamForge::AccountLibrary> library = LibraryIn(directory);
+			SteamForge::StorageEncryption encryption(keyStore, *library, directory.filePath(STATE_FILE));
+			encryption.PrepareLibrary();
+			library->Load();
+			QVERIFY(library->SaveBackup(record).has_value());
+			QVERIFY(encryption.Enable(SteamForge::KeyProtection::USER_ACCOUNT).has_value());
+			QVERIFY(library->SaveBackup(MakeRecord(QStringLiteral("synthetic_login"), SECOND_SECRET_SEED)).has_value());
+			QCOMPARE(BackupFiles(directory).size(), qsizetype{2});
+			QVERIFY(AreAllBackupsSealed(directory));
+
+			QVERIFY(encryption.Disable().has_value());
+			QCOMPARE(keyStore.KeyCount(), qsizetype{0});
+			QVERIFY(AreAllBackupsPlain(directory));
+
+			QVERIFY(encryption.Enable(SteamForge::KeyProtection::USER_ACCOUNT).has_value());
+			QVERIFY(AreAllBackupsSealed(directory));
+		}
+
+		// After a restart the backups open with the new key and turn plain again.
+		const std::unique_ptr<SteamForge::AccountLibrary> library = LibraryIn(directory);
+		SteamForge::StorageEncryption encryption(keyStore, *library, directory.filePath(STATE_FILE));
+		encryption.PrepareLibrary();
+		library->Load();
+		QVERIFY(library->BackupProblems().empty());
+		QVERIFY(encryption.Disable().has_value());
+		QCOMPARE(BackupFiles(directory).size(), qsizetype{2});
+		QVERIFY(AreAllBackupsPlain(directory));
+	}
+
+	void KeepsTheKeyWhileABackupDoesNotOpen() {
+		const QTemporaryDir directory;
+		const SteamForge::AuthenticatorRecord record = AddPlainAccount(directory);
+		FakeKeyStore keyStore;
+		{
+			const std::unique_ptr<SteamForge::AccountLibrary> library = LibraryIn(directory);
+			SteamForge::StorageEncryption encryption(keyStore, *library, directory.filePath(STATE_FILE));
+			encryption.PrepareLibrary();
+			library->Load();
+			QVERIFY(encryption.Enable(SteamForge::KeyProtection::USER_ACCOUNT).has_value());
+			QVERIFY(library->SaveBackup(record).has_value());
+		}
+		// The account file under the name of the backup: sealed with this key, it does not open there.
+		const QStringList backupFiles = BackupFiles(directory);
+		QCOMPARE(backupFiles.size(), qsizetype{1});
+		QFile backupFile(backupFiles.front());
+		QVERIFY(backupFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
+		backupFile.write(FileBytes(RecordFile(directory, record.id)));
+		backupFile.close();
+		const QByteArray backupBytes = FileBytes(backupFiles.front());
+
+		const std::unique_ptr<SteamForge::AccountLibrary> library = LibraryIn(directory);
+		SteamForge::StorageEncryption encryption(keyStore, *library, directory.filePath(STATE_FILE));
+		encryption.PrepareLibrary();
+		library->Load();
+		QVERIFY(library->LoadProblems().empty());
+		QCOMPARE(library->BackupProblems().size(), std::size_t{1});
+		const std::expected<void, SteamForge::EncryptionFailure> disabled = encryption.Disable();
+		QVERIFY(!disabled.has_value());
+		QVERIFY(disabled.error().unreadableFile.has_value());
+		QCOMPARE(disabled.error().unreadableFile->filePath, backupFiles.front());
+		QCOMPARE(encryption.Status(), SteamForge::EncryptionStatus::ON);
+		QCOMPARE(keyStore.KeyCount(), qsizetype{1});
+		QCOMPARE(FileBytes(backupFiles.front()), backupBytes);
+		QVERIFY(FileBytes(RecordFile(directory, record.id)).contains(SEALED_MARKER.toByteArray()));
+
+		// A change cut short before is not finished at the next start either.
+		QJsonObject state = QJsonDocument::fromJson(FileBytes(directory.filePath(STATE_FILE))).object();
+		state.insert(QStringLiteral("state"), QStringLiteral("disabling"));
+		QFile stateFile(directory.filePath(STATE_FILE));
+		QVERIFY(stateFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
+		stateFile.write(QJsonDocument(state).toJson());
+		stateFile.close();
+		const std::unique_ptr<SteamForge::AccountLibrary> restarted = LibraryIn(directory);
+		SteamForge::StorageEncryption restartedEncryption(keyStore, *restarted, directory.filePath(STATE_FILE));
+		restartedEncryption.PrepareLibrary();
+		restarted->Load();
+		const std::expected<void, SteamForge::EncryptionFailure> finished = restartedEncryption.FinishInterruptedChange();
+		QVERIFY(!finished.has_value());
+		QVERIFY(finished.error().unreadableFile.has_value());
+		QCOMPARE(restartedEncryption.Status(), SteamForge::EncryptionStatus::ON);
+		QCOMPARE(keyStore.KeyCount(), qsizetype{1});
+		QVERIFY(QFileInfo::exists(directory.filePath(STATE_FILE)));
+		QVERIFY(FileBytes(RecordFile(directory, record.id)).contains(SEALED_MARKER.toByteArray()));
 	}
 
 	void ChangesNothingWhenTheSystemKeepsNoKey() {
