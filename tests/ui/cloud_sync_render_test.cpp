@@ -192,6 +192,55 @@ private Q_SLOTS:
 		QVERIFY(importDialog.grab().save(output.filePath(QStringLiteral("sync_import.png"))));
 	}
 
+	// The top bar when an account from Google could not be written on this computer.
+	void RenderNotSynced() {
+		const QString renderDirectory = qEnvironmentVariable("STEAMFORGE_RENDER_DIRECTORY");
+		if (renderDirectory.isEmpty()) {
+			QSKIP("Set STEAMFORGE_RENDER_DIRECTORY to render the status of a failed sync.");
+		}
+		auto& application = *qobject_cast<QApplication*>(QCoreApplication::instance());
+		SteamForge::ApplyTheme(application);
+		SteamForge::InstallWindowFrameStyling(application);
+		SteamForge::InterfaceTranslator translator;
+		const SteamForge::InterfaceLanguage language = RenderLanguage();
+		QVERIFY(translator.Apply(language));
+		const QString suffix = language == SteamForge::InterfaceLanguage::ENGLISH ? QStringLiteral("en") : QStringLiteral("ru");
+
+		FakeDrive drive;
+		CloudComputer otherComputer(drive);
+		CloudComputer thisComputer(drive);
+		const SteamForge::AuthenticatorRecord here = DemoRecord(QStringLiteral("dmitry_v"), LOCAL_STEAM_ID, 0x37);
+		QVERIFY(thisComputer.library->Add(here).has_value());
+		const QString recoveryKey = ConnectToGoogle(thisComputer);
+		QVERIFY(!recoveryKey.isEmpty());
+		QVERIFY(!ConnectToGoogle(otherComputer, recoveryKey).isEmpty());
+		const SteamForge::AuthenticatorRecord arriving = DemoRecord(QStringLiteral("mister_kite"), AWAY_STEAM_ID, 0x35);
+		QVERIFY(otherComputer.library->Add(arriving).has_value());
+		QVERIFY(AddAndWait(otherComputer, arriving.id));
+
+		FakeWebApiTransport webApiTransport;
+		FakeCommunityTransport communityTransport;
+		SteamForge::SteamClock clock;
+		SteamForge::SteamImageCache imageCache;
+		SteamForge::ConfirmationMonitor monitor(webApiTransport, communityTransport, *thisComputer.library, clock);
+		const QDir dataRoot(thisComputer.directory.path());
+		SteamForge::ApplicationSettings settings(dataRoot.filePath(QStringLiteral("settings.ini")));
+		FakeCommunityTransport profileTransport;
+		SteamForge::AccountProfiles profiles(profileTransport, imageCache, dataRoot.filePath(QStringLiteral("profiles.json")));
+		SteamForge::MainWindow mainWindow(*thisComputer.library, clock, monitor, imageCache, profiles, *thisComputer.encryption, *thisComputer.connection, *thisComputer.sync, settings, SteamForge::DataLocation{.directoryPath = dataRoot.path(), .isPortable = false});
+		mainWindow.show();
+		// The account from Google has nowhere to go: a file stands where its file would be written.
+		const QString accountsPath = dataRoot.filePath(QStringLiteral("accounts"));
+		QVERIFY(QDir(accountsPath).removeRecursively());
+		QFile blockingFile(accountsPath);
+		QVERIFY(blockingFile.open(QIODevice::WriteOnly));
+		blockingFile.close();
+		QVERIFY(SyncAndWait(*thisComputer.sync));
+		QCOMPARE(thisComputer.sync->Status(), SteamForge::CloudSyncStatus::NOT_SAVED);
+		QTest::qWait(300);
+		QVERIFY(mainWindow.grab().save(QDir(renderDirectory).filePath(QStringLiteral("not-synced-%1.png").arg(suffix))));
+	}
+
 	// Sync goes on in the event loop of every question: an account that comes from Google meanwhile moves the records
 	// of the library in memory.
 	void ExportsTheChosenAccountWhileSyncAddsOne() {

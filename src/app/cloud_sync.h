@@ -2,6 +2,7 @@
 
 #include "cloud/google_drive.h"
 #include "domain/authenticator_record.h"
+#include "storage/storage_error.h"
 
 #include <deque>
 #include <map>
@@ -19,7 +20,11 @@ enum class CloudSyncStatus {
 	SYNCED,
 	// A conflict waits for the user; the other accounts keep syncing.
 	NEEDS_DECISION,
-	UNREACHABLE
+	UNREACHABLE,
+	// A change could not be written on this computer; the next sync tries again.
+	NOT_SAVED,
+	// A record in Google does not open: damaged, or saved by a newer SteamForge. The accounts here stay as they are.
+	UNREADABLE_IN_CLOUD
 };
 
 enum class CloudConflictKind {
@@ -104,6 +109,11 @@ private:
 	void Request(const QUuid& localRecordId, const QString& cloudRecordId, Step step);
 	void RunRequestedSteps();
 	void ApplyDecision(const CloudConflict& conflict, ConflictChoice choice);
+	// A run is the steps asked for and the passes after them; what failed in it shows until the next run.
+	void BeginRun();
+	void StartPass();
+	// Logs a failed write and keeps the run from counting as synced.
+	bool CheckSaved(const std::expected<void, StorageError>& saved);
 	void PlanPass(const std::vector<DriveFile>& files);
 	[[nodiscard]] RevisionsByRecord RecordRevisions(const std::vector<DriveFile>& files) const;
 	// Forgets the records that left the cloud.
@@ -111,16 +121,18 @@ private:
 	void PlanLink(const CloudLink& link, const RevisionsByRecord& revisionsByRecord);
 	void RunNextStep();
 	void FinishPass();
-	void ApplyCloudVersion(CloudLink link, const CloudRevision& revision);
-	void PushLocalVersion(CloudLink link, const AuthenticatorRecord& record, int baseRevision);
+	// done tells whether the record here and its link took the version.
+	void ApplyCloudVersion(CloudLink link, const CloudRevision& revision, std::function<void(bool)> done);
+	void PushLocalVersion(CloudLink link, const AuthenticatorRecord& record, int baseRevision, std::function<void(bool)> done);
 	void AdoptCloudRecord(const CloudRevision& revision);
 	void LinkSameGuard(AuthenticatorRecord local, const AuthenticatorRecord& cloudRecord, const CloudRevision& revision);
 	void CollectConflict(CloudConflictKind kind, const QUuid& localRecordId, const CloudRevision& revision);
 	void UploadNewRecord(const AuthenticatorRecord& record, std::function<void(bool)> done);
 	// False as soon as a file could not be deleted; a file that is already gone counts as deleted.
 	void DeleteFiles(std::vector<QString> fileIds, std::function<void(bool)> done);
-	// After a decision: the revisions of the record other than the linked one would bring the conflict back.
-	void KeepOnlyLinkedRevision(const QUuid& localRecordId);
+	// After a decision is in place: the older revisions and the version this computer had would bring the question
+	// back. A newer revision is a change of another computer and stays.
+	void KeepOnlyLinkedRevision(const QUuid& localRecordId, const QString& previousFileId);
 	void DownloadRecord(const CloudRevision& revision, std::function<void(std::optional<AuthenticatorRecord>)> done);
 	[[nodiscard]] std::optional<QByteArray> Sealed(const QString& recordId, int revision, const AuthenticatorRecord& record) const;
 	[[nodiscard]] DriveProperties RecordProperties(const QString& recordId, int revision) const;
@@ -138,7 +150,9 @@ private:
 	CloudSyncStatus status = CloudSyncStatus::INACTIVE;
 	QDateTime lastSyncedAt;
 	bool isSyncing = false;
-	bool isPassReachable = true;
+	bool isRunReachable = true;
+	bool isRunSaved = true;
+	bool isRunReadable = true;
 	bool isResyncPending = false;
 	bool isApplyingCloud = false;
 };

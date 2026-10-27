@@ -555,6 +555,14 @@ void MainWindow::ShowSyncStatus() {
 			ShowStatus(*googleStatusButton, CLOUD_OFF_ICON_RESOURCE, tr("No connection to Google"), false);
 			googleStatusButton->setToolTip(tr("SteamForge tries again in a few minutes"));
 			return;
+		case CloudSyncStatus::NOT_SAVED:
+			ShowStatus(*googleStatusButton, CLOUD_ALERT_ICON_RESOURCE, tr("Not synced"), true);
+			googleStatusButton->setToolTip(tr("A change could not be saved on this computer. SteamForge tries again at the next sync"));
+			return;
+		case CloudSyncStatus::UNREADABLE_IN_CLOUD:
+			ShowStatus(*googleStatusButton, CLOUD_ALERT_ICON_RESOURCE, tr("Not synced"), true);
+			googleStatusButton->setToolTip(tr("An account in Google could not be read. The accounts on this computer stay as they are"));
+			return;
 	}
 }
 

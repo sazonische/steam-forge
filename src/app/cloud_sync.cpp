@@ -19,13 +19,6 @@ namespace {
 	constexpr std::chrono::milliseconds SYNC_INTERVAL{std::chrono::minutes(10)};
 	// Several quick edits of one account go up as one revision.
 	constexpr std::chrono::milliseconds CHANGE_DELAY{std::chrono::seconds(3)};
-
-	// A link that is not saved only repeats work: the next pass finds the same records again.
-	void WarnIfNotSaved(const std::expected<void, StorageError>& saved) {
-		if (!saved.has_value()) {
-			qWarning("The Google sync state could not be saved; the next sync repeats the work.");
-		}
-	}
 } // namespace
 
 CloudSync::CloudSync(GoogleConnection& connection, AccountLibrary& library, QObject* parent) :
@@ -68,27 +61,46 @@ void CloudSync::Stop() {
 }
 
 void CloudSync::Synchronize() {
+	if (isSyncing) {
+		isResyncPending = true;
+		return;
+	}
+	BeginRun();
+	StartPass();
+}
+
+void CloudSync::BeginRun() {
+	isRunReachable = true;
+	isRunSaved = true;
+	isRunReadable = true;
+}
+
+void CloudSync::StartPass() {
 	GoogleDrive* drive = googleConnection.Drive();
 	if (drive == nullptr || !googleConnection.CloudKey().has_value()) {
 		SetStatus(CloudSyncStatus::INACTIVE);
 		return;
 	}
-	if (isSyncing) {
-		isResyncPending = true;
-		return;
-	}
 	isSyncing = true;
-	isPassReachable = true;
 	SetStatus(CloudSyncStatus::SYNCING);
 	drive->ListFiles(*this, [this](std::expected<std::vector<DriveFile>, GoogleError> files) {
 		if (!files.has_value()) {
-			isPassReachable = false;
+			isRunReachable = false;
 			FinishPass();
 			return;
 		}
 		PlanPass(*files);
 		RunNextStep();
 	});
+}
+
+bool CloudSync::CheckSaved(const std::expected<void, StorageError>& saved) {
+	if (saved.has_value()) {
+		return true;
+	}
+	qWarning("A change of the Google sync could not be saved on this computer; the next sync tries again.");
+	isRunSaved = false;
+	return false;
 }
 
 void CloudSync::AddToCloud(const QUuid& recordId) {
@@ -132,7 +144,7 @@ void CloudSync::RemoveFromCloud(const QUuid& recordId) {
 		// Every revision goes, so no leftover file comes back as an account on the next pass.
 		drive->ListFiles(*this, [this, recordId, cloudRecordId](std::expected<std::vector<DriveFile>, GoogleError> files) {
 			if (!files.has_value()) {
-				isPassReachable = false;
+				isRunReachable = false;
 				RunNextStep();
 				return;
 			}
@@ -145,8 +157,8 @@ void CloudSync::RemoveFromCloud(const QUuid& recordId) {
 			DeleteFiles(std::move(recordFileIds), [this, recordId, cloudRecordId](bool isAllDeleted) {
 				// A file left behind would link the account again on the next pass.
 				if (isAllDeleted) {
-					WarnIfNotSaved(googleConnection.RemoveLink(recordId));
-					WarnIfNotSaved(googleConnection.ForgetCloudOnlyRecords(QSet<QString>{cloudRecordId}));
+					CheckSaved(googleConnection.RemoveLink(recordId));
+					CheckSaved(googleConnection.ForgetCloudOnlyRecords(QSet<QString>{cloudRecordId}));
 				}
 				RunNextStep();
 			});
@@ -186,28 +198,58 @@ void CloudSync::ApplyDecision(const CloudConflict& conflict, ConflictChoice choi
 		isApplyingCloud = true;
 		const std::expected<void, StorageError> saved = accountLibrary.Add(added);
 		isApplyingCloud = false;
-		if (saved.has_value()) {
-			WarnIfNotSaved(googleConnection.AddLink(CloudLink{.localRecordId = added.id, .cloudRecordId = conflict.cloudRecordId, .revision = conflict.cloudRevision, .fileId = conflict.cloudFileId, .fingerprint = CloudRecordFingerprint(added)}));
+		if (CheckSaved(saved)) {
+			CheckSaved(googleConnection.AddLink(CloudLink{.localRecordId = added.id, .cloudRecordId = conflict.cloudRecordId, .revision = conflict.cloudRevision, .fileId = conflict.cloudFileId, .fingerprint = CloudRecordFingerprint(added)}));
 			Q_EMIT RecordAdded(added.id);
 		}
 		RunNextStep();
 		return;
 	}
-	const AuthenticatorRecord* local = accountLibrary.FindRecord(conflict.localRecordId);
-	if (local == nullptr) {
+	GoogleDrive* drive = googleConnection.Drive();
+	if (drive == nullptr) {
 		RunNextStep();
 		return;
 	}
-	const CloudLink link{.localRecordId = local->id, .cloudRecordId = conflict.cloudRecordId, .revision = conflict.cloudRevision, .fileId = conflict.cloudFileId, .fingerprint = {}};
-	pendingSteps.emplace_front([this, localRecordId = local->id]() {
-		KeepOnlyLinkedRevision(localRecordId);
+	// The answer is about the version the question showed. When another computer has changed the account since, it
+	// is not applied, and the pass after the decision asks again with the newest version.
+	drive->ListFiles(*this, [this, conflict, choice](std::expected<std::vector<DriveFile>, GoogleError> files) {
+		if (!files.has_value()) {
+			isRunReachable = false;
+			RunNextStep();
+			return;
+		}
+		const RevisionsByRecord revisionsByRecord = RecordRevisions(*files);
+		const auto found = revisionsByRecord.find(conflict.cloudRecordId);
+		if (found == revisionsByRecord.end() || found->second.front().revision != conflict.cloudRevision) {
+			RunNextStep();
+			return;
+		}
+		const auto shown = std::ranges::find_if(found->second, [&conflict](const CloudRevision& revision) {
+			return revision.file.id == conflict.cloudFileId;
+		});
+		const AuthenticatorRecord* local = accountLibrary.FindRecord(conflict.localRecordId);
+		if (shown == found->second.end() || local == nullptr) {
+			RunNextStep();
+			return;
+		}
+		const std::vector<CloudLink>& links = googleConnection.Links();
+		const auto previousLink = std::ranges::find(links, conflict.localRecordId, &CloudLink::localRecordId);
+		const QString previousFileId = previousLink != links.end() && previousLink->cloudRecordId == conflict.cloudRecordId ? previousLink->fileId : QString();
+		const CloudLink link{.localRecordId = local->id, .cloudRecordId = conflict.cloudRecordId, .revision = conflict.cloudRevision, .fileId = conflict.cloudFileId, .fingerprint = {}};
+		// A decision that did not take leaves every revision in the cloud.
+		std::function<void(bool)> keepOnlyDecided = [this, localRecordId = local->id, previousFileId](bool isApplied) {
+			if (!isApplied) {
+				RunNextStep();
+				return;
+			}
+			KeepOnlyLinkedRevision(localRecordId, previousFileId);
+		};
+		if (choice == ConflictChoice::USE_CLOUD) {
+			ApplyCloudVersion(link, *shown, std::move(keepOnlyDecided));
+			return;
+		}
+		PushLocalVersion(link, *local, conflict.cloudRevision, std::move(keepOnlyDecided));
 	});
-	if (choice == ConflictChoice::USE_CLOUD) {
-		const CloudRevision revision{.recordId = conflict.cloudRecordId, .revision = conflict.cloudRevision, .file = DriveFile{.id = conflict.cloudFileId, .name = {}, .appProperties = {}, .createdTime = {}}};
-		ApplyCloudVersion(link, revision);
-		return;
-	}
-	PushLocalVersion(link, *local, conflict.cloudRevision);
 }
 
 CloudSyncStatus CloudSync::Status() const {
@@ -249,6 +291,9 @@ void CloudSync::Request(const QUuid& localRecordId, const QString& cloudRecordId
 	// The state that counts is the one a fresh pass finds after the action.
 	isResyncPending = true;
 	Q_EMIT StatusChanged();
+	if (!isSyncing) {
+		BeginRun();
+	}
 	RunRequestedSteps();
 }
 
@@ -311,7 +356,7 @@ QSet<QString> CloudSync::CurrentCloudOnlyRecordIds(const RevisionsByRecord& revi
 		}
 	}
 	if (!vanishedRecordIds.isEmpty()) {
-		WarnIfNotSaved(googleConnection.ForgetCloudOnlyRecords(vanishedRecordIds));
+		CheckSaved(googleConnection.ForgetCloudOnlyRecords(vanishedRecordIds));
 	}
 	return cloudOnlyRecordIds;
 }
@@ -321,7 +366,7 @@ void CloudSync::PlanLink(const CloudLink& link, const RevisionsByRecord& revisio
 	if (local == nullptr) {
 		// Removed from SteamForge here: the cloud record stays for the other computers.
 		pendingSteps.emplace_back([this, localRecordId = link.localRecordId]() {
-			WarnIfNotSaved(googleConnection.RemoveLink(localRecordId));
+			CheckSaved(googleConnection.RemoveLink(localRecordId));
 			RunNextStep();
 		});
 		return;
@@ -329,7 +374,7 @@ void CloudSync::PlanLink(const CloudLink& link, const RevisionsByRecord& revisio
 	const auto found = revisionsByRecord.find(link.cloudRecordId);
 	if (found == revisionsByRecord.end()) {
 		pendingSteps.emplace_back([this, localRecordId = link.localRecordId]() {
-			if (googleConnection.RemoveLink(localRecordId).has_value()) {
+			if (CheckSaved(googleConnection.RemoveLink(localRecordId))) {
 				Q_EMIT RecordUnlinked(localRecordId);
 			}
 			RunNextStep();
@@ -354,13 +399,17 @@ void CloudSync::PlanLink(const CloudLink& link, const RevisionsByRecord& revisio
 	}
 	if (latest.revision > link.revision) {
 		pendingSteps.emplace_back([this, link, latest]() {
-			ApplyCloudVersion(link, latest);
+			ApplyCloudVersion(link, latest, [this](bool /*isApplied*/) {
+				RunNextStep();
+			});
 		});
 		return;
 	}
 	if (isLocalChanged) {
 		pendingSteps.emplace_back([this, link, record = *local, baseRevision = latest.revision]() {
-			PushLocalVersion(link, record, baseRevision);
+			PushLocalVersion(link, record, baseRevision, [this](bool /*isPushed*/) {
+				RunNextStep();
+			});
 		});
 	}
 }
@@ -379,7 +428,7 @@ void CloudSync::DeleteFiles(std::vector<QString> fileIds, std::function<void(boo
 	fileIds.pop_back();
 	drive->Delete(fileId, *this, [this, remainingIds = std::move(fileIds), deletionDone = std::move(done)](const std::expected<void, GoogleError>& deleted) mutable {
 		if (!deleted.has_value() && deleted.error().httpStatus != NOT_FOUND_STATUS) {
-			isPassReachable = false;
+			isRunReachable = false;
 			deletionDone(false);
 			return;
 		}
@@ -387,7 +436,7 @@ void CloudSync::DeleteFiles(std::vector<QString> fileIds, std::function<void(boo
 	});
 }
 
-void CloudSync::KeepOnlyLinkedRevision(const QUuid& localRecordId) {
+void CloudSync::KeepOnlyLinkedRevision(const QUuid& localRecordId, const QString& previousFileId) {
 	const std::vector<CloudLink>& links = googleConnection.Links();
 	const auto link = std::ranges::find(links, localRecordId, &CloudLink::localRecordId);
 	GoogleDrive* drive = googleConnection.Drive();
@@ -395,18 +444,29 @@ void CloudSync::KeepOnlyLinkedRevision(const QUuid& localRecordId) {
 		RunNextStep();
 		return;
 	}
-	drive->ListFiles(*this, [this, cloudRecordId = link->cloudRecordId, keptFileId = link->fileId](std::expected<std::vector<DriveFile>, GoogleError> files) {
+	drive->ListFiles(*this, [this, cloudRecordId = link->cloudRecordId, keptFileId = link->fileId, keptRevision = link->revision, previousFileId](std::expected<std::vector<DriveFile>, GoogleError> files) {
 		if (!files.has_value()) {
+			isRunReachable = false;
 			RunNextStep();
 			return;
 		}
-		std::vector<QString> otherFileIds;
-		for (const DriveFile& file : *files) {
-			if (file.appProperties.value(RECORD_ID_PROPERTY) == cloudRecordId && file.id != keptFileId) {
-				otherFileIds.push_back(file.id);
+		const RevisionsByRecord revisionsByRecord = RecordRevisions(*files);
+		const auto found = revisionsByRecord.find(cloudRecordId);
+		const auto isKept = [&keptFileId](const CloudRevision& revision) {
+			return revision.file.id == keptFileId;
+		};
+		// Without the kept revision in the listing nothing is known to be replaced.
+		if (found == revisionsByRecord.end() || !std::ranges::any_of(found->second, isKept)) {
+			RunNextStep();
+			return;
+		}
+		std::vector<QString> replacedFileIds;
+		for (const CloudRevision& revision : found->second) {
+			if (revision.file.id != keptFileId && (revision.revision < keptRevision || revision.file.id == previousFileId)) {
+				replacedFileIds.push_back(revision.file.id);
 			}
 		}
-		DeleteFiles(std::move(otherFileIds), [this](bool) {
+		DeleteFiles(std::move(replacedFileIds), [this](bool /*isAllDeleted*/) {
 			RunNextStep();
 		});
 	});
@@ -437,11 +497,20 @@ void CloudSync::FinishPass() {
 	}
 	if (isResyncPending) {
 		isResyncPending = false;
-		Synchronize();
+		StartPass();
 		return;
 	}
-	if (!isPassReachable) {
+	if (!isRunReachable) {
 		SetStatus(CloudSyncStatus::UNREACHABLE);
+		return;
+	}
+	if (!isRunSaved) {
+		SetStatus(CloudSyncStatus::NOT_SAVED);
+		return;
+	}
+	// A version to choose still shows: a record that never opens would hide it for good.
+	if (!isRunReadable && conflicts.empty()) {
+		SetStatus(CloudSyncStatus::UNREADABLE_IN_CLOUD);
 		return;
 	}
 	lastSyncedAt = QDateTime::currentDateTime();
@@ -450,64 +519,68 @@ void CloudSync::FinishPass() {
 	Q_EMIT StatusChanged();
 }
 
-void CloudSync::ApplyCloudVersion(CloudLink link, const CloudRevision& revision) {
-	DownloadRecord(revision, [this, link, revision](std::optional<AuthenticatorRecord> cloudRecord) mutable {
+void CloudSync::ApplyCloudVersion(CloudLink link, const CloudRevision& revision, std::function<void(bool)> done) {
+	DownloadRecord(revision, [this, link, revision, applyDone = std::move(done)](std::optional<AuthenticatorRecord> cloudRecord) mutable {
 		const AuthenticatorRecord* local = accountLibrary.FindRecord(link.localRecordId);
 		if (!cloudRecord.has_value() || local == nullptr) {
-			RunNextStep();
+			applyDone(false);
 			return;
 		}
 		cloudRecord->id = link.localRecordId;
 		const AuthenticatorRecord applied = WithLocalSteamSignIn(std::move(*cloudRecord), *local);
 		// No Steam Guard key leaves this computer without a copy.
 		const bool isKeyReplaced = applied.secrets.sharedSecret != local->secrets.sharedSecret;
-		if (isKeyReplaced && !accountLibrary.SaveBackup(*local).has_value()) {
-			RunNextStep();
+		if (isKeyReplaced && !CheckSaved(accountLibrary.SaveBackup(*local))) {
+			applyDone(false);
 			return;
 		}
 		isApplyingCloud = true;
 		const std::expected<void, StorageError> saved = accountLibrary.Save(applied);
 		isApplyingCloud = false;
-		if (saved.has_value()) {
-			link.revision = revision.revision;
-			link.fileId = revision.file.id;
-			link.fingerprint = CloudRecordFingerprint(applied);
-			WarnIfNotSaved(googleConnection.AddLink(link));
-			if (isKeyReplaced) {
-				Q_EMIT KeyReplaced(link.localRecordId);
-			}
+		if (!CheckSaved(saved)) {
+			applyDone(false);
+			return;
 		}
-		RunNextStep();
+		link.revision = revision.revision;
+		link.fileId = revision.file.id;
+		link.fingerprint = CloudRecordFingerprint(applied);
+		const bool isLinked = CheckSaved(googleConnection.AddLink(link));
+		if (isKeyReplaced) {
+			Q_EMIT KeyReplaced(link.localRecordId);
+		}
+		applyDone(isLinked);
 	});
 }
 
-void CloudSync::PushLocalVersion(CloudLink link, const AuthenticatorRecord& record, int baseRevision) {
+void CloudSync::PushLocalVersion(CloudLink link, const AuthenticatorRecord& record, int baseRevision, std::function<void(bool)> done) {
 	GoogleDrive* drive = googleConnection.Drive();
 	const int revision = baseRevision + 1;
 	const std::optional<QByteArray> content = Sealed(link.cloudRecordId, revision, record);
 	if (drive == nullptr || !content.has_value()) {
-		RunNextStep();
+		done(false);
 		return;
 	}
 	DriveProperties properties = RecordProperties(link.cloudRecordId, revision);
 	properties.insert(PARENT_PROPERTY, link.fileId);
-	drive->Create(RECORD_FILE_NAME, properties, *content, *this, [this, link, revision, fingerprint = CloudRecordFingerprint(record)](std::expected<DriveFile, GoogleError> uploaded) mutable {
+	drive->Create(RECORD_FILE_NAME, properties, *content, *this, [this, link, revision, fingerprint = CloudRecordFingerprint(record), pushDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) mutable {
 		GoogleDrive* uploadingDrive = googleConnection.Drive();
 		if (!uploaded.has_value() || uploadingDrive == nullptr) {
-			isPassReachable = false;
-			RunNextStep();
+			isRunReachable = false;
+			pushDone(false);
 			return;
 		}
 		const QString previousFileId = link.fileId;
 		link.revision = revision;
 		link.fileId = uploaded->id;
 		link.fingerprint = fingerprint;
-		if (googleConnection.AddLink(link).has_value()) {
-			// The new revision is in place, so the previous one is no longer needed.
-			uploadingDrive->Delete(previousFileId, *this, [](const std::expected<void, GoogleError>&) {
-			});
+		if (!CheckSaved(googleConnection.AddLink(link))) {
+			pushDone(false);
+			return;
 		}
-		RunNextStep();
+		// The new revision is in place, so the previous one is no longer needed.
+		uploadingDrive->Delete(previousFileId, *this, [](const std::expected<void, GoogleError>&) {
+		});
+		pushDone(true);
 	});
 }
 
@@ -541,8 +614,8 @@ void CloudSync::AdoptCloudRecord(const CloudRevision& revision) {
 		isApplyingCloud = true;
 		const std::expected<void, StorageError> saved = accountLibrary.Add(added);
 		isApplyingCloud = false;
-		if (saved.has_value()) {
-			WarnIfNotSaved(googleConnection.AddLink(CloudLink{.localRecordId = added.id, .cloudRecordId = revision.recordId, .revision = revision.revision, .fileId = revision.file.id, .fingerprint = CloudRecordFingerprint(added)}));
+		if (CheckSaved(saved)) {
+			CheckSaved(googleConnection.AddLink(CloudLink{.localRecordId = added.id, .cloudRecordId = revision.recordId, .revision = revision.revision, .fileId = revision.file.id, .fingerprint = CloudRecordFingerprint(added)}));
 			Q_EMIT RecordAdded(added.id);
 		}
 		RunNextStep();
@@ -553,7 +626,7 @@ void CloudSync::AdoptCloudRecord(const CloudRevision& revision) {
 void CloudSync::LinkSameGuard(AuthenticatorRecord local, const AuthenticatorRecord& cloudRecord, const CloudRevision& revision) {
 	if (const std::optional<AuthenticatorRecord> completed = CompleteRecord(local, cloudRecord); completed.has_value()) {
 		isApplyingCloud = true;
-		if (accountLibrary.Save(*completed).has_value()) {
+		if (CheckSaved(accountLibrary.Save(*completed))) {
 			local = *completed;
 		}
 		isApplyingCloud = false;
@@ -561,7 +634,7 @@ void CloudSync::LinkSameGuard(AuthenticatorRecord local, const AuthenticatorReco
 	AuthenticatorRecord cloudAsLocal = cloudRecord;
 	cloudAsLocal.id = local.id;
 	const QString cloudFingerprint = CloudRecordFingerprint(cloudAsLocal);
-	WarnIfNotSaved(googleConnection.AddLink(CloudLink{.localRecordId = local.id, .cloudRecordId = revision.recordId, .revision = revision.revision, .fileId = revision.file.id, .fingerprint = cloudFingerprint}));
+	CheckSaved(googleConnection.AddLink(CloudLink{.localRecordId = local.id, .cloudRecordId = revision.recordId, .revision = revision.revision, .fileId = revision.file.id, .fingerprint = cloudFingerprint}));
 	// What this computer adds goes up on the next pass.
 	if (CloudRecordFingerprint(local) != cloudFingerprint) {
 		isResyncPending = true;
@@ -587,12 +660,12 @@ void CloudSync::UploadNewRecord(const AuthenticatorRecord& record, std::function
 	}
 	drive->Create(RECORD_FILE_NAME, RecordProperties(recordId, FIRST_REVISION), *content, *this, [this, recordId, localRecordId = record.id, fingerprint = CloudRecordFingerprint(record), uploadDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) {
 		if (!uploaded.has_value()) {
-			isPassReachable = false;
+			isRunReachable = false;
 			uploadDone(false);
 			return;
 		}
 		const CloudLink link{.localRecordId = localRecordId, .cloudRecordId = recordId, .revision = FIRST_REVISION, .fileId = uploaded->id, .fingerprint = fingerprint};
-		uploadDone(googleConnection.AddLink(link).has_value());
+		uploadDone(CheckSaved(googleConnection.AddLink(link)));
 	});
 }
 
@@ -603,14 +676,24 @@ void CloudSync::DownloadRecord(const CloudRevision& revision, std::function<void
 		return;
 	}
 	drive->Download(revision.file.id, *this, [this, revision, downloadDone = std::move(done)](std::expected<QByteArray, GoogleError> content) {
+		if (!content.has_value()) {
+			// A file removed since the listing is no failure: the next pass sees the cloud as it is.
+			if (content.error().httpStatus != NOT_FOUND_STATUS) {
+				isRunReachable = false;
+			}
+			downloadDone(std::nullopt);
+			return;
+		}
 		const std::optional<DataKey>& cloudKey = googleConnection.CloudKey();
-		if (!content.has_value() || !cloudKey.has_value()) {
+		if (!cloudKey.has_value()) {
 			downloadDone(std::nullopt);
 			return;
 		}
 		const CloudRecordPlace place{.vaultId = googleConnection.VaultId(), .recordId = revision.recordId, .revision = revision.revision};
 		std::expected<AuthenticatorRecord, CloudRecordError> record = OpenCloudRecord(*cloudKey, place, *content);
 		if (!record.has_value()) {
+			qWarning("A record in Google could not be opened; the accounts here stay as they are.");
+			isRunReadable = false;
 			downloadDone(std::nullopt);
 			return;
 		}

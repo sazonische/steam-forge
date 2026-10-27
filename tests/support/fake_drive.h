@@ -33,6 +33,17 @@ public:
 		});
 	}
 
+	// Changes one byte in the middle of every file of the kind, as a damaged upload would.
+	void DamageFiles(const QString& kind) {
+		for (auto& entry : files) {
+			StoredFile& file = entry.second;
+			if (file.properties.value(QStringLiteral("kind")).toString() == kind && !file.content.isEmpty()) {
+				const qsizetype middle = file.content.size() / 2;
+				file.content[middle] = static_cast<char>(file.content.at(middle) ^ 1);
+			}
+		}
+	}
+
 private:
 	struct StoredFile {
 		QString name;

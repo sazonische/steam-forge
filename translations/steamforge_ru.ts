@@ -754,6 +754,16 @@
         <translation>Синхронизировано в %1.</translation>
     </message>
     <message>
+        <location filename="../src/ui/cloud_accounts_view.cpp" line="183"/>
+        <source>A change could not be saved on this computer, so not everything is synced. SteamForge tries again at the next sync.</source>
+        <translation>Изменение не удалось сохранить на этом компьютере, поэтому синхронизировано не всё. SteamForge попробует снова при следующей синхронизации.</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/cloud_accounts_view.cpp" line="185"/>
+        <source>An account in Google could not be read: its file is damaged or was saved by a newer version of SteamForge. The accounts on this computer stay as they are.</source>
+        <translation>Аккаунт в Google не удалось прочитать: его файл повреждён или сохранён более новой версией SteamForge. Аккаунты на этом компьютере остаются как есть.</translation>
+    </message>
+    <message>
         <location filename="../src/ui/cloud_accounts_view.cpp" line="175"/>
         <source>Syncing…</source>
         <translation>Синхронизация…</translation>
@@ -2503,27 +2513,27 @@
         <translation>Войдите в Google снова</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="683"/>
+        <location filename="../src/ui/main_window.cpp" line="691"/>
         <source>Windows Hello guards the key: SteamForge asks for your PIN, face or fingerprint at every start.</source>
         <translation>Ключ защищает Windows Hello: при каждом запуске SteamForge попросит PIN-код, лицо или отпечаток.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="768"/>
+        <location filename="../src/ui/main_window.cpp" line="776"/>
         <source>Windows Hello is not set up on this computer.</source>
         <translation>На этом компьютере не настроен Windows Hello.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="730"/>
+        <location filename="../src/ui/main_window.cpp" line="738"/>
         <source>Set up a PIN in Windows Settings, Accounts, Sign-in options, and try again. Or turn on encryption without Windows Hello: Windows then keeps the key for your user account and asks nothing at the start.</source>
         <translation>Настройте PIN-код в параметрах Windows (Учётные записи → Варианты входа) и попробуйте снова. Или включите шифрование без Windows Hello: тогда ключ хранит Windows для вашей учётной записи и при запуске ничего не спрашивается.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="734"/>
+        <location filename="../src/ui/main_window.cpp" line="742"/>
         <source>Encrypt without Windows Hello</source>
         <translation>Зашифровать без Windows Hello</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="722"/>
+        <location filename="../src/ui/main_window.cpp" line="730"/>
         <source>The authenticators and Steam sign-ins on this computer are stored encrypted.</source>
         <translation>Аутентификаторы и входы в Steam на этом компьютере хранятся зашифрованными.</translation>
     </message>
@@ -2538,37 +2548,37 @@
         <translation>У вас %1. Замените старый файл новым: аккаунты и настройки сохранятся.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="633"/>
+        <location filename="../src/ui/main_window.cpp" line="641"/>
         <source>On this computer the account stays, and its codes and confirmations keep working.</source>
         <translation>На этом компьютере аккаунт остаётся, коды и подтверждения работают как раньше.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="634"/>
+        <location filename="../src/ui/main_window.cpp" line="642"/>
         <source>On your other computers the account stays too, but no longer syncs.</source>
         <translation>На других ваших компьютерах аккаунт тоже остаётся, но больше не синхронизируется.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="761"/>
+        <location filename="../src/ui/main_window.cpp" line="769"/>
         <source>Encryption is off</source>
         <translation>Шифрование отключено</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="761"/>
+        <location filename="../src/ui/main_window.cpp" line="769"/>
         <source>The data on this computer is stored without encryption.</source>
         <translation>Данные на этом компьютере хранятся без шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="766"/>
+        <location filename="../src/ui/main_window.cpp" line="774"/>
         <source>The keyring of the system cannot make a separate keyring that stays locked.</source>
         <translation>Связка ключей системы не может создать отдельную связку, которая остаётся запертой.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="782"/>
+        <location filename="../src/ui/main_window.cpp" line="790"/>
         <source>The confirmation was cancelled. Nothing has changed.</source>
         <translation>Подтверждение отменено. Ничего не изменилось.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="807"/>
+        <location filename="../src/ui/main_window.cpp" line="815"/>
         <source>Account files that could not be read: %n. They were skipped and left unchanged.</source>
         <translation>
             <numerusform>Не удалось прочитать файлов аккаунтов: %n. Они пропущены и оставлены без изменений.</numerusform>
@@ -2577,7 +2587,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="990"/>
+        <location filename="../src/ui/main_window.cpp" line="998"/>
         <source>and %n more</source>
         <translation>
             <numerusform>и ещё %n</numerusform>
@@ -2586,7 +2596,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="992"/>
+        <location filename="../src/ui/main_window.cpp" line="1000"/>
         <source>%n new confirmations for %1</source>
         <translation>
             <numerusform>%1: %n новое подтверждение</numerusform>
@@ -2595,12 +2605,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1002"/>
+        <location filename="../src/ui/main_window.cpp" line="1010"/>
         <source>Sign in again: %1</source>
         <translation>Нужно войти снова: %1</translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="1065"/>
+        <location filename="../src/ui/main_window.cpp" line="1073"/>
         <source>Accounts added: %n</source>
         <translation>
             <numerusform>Добавлен %n аккаунт</numerusform>
@@ -2609,7 +2619,7 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="813"/>
+        <location filename="../src/ui/main_window.cpp" line="821"/>
         <source>Checking the time with Steam…</source>
         <translation>Сверяем время со Steam…</translation>
     </message>
@@ -2661,14 +2671,14 @@
         <translation>Данные защищены Windows Hello. Разблокируйте их PIN-кодом, лицом или отпечатком.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="700"/>
-        <location filename="../src/ui/main_window.cpp" line="718"/>
-        <location filename="../src/ui/main_window.cpp" line="728"/>
+        <location filename="../src/ui/main_window.cpp" line="708"/>
+        <location filename="../src/ui/main_window.cpp" line="726"/>
+        <location filename="../src/ui/main_window.cpp" line="736"/>
         <source>Turn on encryption</source>
         <translation>Включить шифрование</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="722"/>
+        <location filename="../src/ui/main_window.cpp" line="730"/>
         <source>Encryption is on</source>
         <translation>Шифрование включено</translation>
     </message>
@@ -2678,12 +2688,12 @@
         <translation>Шифрование недоступно</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="780"/>
+        <location filename="../src/ui/main_window.cpp" line="788"/>
         <source>This system has nowhere to keep the encryption key.</source>
         <translation>В системе нет хранилища для ключа шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="681"/>
+        <location filename="../src/ui/main_window.cpp" line="689"/>
         <source>The keyring of the system keeps the key, so no password is asked.</source>
         <translation>Ключ хранит связка ключей системы, поэтому пароль не нужен.</translation>
     </message>
@@ -2738,8 +2748,24 @@
         <source>SteamForge tries again in a few minutes</source>
         <translation>SteamForge попробует снова через несколько минут</translation>
     </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="559"/>
+        <location filename="../src/ui/main_window.cpp" line="563"/>
+        <source>Not synced</source>
+        <translation>Не синхронизировано</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="560"/>
+        <source>A change could not be saved on this computer. SteamForge tries again at the next sync</source>
+        <translation>Изменение не удалось сохранить на этом компьютере. SteamForge попробует снова при следующей синхронизации</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/main_window.cpp" line="564"/>
+        <source>An account in Google could not be read. The accounts on this computer stay as they are</source>
+        <translation>Аккаунт в Google не удалось прочитать. Аккаунты на этом компьютере остаются как есть</translation>
+    </message>
     <message numerus="yes">
-        <location filename="../src/ui/main_window.cpp" line="621"/>
+        <location filename="../src/ui/main_window.cpp" line="629"/>
         <source>Accounts from Google: %n</source>
         <translation>
             <numerusform>Из Google пришёл %n аккаунт</numerusform>
@@ -2748,327 +2774,327 @@
         </translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="630"/>
-        <location filename="../src/ui/main_window.cpp" line="637"/>
+        <location filename="../src/ui/main_window.cpp" line="638"/>
+        <location filename="../src/ui/main_window.cpp" line="645"/>
         <source>Remove from Google</source>
         <translation>Убрать из Google</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="630"/>
+        <location filename="../src/ui/main_window.cpp" line="638"/>
         <source>Remove %1 from Google?</source>
         <translation>Убрать %1 из Google?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="632"/>
+        <location filename="../src/ui/main_window.cpp" line="640"/>
         <source>The copy in Google is deleted.</source>
         <translation>Копия в Google удаляется.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="635"/>
+        <location filename="../src/ui/main_window.cpp" line="643"/>
         <source>Steam Guard stays on the Steam account.</source>
         <translation>Steam Guard остаётся на аккаунте Steam.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="685"/>
+        <location filename="../src/ui/main_window.cpp" line="693"/>
         <source>The key goes to a separate SteamForge keyring. The system asks you to choose its password now and asks for it at every start.</source>
         <translation>Ключ будет храниться в отдельной связке ключей SteamForge. Сейчас система предложит придумать для неё пароль и будет спрашивать его при каждом запуске.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="689"/>
+        <location filename="../src/ui/main_window.cpp" line="697"/>
         <source>In the system window, untick “Automatically unlock…”, otherwise the password is asked only once.</source>
         <translation>В окне системы снимите галочку «Автоматически разблокировать…», иначе пароль спросят только один раз.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="692"/>
+        <location filename="../src/ui/main_window.cpp" line="700"/>
         <source>Protects the data when the folder is copied, backed up or synced to a cloud.</source>
         <translation>Защищает данные, если папку скопируют, сохранят в резервную копию или синхронизируют с облаком.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="693"/>
+        <location filename="../src/ui/main_window.cpp" line="701"/>
         <source>Does not protect from programs running under your user account.</source>
         <translation>Не защищает от программ, запущенных под вашей учётной записью.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="694"/>
+        <location filename="../src/ui/main_window.cpp" line="702"/>
         <source>A data folder moved to another computer or user account does not open there: move accounts with the export to .maFile.</source>
         <translation>Папка с данными, перенесённая на другой компьютер или в другую учётную запись, там не откроется: переносите аккаунты экспортом в .maFile.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="700"/>
+        <location filename="../src/ui/main_window.cpp" line="708"/>
         <source>Encrypt the authenticators and Steam sign-ins on this computer?</source>
         <translation>Зашифровать аутентификаторы и входы в Steam на этом компьютере?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="702"/>
+        <location filename="../src/ui/main_window.cpp" line="710"/>
         <source>Encrypt</source>
         <translation>Зашифровать</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="732"/>
+        <location filename="../src/ui/main_window.cpp" line="740"/>
         <source>Encryption can use the main keyring instead. It opens together with your sign-in to the system, so no password is asked at the start.</source>
         <translation>Можно шифровать с основной связкой ключей. Она открывается вместе со входом в систему, поэтому при запуске пароль не спрашивается.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="734"/>
+        <location filename="../src/ui/main_window.cpp" line="742"/>
         <source>Encrypt with the main keyring</source>
         <translation>Шифровать с основной связкой</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="743"/>
+        <location filename="../src/ui/main_window.cpp" line="751"/>
         <source>The key of your Google cloud copy is kept under this encryption, so it stays on while Google is connected. To turn it off, disconnect Google in the settings first.</source>
         <translation>Под этим шифрованием хранится ключ вашей облачной копии в Google, поэтому, пока Google подключён, шифрование не выключается. Чтобы выключить его, сначала отключите Google в настройках.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="743"/>
-        <location filename="../src/ui/main_window.cpp" line="746"/>
-        <location filename="../src/ui/main_window.cpp" line="748"/>
-        <location filename="../src/ui/main_window.cpp" line="757"/>
+        <location filename="../src/ui/main_window.cpp" line="751"/>
+        <location filename="../src/ui/main_window.cpp" line="754"/>
+        <location filename="../src/ui/main_window.cpp" line="756"/>
+        <location filename="../src/ui/main_window.cpp" line="765"/>
         <source>Turn off encryption</source>
         <translation>Отключить шифрование</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="746"/>
+        <location filename="../src/ui/main_window.cpp" line="754"/>
         <source>Store the data on this computer without encryption?</source>
         <translation>Хранить данные на этом компьютере без шифрования?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="747"/>
+        <location filename="../src/ui/main_window.cpp" line="755"/>
         <source>The authenticators and Steam sign-ins are then kept in the data folder unencrypted, as before encryption was turned on.</source>
         <translation>Аутентификаторы и входы в Steam будут храниться в папке данных незашифрованными, как до включения шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="773"/>
+        <location filename="../src/ui/main_window.cpp" line="781"/>
         <source>Not every file opens, and this change would leave it unreadable for good: %1 Nothing has changed.</source>
         <translation>Не все файлы открываются, и после этого изменения их уже нельзя будет открыть: %1 Ничего не изменено.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="776"/>
+        <location filename="../src/ui/main_window.cpp" line="784"/>
         <source>Not every file could be rewritten: %1 The change continues at the next start.</source>
         <translation>Не все файлы удалось перезаписать: %1 Изменение продолжится при следующем запуске.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="787"/>
+        <location filename="../src/ui/main_window.cpp" line="795"/>
         <source>The encryption key could not be read.</source>
         <translation>Не удалось прочитать ключ шифрования.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="791"/>
+        <location filename="../src/ui/main_window.cpp" line="799"/>
         <source>The system did not keep the encryption key. Nothing has changed.</source>
         <translation>Система не сохранила ключ шифрования. Ничего не изменилось.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="819"/>
+        <location filename="../src/ui/main_window.cpp" line="827"/>
         <source>Time is in sync with Steam.</source>
         <translation>Время сверено со Steam.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="821"/>
+        <location filename="../src/ui/main_window.cpp" line="829"/>
         <source>Time is in sync with Steam. This computer&apos;s clock is %1 s behind, and the codes allow for it.</source>
         <translation>Время сверено со Steam. Часы компьютера отстают на %1 с, коды это учитывают.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="823"/>
+        <location filename="../src/ui/main_window.cpp" line="831"/>
         <source>Time is in sync with Steam. This computer&apos;s clock is %1 s ahead, and the codes allow for it.</source>
         <translation>Время сверено со Steam. Часы компьютера спешат на %1 с, коды это учитывают.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="828"/>
+        <location filename="../src/ui/main_window.cpp" line="836"/>
         <source>Could not check the time with Steam, so codes use the clock of this computer for now. We&apos;ll try again automatically.</source>
         <translation>Не удалось сверить время со Steam, поэтому коды пока считаются по часам компьютера. Попробуем снова автоматически.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1002"/>
+        <location filename="../src/ui/main_window.cpp" line="1010"/>
         <source>Steam no longer accepts the saved sign-in. Sign in again to keep getting confirmations.</source>
         <translation>Steam больше не принимает сохранённый вход. Войдите снова, чтобы получать подтверждения.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1024"/>
-        <location filename="../src/ui/main_window.cpp" line="1033"/>
+        <location filename="../src/ui/main_window.cpp" line="1032"/>
+        <location filename="../src/ui/main_window.cpp" line="1041"/>
         <source>Sign out of Steam</source>
         <translation>Выход из Steam</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1024"/>
+        <location filename="../src/ui/main_window.cpp" line="1032"/>
         <source>Remove the saved Steam sign-in of %1 from this computer?</source>
         <translation>Удалить сохранённый вход в Steam для %1 с этого компьютера?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1025"/>
+        <location filename="../src/ui/main_window.cpp" line="1033"/>
         <source>Confirmations, trades and approving sign-ins need a new sign-in afterwards. Steam Guard codes keep working.</source>
         <translation>После этого для подтверждений, обменов и подтверждения входа нужно будет войти снова. Коды Steam Guard продолжат работать.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1026"/>
+        <location filename="../src/ui/main_window.cpp" line="1034"/>
         <source>Sign out</source>
         <translation>Выйти</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1064"/>
+        <location filename="../src/ui/main_window.cpp" line="1072"/>
         <source>Codes and confirmations work already.</source>
         <translation>Коды и подтверждения уже работают.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1064"/>
+        <location filename="../src/ui/main_window.cpp" line="1072"/>
         <source>The panel on the right shows what is left to set up.</source>
         <translation>Что осталось настроить, показано справа.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1091"/>
+        <location filename="../src/ui/main_window.cpp" line="1101"/>
         <source>Steam Guard codes</source>
         <translation>коды Steam Guard</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1093"/>
+        <location filename="../src/ui/main_window.cpp" line="1103"/>
         <source>trade and market confirmations</source>
         <translation>подтверждения обменов и Торговой площадки</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1096"/>
+        <location filename="../src/ui/main_window.cpp" line="1106"/>
         <source>the recovery code</source>
         <translation>код восстановления</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1098"/>
-        <location filename="../src/ui/main_window.cpp" line="1107"/>
-        <location filename="../src/ui/main_window.cpp" line="1112"/>
-        <location filename="../src/ui/main_window.cpp" line="1115"/>
+        <location filename="../src/ui/main_window.cpp" line="1108"/>
+        <location filename="../src/ui/main_window.cpp" line="1117"/>
+        <location filename="../src/ui/main_window.cpp" line="1122"/>
+        <location filename="../src/ui/main_window.cpp" line="1125"/>
         <source>Export to .maFile</source>
         <translation>Экспорт в .maFile</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1098"/>
+        <location filename="../src/ui/main_window.cpp" line="1108"/>
         <source>The file holds the secrets of %1 without encryption: with it anyone can get its Steam Guard codes and confirm its trades. Keep it as safely as a password.</source>
         <translation>Файл содержит секреты %1 без шифрования: с ним любой сможет получать коды Steam Guard и подтверждать обмены этого аккаунта. Храните его так же надёжно, как пароль.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1099"/>
+        <location filename="../src/ui/main_window.cpp" line="1109"/>
         <source>The file contains: %1. The Steam sign-in is not exported: Steam Desktop Authenticator asks to sign in when it imports the file.</source>
         <translation>В файле: %1. Вход в Steam не экспортируется: Steam Desktop Authenticator попросит войти при импорте файла.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1100"/>
+        <location filename="../src/ui/main_window.cpp" line="1110"/>
         <source>Choose where to save…</source>
         <translation>Выбрать, куда сохранить…</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1107"/>
+        <location filename="../src/ui/main_window.cpp" line="1117"/>
         <source>Steam Desktop Authenticator files (*.maFile)</source>
         <translation>Файлы Steam Desktop Authenticator (*.maFile)</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1115"/>
+        <location filename="../src/ui/main_window.cpp" line="1125"/>
         <source>The authenticator of %1 is saved to %2.</source>
         <translation>Аутентификатор %1 сохранён в %2.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1157"/>
+        <location filename="../src/ui/main_window.cpp" line="1167"/>
         <source>Connect Google</source>
         <translation>Подключение Google</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1157"/>
+        <location filename="../src/ui/main_window.cpp" line="1167"/>
         <source>Google needs encryption on this computer, and encryption is not available now. The Encryption section of the settings tells why.</source>
         <translation>Для Google нужно шифрование на этом компьютере, а сейчас оно недоступно. Почему — написано в разделе «Шифрование» настроек.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1171"/>
         <location filename="../src/ui/main_window.cpp" line="1181"/>
+        <location filename="../src/ui/main_window.cpp" line="1191"/>
         <source>Disconnect Google</source>
         <translation>Отключение Google</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1171"/>
+        <location filename="../src/ui/main_window.cpp" line="1181"/>
         <source>Disconnect Google on this computer?</source>
         <translation>Отключить Google на этом компьютере?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1172"/>
+        <location filename="../src/ui/main_window.cpp" line="1182"/>
         <source>The cloud copy stays in your Google account, and other computers keep working with it. The accounts on this computer stay as they are. To connect this computer again, you need the recovery key.</source>
         <translation>Облачная копия останется в вашем Google-аккаунте, другие компьютеры продолжат с ней работать. Аккаунты на этом компьютере останутся как есть. Чтобы снова подключить этот компьютер, понадобится ключ восстановления.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1173"/>
+        <location filename="../src/ui/main_window.cpp" line="1183"/>
         <source>Disconnect</source>
         <translation>Отключить</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1184"/>
+        <location filename="../src/ui/main_window.cpp" line="1194"/>
         <source>Google is disconnected</source>
         <translation>Google отключён</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1184"/>
+        <location filename="../src/ui/main_window.cpp" line="1194"/>
         <source>This computer no longer syncs with Google. The cloud copy stays in your Google account.</source>
         <translation>Этот компьютер больше не синхронизируется с Google. Облачная копия осталась в вашем Google-аккаунте.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1194"/>
+        <location filename="../src/ui/main_window.cpp" line="1204"/>
         <source>The file with the secrets is deleted from this computer, and the codes and confirmations of this account no longer appear here.</source>
         <translation>Файл с секретами удалится с этого компьютера, коды и подтверждения этого аккаунта здесь больше не появятся.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1195"/>
+        <location filename="../src/ui/main_window.cpp" line="1205"/>
         <source>Steam Guard stays on the Steam account: removing the record here does not turn it off.</source>
         <translation>Steam Guard остаётся на аккаунте Steam: удаление записи здесь его не отключает.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1198"/>
+        <location filename="../src/ui/main_window.cpp" line="1208"/>
         <source>The saved Steam sign-in is removed from this computer as well.</source>
         <translation>Сохранённый вход в Steam тоже удаляется с этого компьютера.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1204"/>
+        <location filename="../src/ui/main_window.cpp" line="1214"/>
         <source>The copy in Google stays for your other computers unless you tick the box below. The account does not come back here by itself; you can return it in the settings, in the Google section.</source>
         <translation>Копия в Google останется для других ваших компьютеров, если не отметить галочку ниже. Сюда аккаунт сам не вернётся, вернуть его можно в настройках, в разделе Google.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1206"/>
+        <location filename="../src/ui/main_window.cpp" line="1216"/>
         <source>Without another copy of the secrets or the recovery code you can lose access to the account.</source>
         <translation>Без другой копии секретов или кода восстановления можно потерять доступ к аккаунту.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1206"/>
+        <location filename="../src/ui/main_window.cpp" line="1216"/>
         <source>No recovery code is saved: without another copy of the secrets you can lose access to the account.</source>
         <translation>Код восстановления не сохранён: без другой копии секретов можно потерять доступ к аккаунту.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1209"/>
+        <location filename="../src/ui/main_window.cpp" line="1219"/>
         <source>Recommended: export the authenticator to a .maFile first and keep it as safely as a password.</source>
         <translation>Рекомендуем сначала экспортировать аутентификатор в .maFile и хранить его так же надёжно, как пароль.</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1213"/>
-        <location filename="../src/ui/main_window.cpp" line="1234"/>
+        <location filename="../src/ui/main_window.cpp" line="1223"/>
+        <location filename="../src/ui/main_window.cpp" line="1244"/>
         <source>Remove account</source>
         <translation>Удаление аккаунта</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1213"/>
+        <location filename="../src/ui/main_window.cpp" line="1223"/>
         <source>Remove %1 from SteamForge?</source>
         <translation>Удалить %1 из SteamForge?</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1217"/>
+        <location filename="../src/ui/main_window.cpp" line="1227"/>
         <source>Also remove it from Google</source>
         <translation>Убрать и из Google</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1220"/>
+        <location filename="../src/ui/main_window.cpp" line="1230"/>
         <source>Export first…</source>
         <translation>Сначала экспортировать…</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1221"/>
+        <location filename="../src/ui/main_window.cpp" line="1231"/>
         <source>Remove</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1261"/>
+        <location filename="../src/ui/main_window.cpp" line="1271"/>
         <source>Unreadable account files</source>
         <translation>Нечитаемые файлы аккаунтов</translation>
     </message>
     <message>
-        <location filename="../src/ui/main_window.cpp" line="1261"/>
+        <location filename="../src/ui/main_window.cpp" line="1271"/>
         <source>These files were skipped and left unchanged in %1:</source>
         <translation>Эти файлы в %1 пропущены и оставлены без изменений:</translation>
     </message>

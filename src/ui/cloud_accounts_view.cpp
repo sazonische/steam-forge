@@ -179,6 +179,10 @@ QString CloudAccountsView::SyncText() const {
 			return tr("Google has another version of an account: choose which one to keep. The other accounts keep syncing.");
 		case CloudSyncStatus::UNREACHABLE:
 			return tr("Google could not be reached. SteamForge tries again in a few minutes.");
+		case CloudSyncStatus::NOT_SAVED:
+			return tr("A change could not be saved on this computer, so not everything is synced. SteamForge tries again at the next sync.");
+		case CloudSyncStatus::UNREADABLE_IN_CLOUD:
+			return tr("An account in Google could not be read: its file is damaged or was saved by a newer version of SteamForge. The accounts on this computer stay as they are.");
 	}
 	return {};
 }
