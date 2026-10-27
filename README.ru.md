@@ -4,7 +4,7 @@
 
 **Steam Guard на вашем компьютере.** Коды, подтверждения обменов и входов для всех ваших аккаунтов Steam в одном окне, для Windows и Linux. Бесплатно и с открытым кодом.
 
-[English version](README.md)
+[Сайт](https://reskins.gg/ru/steamforge) · [Политика конфиденциальности](https://reskins.gg/ru/steamforge/privacy) · [English version](README.md)
 
 ## Что умеет
 
@@ -100,6 +100,7 @@ Google не обязателен, SteamForge полностью работает
 - QR-код для другого приложения размыт, пока вы не нажмёте **Показать QR-код**.
 - Удаление аккаунта из SteamForge не отключает Steam Guard в самом Steam.
 - Исходный код открыт, а файлы для скачивания собираются из него автоматически на GitHub.
+- В [политике конфиденциальности](https://reskins.gg/ru/steamforge/privacy) перечислено, что SteamForge хранит на компьютере и что отправляет в Steam, Google и GitHub.
 
 ### Шифрование
 

@@ -4,7 +4,7 @@
 
 **Steam Guard on your computer.** Codes, trade confirmations and sign-in approvals for all your Steam accounts in one window, for Windows and Linux. Free and open source.
 
-[Русская версия](README.ru.md)
+[Website](https://reskins.gg/steamforge) · [Privacy policy](https://reskins.gg/steamforge/privacy) · [Русская версия](README.ru.md)
 
 ## What it does
 
@@ -100,6 +100,7 @@ On another computer, connect the same Google account and enter the recovery key.
 - The QR code for another app stays blurred until you click **Show QR code**.
 - Removing an account from SteamForge does not turn off Steam Guard on Steam.
 - The source code is open, and the release files are built automatically on GitHub from it.
+- The [privacy policy](https://reskins.gg/steamforge/privacy) lists what SteamForge keeps on your computer and what it sends to Steam, Google and GitHub.
 
 ### Encryption
 
