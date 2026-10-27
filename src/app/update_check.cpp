@@ -56,8 +56,8 @@ void UpdateCheck::Start() {
 
 void UpdateCheck::Stop() {
 	checkTimer.stop();
-	if (pendingReply != nullptr) {
-		pendingReply->abort();
+	if (QNetworkReply* reply = pendingReply.data(); reply != nullptr) {
+		reply->abort();
 	}
 }
 
