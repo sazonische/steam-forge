@@ -12,6 +12,7 @@
 #include "steam/community_profile.h"
 #include "steam/steam_clock.h"
 #include "steam/steam_image_cache.h"
+#include "support/demo_profiles.h"
 #include "support/fake_community_transport.h"
 #include "support/fake_google_transport.h"
 #include "support/fake_key_store.h"
@@ -42,18 +43,6 @@ constexpr quint64 RENDER_STEAM_ID = 76561201960265729;
 constexpr quint64 EXPIRED_STEAM_ID = 76561201960265730;
 constexpr QLatin1StringView LIST_PATH{"mobileconf/getlist"};
 constexpr int LIST_RESPONSE_COUNT = 6;
-// Ordinary players with official avatars of the Steam avatar gallery, loaded from the Steam CDN.
-struct DemoAccount {
-	quint64 steamId = 0;
-	QString accountName;
-	QString nickname;
-	QLatin1StringView avatarHash;
-};
-
-QByteArray DemoProfileXml(const DemoAccount& account) {
-	const QString avatarUrl = QStringLiteral("https://avatars.fastly.steamstatic.com/%1_full.jpg").arg(account.avatarHash);
-	return QStringLiteral(R"(<?xml version="1.0" encoding="UTF-8"?><profile><steamID64>%1</steamID64><steamID><![CDATA[%2]]></steamID><avatarFull><![CDATA[%3]]></avatarFull></profile>)").arg(account.steamId).arg(account.nickname, avatarUrl).toUtf8();
-}
 } // namespace
 
 class IllustrationsRenderTest final : public QObject {

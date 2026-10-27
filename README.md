@@ -14,13 +14,14 @@
 - **Steam Guard setup** for an account that does not have it yet, and **moving Steam Guard** from the Steam app on your phone to the computer.
 - **Import** from Steam Desktop Authenticator (`.maFile`) and WinAuth.
 - **Export** of an account to a `.maFile`, or a QR code to add it to another authenticator app.
+- **Sync through Google**, if you want it. The accounts you tick are kept encrypted in your Google Drive and appear on your other computers.
 - Steam nicknames and avatars, a tray icon, English and Russian.
 
 ## How it looks
 
-**All accounts in one window.** Codes and account names stay hidden until you click the eye. The bar at the top shows when the codes change.
+**All accounts in one window.** Codes and account names stay hidden until you click the eye. The bar at the top shows when the codes change. The top of the window shows whether your data is encrypted and Google is synced, and a cloud next to a nickname shows whether the account is in Google.
 
-![Main window: four accounts with Steam Guard codes and the panel of the selected account](.github/readme/accounts-en.webp)
+![Main window: four accounts with Steam Guard codes, the encryption and Google statuses, the panel of the selected account](.github/readme/accounts-en.webp)
 
 **Confirmations.** Trades, Market listings and other actions sit on tabs, and every trade shows its items. Confirm or decline one at a time or several at once.
 
@@ -71,9 +72,30 @@ Your Steam password is only used to sign in and is never saved.
 
 When you set up or move Steam Guard, SteamForge shows a **recovery code** like `R12345`. Write it down on paper and keep it safe. It is the only way to remove Steam Guard from your account if you ever lose SteamForge and its files. You can see the code again in the account panel.
 
+## Sync through Google
+
+Google is optional: SteamForge works fully without it. With Google connected, the accounts you tick appear on all your computers with SteamForge.
+
+1. Click **Google not connected** at the top of the window, then **Connect Google…**. Sign in to your Google account in the browser.
+2. SteamForge shows a **recovery key** of 32 characters. Write it down. You need it to open the cloud copy on another computer. Without the key, neither Google nor the developers of SteamForge can read it.
+3. Tick the accounts you want on your other computers. The others stay only on this one.
+
+On another computer, connect the same Google account and enter the recovery key. The ticked accounts appear by themselves.
+
+![Settings, Google section: every account has an "in Google" tick](.github/readme/google-en.webp)
+
+- Only Steam Guard data goes to Google, encrypted on your computer before it leaves. Each computer keeps its own Steam sign-in.
+- The files are in the hidden app folder of your Google Drive. They do not show in the usual list of files.
+- Google needs encryption turned on on the computer, since the key of the cloud copy is kept under it. If encryption is off, SteamForge offers to turn it on.
+- If Google already has a **different** Steam Guard of the same account, SteamForge replaces nothing on its own. It shows both versions with their current codes. Steam accepts the codes of only one of them: try signing in and choose the one that works. A key that gets replaced is saved to a backup first.
+
+![Choosing a version: two different Steam Guards of one account and their current codes](.github/readme/google-conflict-en.webp)
+
+- **Remove from Google** deletes the cloud copy, and the account stays on your computers. An account removed from one computer stays in Google and on your other computers. Neither turns off Steam Guard on Steam.
+
 ## Is it safe?
 
-- Everything stays on your computer. SteamForge talks only to Steam. Apart from that, once a day it asks GitHub whether a new version is out; you can turn this off in **Settings**. In the trade window, an item can be opened in a 3D viewer on reskins.gg, in your browser and only when you click it.
+- Without Google, everything stays on your computer, and SteamForge talks only to Steam. With Google, the accounts you tick go to your Google Drive encrypted. Apart from that, once a day SteamForge asks GitHub whether a new version is out; you can turn this off in **Settings**. In the trade window, an item can be opened in a 3D viewer on reskins.gg, in your browser and only when you click it.
 - Nothing happens on its own. Each confirmation and sign-in is approved by you, and every window shows which account it is for.
 - The QR code for another app stays blurred until you click **Show QR code**.
 - Removing an account from SteamForge does not turn off Steam Guard on Steam.
@@ -81,7 +103,7 @@ When you set up or move Steam Guard, SteamForge shows a **recovery code** like `
 
 ### Encryption
 
-Out of the box, your accounts are stored on the computer **without encryption**, and SteamForge tells you so. Click **Turn on encryption** at the top of the window to protect them:
+Out of the box, your accounts are stored on the computer **without encryption**, and SteamForge tells you so. To protect them, click **Not encrypted** at the top of the window, then **Turn on encryption**:
 
 - **Windows:** Windows Hello guards the data. SteamForge asks for your PIN, face or fingerprint at every start and before encryption is turned off.
 - **Linux:** the key goes to a separate keyring called "SteamForge" with a password you choose. The system asks for this password at every start. In that window, untick **Automatically unlock…**, otherwise it is asked only once.
@@ -91,7 +113,7 @@ Out of the box, your accounts are stored on the computer **without encryption**,
 
 Encryption protects copies of your data: backups, cloud folders, a lost or stolen disk. It does not protect against a virus on your computer while SteamForge is open.
 
-Encrypted data opens only on this computer and under your user account. **Before you reinstall the system or move to another computer, export your accounts:** **Manage → Export to .maFile…**
+Encrypted data opens only on this computer and under your user account. **Before you reinstall the system or move to another computer, export your accounts** (**Manage → Export to .maFile…**) or add them to Google.
 
 Keep exported `.maFile` files and the QR code private. Whoever has them gets your Steam Guard codes.
 
@@ -105,11 +127,10 @@ Keep exported `.maFile` files and the QR code private. Whoever has them gets you
 
 **Where are my files?** On Windows in `%APPDATA%\SteamForge`, on Linux in `~/.local/share/SteamForge`. To keep everything next to the program, for example on a USB stick, put an empty file named `.portable` beside it. The data then goes to the `SteamForgeData` folder.
 
-**Can I sync with Google?** Not yet. Encrypted sync through Google Drive is planned.
+**I lost the Google recovery key.** Connected computers do not ask for it and keep working. If you need the key for a new computer, click **No key? Make a new cloud copy…** there. The old cloud copy is deleted, the accounts on the computer stay, and you can add them to the new copy right away. Your other computers then need to be connected again, with the new key.
 
 ## Coming later
 
-- Encrypted sync through Google Drive.
 - Removing Steam Guard with the recovery code and adding a phone number.
 - Inventories and sending trade offers.
 
