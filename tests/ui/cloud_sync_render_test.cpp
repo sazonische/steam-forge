@@ -192,6 +192,97 @@ private Q_SLOTS:
 		QVERIFY(importDialog.grab().save(output.filePath(QStringLiteral("sync_import.png"))));
 	}
 
+	// Sync goes on in the event loop of every question: an account that comes from Google meanwhile moves the records
+	// of the library in memory.
+	void ExportsTheChosenAccountWhileSyncAddsOne() {
+		FakeDrive drive;
+		CloudComputer otherComputer(drive);
+		CloudComputer thisComputer(drive);
+		const SteamForge::AuthenticatorRecord exported = DemoRecord(QStringLiteral("dmitry_v"), LOCAL_STEAM_ID, 0x37);
+		QVERIFY(thisComputer.library->Add(exported).has_value());
+		const QString recoveryKey = ConnectToGoogle(thisComputer);
+		QVERIFY(!recoveryKey.isEmpty());
+		QVERIFY(SyncAndWait(*thisComputer.sync));
+		QVERIFY(!ConnectToGoogle(otherComputer, recoveryKey).isEmpty());
+		const SteamForge::AuthenticatorRecord arriving = DemoRecord(QStringLiteral("mister_kite"), AWAY_STEAM_ID, 0x35);
+		QVERIFY(otherComputer.library->Add(arriving).has_value());
+		QVERIFY(AddAndWait(otherComputer, arriving.id));
+
+		FakeWebApiTransport webApiTransport;
+		FakeCommunityTransport communityTransport;
+		SteamForge::SteamClock clock;
+		SteamForge::SteamImageCache imageCache;
+		SteamForge::ConfirmationMonitor monitor(webApiTransport, communityTransport, *thisComputer.library, clock);
+		const QDir dataRoot(thisComputer.directory.path());
+		SteamForge::ApplicationSettings settings(dataRoot.filePath(QStringLiteral("settings.ini")));
+		FakeCommunityTransport profileTransport;
+		SteamForge::AccountProfiles profiles(profileTransport, imageCache, dataRoot.filePath(QStringLiteral("profiles.json")));
+		SteamForge::MainWindow mainWindow(*thisComputer.library, clock, monitor, imageCache, profiles, *thisComputer.encryption, *thisComputer.connection, *thisComputer.sync, settings, SteamForge::DataLocation{.directoryPath = dataRoot.path(), .isPortable = false});
+		mainWindow.show();
+		auto* detailsView = mainWindow.findChild<SteamForge::AccountDetailsView*>();
+		QVERIFY(detailsView != nullptr);
+
+		// The record the export finds before its question; with no room left, the next account moves every record.
+		const SteamForge::AuthenticatorRecord* recordBeforeQuestion = thisComputer.library->FindRecord(exported.id);
+		QVERIFY(recordBeforeQuestion != nullptr);
+		QCOMPARE(thisComputer.library->Records().capacity(), thisComputer.library->Records().size());
+		const SteamForge::AuthenticatorRecord* recordAfterSync = nullptr;
+		bool isQuestionOpenOnArrival = false;
+		bool isQuestionAnswered = false;
+		bool isResultShown = false;
+		const QString exportPath = dataRoot.filePath(QStringLiteral("%1.maFile").arg(LOCAL_STEAM_ID));
+		QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs, true);
+		QTimer::singleShot(0, thisComputer.sync.get(), &SteamForge::CloudSync::Synchronize);
+		// Answers the question once the account from Google is in, then the file dialog, then closes the result.
+		QTimer modalDriver;
+		modalDriver.setInterval(50);
+		connect(&modalDriver, &QTimer::timeout, this, [&]() {
+			QWidget* modalWidget = QApplication::activeModalWidget();
+			if (auto* fileDialog = qobject_cast<QFileDialog*>(modalWidget); fileDialog != nullptr) {
+				// The suggested file name stays: it comes from the exported record as well.
+				fileDialog->setDirectory(dataRoot.path());
+				static_cast<QDialog*>(fileDialog)->accept();
+				return;
+			}
+			auto* message = qobject_cast<QMessageBox*>(modalWidget);
+			if (message == nullptr) {
+				return;
+			}
+			if (isQuestionAnswered) {
+				isResultShown = true;
+				modalDriver.stop();
+				message->accept();
+				return;
+			}
+			if (thisComputer.RecordOf(AWAY_STEAM_ID) == nullptr) {
+				return;
+			}
+			isQuestionOpenOnArrival = true;
+			recordAfterSync = thisComputer.library->FindRecord(exported.id);
+			const QList<QAbstractButton*> buttons = message->buttons();
+			const auto saveButton = std::ranges::find_if(buttons, [message](QAbstractButton* button) {
+				return message->buttonRole(button) == QMessageBox::AcceptRole;
+			});
+			if (saveButton != buttons.end()) {
+				isQuestionAnswered = true;
+				(*saveButton)->click();
+			}
+		});
+		modalDriver.start();
+		Q_EMIT detailsView->ExportRequested(exported.id);
+		QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs, false);
+
+		QVERIFY(isQuestionOpenOnArrival);
+		QVERIFY(recordAfterSync != nullptr);
+		QVERIFY2(recordAfterSync != recordBeforeQuestion, "The account from Google did not move the record the export holds.");
+		QVERIFY(isResultShown);
+		QFile exportFile(exportPath);
+		QVERIFY(exportFile.open(QIODevice::ReadOnly));
+		const QJsonObject exportedFields = QJsonDocument::fromJson(exportFile.readAll()).object();
+		QCOMPARE(exportedFields.value(QStringLiteral("account_name")).toString(), exported.account.accountName);
+		QCOMPARE(exportedFields.value(QStringLiteral("shared_secret")).toString(), QString::fromLatin1(exported.secrets.sharedSecret.toBase64()));
+	}
+
 	// The main window, the Google section of the settings and the choice between two Steam Guards, with the players
 	// of the other frames of the README.
 	void RenderReadmeFrames() {

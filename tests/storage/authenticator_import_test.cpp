@@ -1,4 +1,5 @@
 #include "storage/authenticator_import.h"
+#include "storage/authenticator_store.h"
 
 namespace {
 // All fixtures are synthetic: secrets are byte sequences, the SteamID is above 2^53 to catch rounding.
@@ -111,7 +112,8 @@ private Q_SLOTS:
 	void RejectsDamagedMaFiles_data() {
 		QTest::addColumn<QByteArray>("contents");
 		QTest::addColumn<SteamForge::ImportErrorKind>("expectedError");
-		QTest::newRow("truncated json") << QByteArray(R"({"shared_secret":"AQID)") << SteamForge::ImportErrorKind::INVALID_CONTENT;
+		// NOLINTNEXTLINE(modernize-raw-string-literal): moc counts an unbalanced brace inside a raw string and loses the slots that follow.
+		QTest::newRow("truncated json") << QByteArray("{\"shared_secret\":\"AQID") << SteamForge::ImportErrorKind::INVALID_CONTENT;
 		QTest::newRow("no shared secret") << QByteArray(R"({"account_name":"user"})") << SteamForge::ImportErrorKind::INVALID_CONTENT;
 		QTest::newRow("shared secret not base64") << QByteArray(R"({"shared_secret":"%%%"})") << SteamForge::ImportErrorKind::INVALID_CONTENT;
 		QTest::newRow("sda manifest") << SDA_MANIFEST.toByteArray() << SteamForge::ImportErrorKind::SDA_MANIFEST_SELECTED;
@@ -121,6 +123,16 @@ private Q_SLOTS:
 		QFETCH(QByteArray, contents);
 		QFETCH(SteamForge::ImportErrorKind, expectedError);
 		QCOMPARE(ErrorKindOf(SteamForge::ParseMaFile(contents, QStringLiteral("damaged.maFile"))), expectedError);
+	}
+
+	// The fields of other programs are kept with the account, so they must fit in its file.
+	void RefusesAFileTooLargeToKeep() {
+		const QJsonObject maFile{
+			{QStringLiteral("shared_secret"), QStringLiteral("AQIDBAUGBwgJCgsMDQ4PEBESExQ=")},
+			{QStringLiteral("account_name"), QStringLiteral("synthetic_user")},
+			{QStringLiteral("synthetic_notes"), QString(static_cast<qsizetype>(SteamForge::MAX_RECORD_DOCUMENT_SIZE), QLatin1Char('n'))},
+		};
+		QCOMPARE(ErrorKindOf(SteamForge::ParseMaFile(QJsonDocument(maFile).toJson(), QStringLiteral("large.maFile"))), SteamForge::ImportErrorKind::FILE_TOO_LARGE);
 	}
 
 	void ByteOrderMarkIsIgnored() {

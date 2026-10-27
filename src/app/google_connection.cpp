@@ -26,7 +26,8 @@ namespace {
 	constexpr QLatin1StringView FINGERPRINT_FIELD{"fingerprint"};
 	constexpr QLatin1StringView CLOUD_ONLY_FIELD{"cloudOnly"};
 	constexpr QLatin1StringView TITLE_FIELD{"title"};
-	constexpr qint64 MAX_STATE_FILE_SIZE = qint64{64} << 10;
+	// The links grow by a few hundred bytes per account in Google.
+	constexpr qint64 MAX_STATE_DOCUMENT_SIZE = qint64{1} << 20;
 	constexpr QLatin1StringView VAULT_FILE_NAME{"vault.json"};
 	constexpr QLatin1StringView KIND_PROPERTY{"kind"};
 	constexpr QLatin1StringView VAULT_KIND{"vault"};
@@ -166,7 +167,7 @@ void GoogleConnection::Load() {
 		SetState(GoogleConnectionState::LOCKED);
 		return;
 	}
-	const std::expected<QJsonObject, StorageError> document = ReadStoredDocument(QFileInfo(filePath), MAX_STATE_FILE_SIZE, localKey, SealedFileKind::GOOGLE);
+	const std::expected<QJsonObject, StorageError> document = ReadStoredDocument(QFileInfo(filePath), MAX_STATE_DOCUMENT_SIZE, localKey, SealedFileKind::GOOGLE);
 	const std::optional<QByteArray> keyBytes = document.has_value() ? DecodeBase64(document->value(CLOUD_KEY_FIELD).toString()) : std::nullopt;
 	std::optional<DataKey> savedKey = keyBytes.has_value() ? DataKey::FromBytes(*keyBytes) : std::nullopt;
 	const QString refreshToken = document.has_value() ? document->value(REFRESH_TOKEN_FIELD).toString() : QString();
@@ -640,7 +641,7 @@ std::expected<void, StorageError> GoogleConnection::SaveState(const SavedState& 
 		{LINKS_FIELD, WriteLinks(*savedState.links)},
 		{CLOUD_ONLY_FIELD, WriteCloudOnlyRecords(savedState.cloudOnlyRecords != nullptr ? *savedState.cloudOnlyRecords : std::vector<CloudOnlyRecord>())},
 	};
-	const std::expected<QByteArray, StorageError> contents = EncodeStoredDocument(document, localKey, SealedFileKind::GOOGLE, filePath);
+	const std::expected<QByteArray, StorageError> contents = EncodeStoredDocument(document, MAX_STATE_DOCUMENT_SIZE, localKey, SealedFileKind::GOOGLE, filePath);
 	if (!contents.has_value()) {
 		return std::unexpected(contents.error());
 	}

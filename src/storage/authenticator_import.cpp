@@ -3,6 +3,7 @@
 #include "common/encoding.h"
 #include "crypto/legacy_decryption.h"
 #include "steam/device_id.h"
+#include "storage/authenticator_store.h"
 
 namespace SteamForge {
 
@@ -261,6 +262,9 @@ namespace {
 		if (label != record.account.accountName) {
 			record.label = label;
 		}
+		if (!FitsInAccountFile(record)) {
+			return Failure(ImportErrorKind::FILE_TOO_LARGE, lineReference);
+		}
 		return std::optional<AuthenticatorRecord>(std::move(record));
 	}
 } // namespace
@@ -284,6 +288,10 @@ std::expected<ImportResult, ImportError> ParseMaFile(const QByteArray& fileConte
 		return Failure(ImportErrorKind::INVALID_CONTENT, SHARED_SECRET_KEY);
 	}
 	ApplyNodeSteamcommunityFileConventions(*record);
+	// Fields of other programs are kept, so the file is refused here rather than failing to save later.
+	if (!FitsInAccountFile(*record)) {
+		return Failure(ImportErrorKind::FILE_TOO_LARGE);
+	}
 	ImportResult result;
 	result.records.push_back(std::move(*record));
 	return result;

@@ -6,6 +6,9 @@
 
 namespace SteamForge {
 
+// Larger records are neither written nor read into memory; a sealed file may be larger by its encoding.
+inline constexpr qint64 MAX_RECORD_DOCUMENT_SIZE = qint64{1} << 20;
+
 struct StoreLoadResult {
 	std::vector<AuthenticatorRecord> records;
 	// Unreadable files stay untouched and do not hide the other records.
@@ -29,5 +32,8 @@ private:
 	QString directoryPath;
 	std::optional<DataKey> dataKey;
 };
+
+// Whether the store can keep the record, sealed or plain.
+[[nodiscard]] bool FitsInAccountFile(const AuthenticatorRecord& record);
 
 } // namespace SteamForge

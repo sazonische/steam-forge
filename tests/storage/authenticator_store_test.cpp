@@ -1,6 +1,25 @@
 #include "storage/authenticator_store.h"
+#include "storage/record_serialization.h"
+#include "storage/sealed_file.h"
 
 namespace {
+constexpr QLatin1StringView FILLER_FIELD{"synthetic_notes"};
+
+// A record whose document is exactly the given size, grown by a field another program left in its file.
+SteamForge::AuthenticatorRecord RecordOfDocumentSize(qint64 documentSize) {
+	SteamForge::AuthenticatorRecord record;
+	record.id = QUuid::createUuid();
+	record.createdAt = QDateTime::currentDateTimeUtc();
+	record.account.accountName = QStringLiteral("synthetic_login");
+	record.source.origin = SteamForge::RecordOrigin::MA_FILE;
+	record.source.importedAt = record.createdAt;
+	record.secrets.sharedSecret = QByteArray(20, 's');
+	record.additionalFields.insert(FILLER_FIELD, QString());
+	const qint64 emptySize = SteamForge::StoredDocumentSize(SteamForge::SerializeRecord(record));
+	record.additionalFields.insert(FILLER_FIELD, QString(static_cast<qsizetype>(documentSize - emptySize), QLatin1Char('n')));
+	return record;
+}
+
 SteamForge::AuthenticatorRecord MakeRecord(const QString& accountName, const QDateTime& createdAt) {
 	SteamForge::AuthenticatorRecord record;
 	record.id = QUuid::createUuid();
@@ -30,6 +49,32 @@ class AuthenticatorStoreTest final : public QObject {
 	Q_OBJECT
 
 private Q_SLOTS:
+	// Whatever the store writes, sealed or plain, it reads back; a larger record is not written at all.
+	void KeepsTheLargestRecordInEitherForm() {
+		const QTemporaryDir temporaryDirectory;
+		SteamForge::AuthenticatorStore store(temporaryDirectory.filePath(QStringLiteral("accounts")));
+		const SteamForge::AuthenticatorRecord largest = RecordOfDocumentSize(SteamForge::MAX_RECORD_DOCUMENT_SIZE);
+		QCOMPARE(SteamForge::StoredDocumentSize(SteamForge::SerializeRecord(largest)), SteamForge::MAX_RECORD_DOCUMENT_SIZE);
+		QVERIFY(SteamForge::FitsInAccountFile(largest));
+		const std::optional<SteamForge::DataKey> key = SteamForge::DataKey::Generate();
+		QVERIFY(key.has_value());
+		for (const std::optional<SteamForge::DataKey>& storeKey : {std::optional<SteamForge::DataKey>(), key}) {
+			store.SetDataKey(storeKey);
+			QVERIFY(store.Save(largest).has_value());
+			const SteamForge::StoreLoadResult loadResult = store.LoadAll();
+			QVERIFY(loadResult.problems.empty());
+			QCOMPARE(loadResult.records.size(), std::size_t{1});
+			QCOMPARE(loadResult.records.front().additionalFields, largest.additionalFields);
+		}
+
+		const SteamForge::AuthenticatorRecord tooLarge = RecordOfDocumentSize(SteamForge::MAX_RECORD_DOCUMENT_SIZE + 1);
+		QVERIFY(!SteamForge::FitsInAccountFile(tooLarge));
+		const std::expected<void, SteamForge::StorageError> saved = store.Save(tooLarge);
+		QVERIFY(!saved.has_value());
+		QCOMPARE(saved.error().kind, SteamForge::StorageErrorKind::FILE_TOO_LARGE);
+		QCOMPARE(store.LoadAll().records.size(), std::size_t{1});
+	}
+
 	void MissingDirectoryMeansNoRecords() {
 		const QTemporaryDir temporaryDirectory;
 		const SteamForge::AuthenticatorStore store(temporaryDirectory.filePath(QStringLiteral("accounts")));

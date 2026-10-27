@@ -9,11 +9,9 @@ namespace SteamForge {
 namespace {
 	constexpr QLatin1StringView RECORD_FILE_SUFFIX{".json"};
 	constexpr QLatin1StringView RECORD_FILE_PATTERN{"*.json"};
-	// Larger files are not records and are not read into memory.
-	constexpr qint64 MAX_RECORD_FILE_SIZE = qint64{1} << 20;
 
 	std::expected<AuthenticatorRecord, StorageError> LoadRecordFile(const QFileInfo& fileInfo, const std::optional<DataKey>& key) {
-		const std::expected<QJsonObject, StorageError> document = ReadStoredDocument(fileInfo, MAX_RECORD_FILE_SIZE, key, SealedFileKind::ACCOUNT);
+		const std::expected<QJsonObject, StorageError> document = ReadStoredDocument(fileInfo, MAX_RECORD_DOCUMENT_SIZE, key, SealedFileKind::ACCOUNT);
 		if (!document.has_value()) {
 			return std::unexpected(document.error());
 		}
@@ -83,7 +81,7 @@ std::expected<void, StorageError> AuthenticatorStore::Save(const AuthenticatorRe
 		});
 	}
 	const QString filePath = RecordFilePath(record.id);
-	const std::expected<QByteArray, StorageError> contents = EncodeStoredDocument(SerializeRecord(record), dataKey, SealedFileKind::ACCOUNT, filePath);
+	const std::expected<QByteArray, StorageError> contents = EncodeStoredDocument(SerializeRecord(record), MAX_RECORD_DOCUMENT_SIZE, dataKey, SealedFileKind::ACCOUNT, filePath);
 	if (!contents.has_value()) {
 		return std::unexpected(contents.error());
 	}
@@ -96,6 +94,10 @@ std::expected<void, StorageError> AuthenticatorStore::Remove(const QUuid& record
 
 QString AuthenticatorStore::RecordFilePath(const QUuid& recordId) const {
 	return QDir(directoryPath).filePath(recordId.toString(QUuid::WithoutBraces) + RECORD_FILE_SUFFIX);
+}
+
+bool FitsInAccountFile(const AuthenticatorRecord& record) {
+	return StoredDocumentSize(SerializeRecord(record)) <= MAX_RECORD_DOCUMENT_SIZE;
 }
 
 } // namespace SteamForge

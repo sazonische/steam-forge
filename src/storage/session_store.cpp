@@ -9,7 +9,7 @@ namespace SteamForge {
 namespace {
 	constexpr QLatin1StringView SESSION_FILE_SUFFIX{".json"};
 	constexpr QLatin1StringView SESSION_FILE_PATTERN{"*.json"};
-	constexpr qint64 MAX_SESSION_FILE_SIZE = qint64{64} << 10;
+	constexpr qint64 MAX_SESSION_DOCUMENT_SIZE = qint64{64} << 10;
 	constexpr QLatin1StringView FORMAT_NAME{"steamforge-session"};
 	constexpr int SESSION_FORMAT_VERSION = 1;
 
@@ -86,7 +86,7 @@ SessionLoadResult SessionStore::LoadAll() const {
 		return result;
 	}
 	for (const QFileInfo& sessionFile : directory.entryInfoList({SESSION_FILE_PATTERN}, QDir::Files, QDir::Name)) {
-		const std::expected<QJsonObject, StorageError> document = ReadStoredDocument(sessionFile, MAX_SESSION_FILE_SIZE, dataKey, SealedFileKind::SESSION);
+		const std::expected<QJsonObject, StorageError> document = ReadStoredDocument(sessionFile, MAX_SESSION_DOCUMENT_SIZE, dataKey, SealedFileKind::SESSION);
 		if (!document.has_value()) {
 			result.problems.push_back(document.error());
 			continue;
@@ -103,7 +103,7 @@ SessionLoadResult SessionStore::LoadAll() const {
 
 std::expected<void, StorageError> SessionStore::Save(const AccountSession& session) const {
 	const QString filePath = SessionFilePath(session.recordId);
-	const std::expected<QByteArray, StorageError> contents = EncodeStoredDocument(SerializeSession(session), dataKey, SealedFileKind::SESSION, filePath);
+	const std::expected<QByteArray, StorageError> contents = EncodeStoredDocument(SerializeSession(session), MAX_SESSION_DOCUMENT_SIZE, dataKey, SealedFileKind::SESSION, filePath);
 	if (!contents.has_value()) {
 		return std::unexpected(contents.error());
 	}

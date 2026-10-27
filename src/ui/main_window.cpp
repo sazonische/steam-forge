@@ -1083,11 +1083,13 @@ void MainWindow::ShowSteamGuardQr(const QUuid& recordId) {
 }
 
 void MainWindow::ExportRecord(const QUuid& recordId) {
-	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
-	if (record == nullptr) {
+	const AuthenticatorRecord* foundRecord = accountLibrary.FindRecord(recordId);
+	if (foundRecord == nullptr) {
 		return;
 	}
-	const RecordCapabilities capabilities = DetermineCapabilities(*record);
+	// A copy: sync goes on while the questions are open and may move the records of the library.
+	const AuthenticatorRecord record = *foundRecord;
+	const RecordCapabilities capabilities = DetermineCapabilities(record);
 	QStringList contents{tr("Steam Guard codes")};
 	if (capabilities.canSignConfirmations) {
 		contents.append(tr("trade and market confirmations"));
@@ -1095,7 +1097,7 @@ void MainWindow::ExportRecord(const QUuid& recordId) {
 	if (capabilities.hasRevocationCode) {
 		contents.append(tr("the recovery code"));
 	}
-	QMessageBox warning(QMessageBox::Warning, tr("Export to .maFile"), tr("The file holds the secrets of %1 without encryption: with it anyone can get its Steam Guard codes and confirm its trades. Keep it as safely as a password.").arg(AccountTitleFor(*record)), QMessageBox::Cancel, this);
+	QMessageBox warning(QMessageBox::Warning, tr("Export to .maFile"), tr("The file holds the secrets of %1 without encryption: with it anyone can get its Steam Guard codes and confirm its trades. Keep it as safely as a password.").arg(AccountTitleFor(record)), QMessageBox::Cancel, this);
 	warning.setInformativeText(tr("The file contains: %1. The Steam sign-in is not exported: Steam Desktop Authenticator asks to sign in when it imports the file.").arg(contents.join(QStringLiteral(", "))));
 	const QPushButton* saveButton = warning.addButton(tr("Choose where to save…"), QMessageBox::AcceptRole);
 	warning.setDefaultButton(QMessageBox::Cancel);
@@ -1103,16 +1105,16 @@ void MainWindow::ExportRecord(const QUuid& recordId) {
 	if (warning.clickedButton() != saveButton) {
 		return;
 	}
-	const QString suggestedPath = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(MaFileName(*record));
+	const QString suggestedPath = QDir(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)).filePath(MaFileName(record));
 	const QString filePath = QFileDialog::getSaveFileName(this, tr("Export to .maFile"), suggestedPath, tr("Steam Desktop Authenticator files (*.maFile)"));
 	if (filePath.isEmpty()) {
 		return;
 	}
-	if (const std::expected<void, StorageError> written = WriteOwnerOnlyFile(filePath, ExportMaFile(*record)); !written.has_value()) {
+	if (const std::expected<void, StorageError> written = WriteOwnerOnlyFile(filePath, ExportMaFile(record)); !written.has_value()) {
 		QMessageBox::critical(this, tr("Export to .maFile"), StorageErrorText(written.error()));
 		return;
 	}
-	QMessageBox::information(this, tr("Export to .maFile"), tr("The authenticator of %1 is saved to %2.").arg(AccountTitleFor(*record), QDir::toNativeSeparators(filePath)));
+	QMessageBox::information(this, tr("Export to .maFile"), tr("The authenticator of %1 is saved to %2.").arg(AccountTitleFor(record), QDir::toNativeSeparators(filePath)));
 }
 
 void MainWindow::OpenSettingsDialog(SettingsSection section) {

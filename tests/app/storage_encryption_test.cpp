@@ -1,5 +1,6 @@
 #include "app/account_library.h"
 #include "app/storage_encryption.h"
+#include "storage/authenticator_import.h"
 #include "support/fake_key_store.h"
 
 namespace {
@@ -13,6 +14,7 @@ constexpr QByteArrayView REFRESH_TOKEN{"synthetic.refresh.token"};
 constexpr char FIRST_SECRET_SEED = 's';
 constexpr char SECOND_SECRET_SEED = 't';
 constexpr qsizetype SECRET_LENGTH = 20;
+constexpr qsizetype LARGE_FIELD_LENGTH = qsizetype{800} << 10;
 
 SteamForge::AuthenticatorRecord MakeRecord(const QString& accountName, char secretSeed = FIRST_SECRET_SEED) {
 	SteamForge::AuthenticatorRecord record;
@@ -251,6 +253,39 @@ private Q_SLOTS:
 		QCOMPARE(keyStore.KeyCount(), qsizetype{1});
 		QVERIFY(QFileInfo::exists(directory.filePath(STATE_FILE)));
 		QVERIFY(FileBytes(RecordFile(directory, record.id)).contains(SEALED_MARKER.toByteArray()));
+	}
+
+	// An imported file may carry large fields of another program; sealed, the record grows by a third.
+	void OpensALargeRecordAfterSealing() {
+		const QTemporaryDir directory;
+		FakeKeyStore keyStore;
+		const QJsonObject maFile{
+			{QStringLiteral("shared_secret"), QString::fromLatin1(QByteArray(SECRET_LENGTH, FIRST_SECRET_SEED).toBase64())},
+			{QStringLiteral("account_name"), QStringLiteral("synthetic_login")},
+			{QStringLiteral("synthetic_notes"), QString(LARGE_FIELD_LENGTH, QLatin1Char('n'))},
+		};
+		const std::expected<SteamForge::ImportResult, SteamForge::ImportError> imported = SteamForge::ParseMaFile(QJsonDocument(maFile).toJson(), QStringLiteral("synthetic.maFile"));
+		QVERIFY(imported.has_value());
+		QCOMPARE(imported->records.size(), std::size_t{1});
+		const SteamForge::AuthenticatorRecord record = imported->records.front();
+		{
+			const std::unique_ptr<SteamForge::AccountLibrary> library = LibraryIn(directory);
+			SteamForge::StorageEncryption encryption(keyStore, *library, directory.filePath(STATE_FILE));
+			encryption.PrepareLibrary();
+			library->Load();
+			QVERIFY(library->Add(record).has_value());
+			QVERIFY(encryption.Enable(SteamForge::KeyProtection::USER_ACCOUNT).has_value());
+		}
+		QVERIFY(FileBytes(RecordFile(directory, record.id)).contains(SEALED_MARKER.toByteArray()));
+
+		const std::unique_ptr<SteamForge::AccountLibrary> library = LibraryIn(directory);
+		SteamForge::StorageEncryption encryption(keyStore, *library, directory.filePath(STATE_FILE));
+		encryption.PrepareLibrary();
+		library->Load();
+		QVERIFY(library->LoadProblems().empty());
+		const SteamForge::AuthenticatorRecord* loaded = library->FindRecord(record.id);
+		QVERIFY(loaded != nullptr);
+		QCOMPARE(loaded->additionalFields, record.additionalFields);
 	}
 
 	void ChangesNothingWhenTheSystemKeepsNoKey() {
