@@ -19,6 +19,9 @@ public:
 
 	[[nodiscard]] const std::vector<QUuid>& ImportedRecordIds() const;
 	void AddFiles(const QStringList& filePaths);
+	// While Google is connected: a ticked box adds the new accounts to Google.
+	void OfferGoogle();
+	[[nodiscard]] bool AddsToGoogle() const;
 
 protected:
 	void changeEvent(QEvent* event) override;
@@ -70,6 +73,7 @@ private:
 	QTreeWidget* previewTree = nullptr;
 	QLabel* summaryLabel = nullptr;
 	QLabel* messageLabel = nullptr;
+	QCheckBox* googleCheckBox = nullptr;
 	QDialogButtonBox* buttonBox = nullptr;
 	QPushButton* importButton = nullptr;
 };

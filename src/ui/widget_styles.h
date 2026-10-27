@@ -34,12 +34,15 @@ inline constexpr QLatin1StringView CONFIRMATION_CARD_STYLE{"ConfirmationCard"};
 inline constexpr QLatin1StringView FILTER_TAB_STYLE{"FilterTab"};
 inline constexpr QLatin1StringView DROP_ZONE_STYLE{"DropZone"};
 inline constexpr QLatin1StringView LINK_BUTTON_STYLE{"LinkButton"};
+inline constexpr QLatin1StringView STATUS_CHIP_STYLE{"StatusChip"};
 inline constexpr QLatin1StringView QR_REVEAL_BUTTON_STYLE{"QrRevealButton"};
 
 // Boolean states that style sheet rules select with property selectors.
 enum class StyleFlag {
 	EXPIRING,
-	SELECTED
+	SELECTED,
+	// A status that waits for the user, such as a locked SteamForge.
+	ATTENTION
 };
 
 enum class ButtonRole {

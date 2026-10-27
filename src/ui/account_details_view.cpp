@@ -106,6 +106,33 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	signInCardLayout->addWidget(signInStatusLabel);
 	signInCardLayout->addLayout(signInButtonsLayout);
 
+	googleCard = new QFrame(this);
+	googleCard->setObjectName(CARD_STYLE);
+	googleSectionLabel = CreateLabel(googleCard);
+	MakeSectionLabel(*googleSectionLabel);
+	googleStatusLabel = CreateLabel(googleCard);
+	googleStatusLabel->setWordWrap(true);
+	googleActionButton = new QPushButton(googleCard);
+	auto* googleButtonsLayout = new QHBoxLayout();
+	googleButtonsLayout->addWidget(googleActionButton);
+	googleButtonsLayout->addStretch();
+	auto* googleCardLayout = new QVBoxLayout(googleCard);
+	googleCardLayout->setContentsMargins(CARD_MARGINS);
+	googleCardLayout->setSpacing(CARD_SPACING);
+	googleCardLayout->addWidget(googleSectionLabel);
+	googleCardLayout->addWidget(googleStatusLabel);
+	googleCardLayout->addLayout(googleButtonsLayout);
+	googleCard->hide();
+	connect(googleActionButton, &QPushButton::clicked, this, [this]() {
+		if (cloudInfo.hasConflict) {
+			EmitForShownRecord(&AccountDetailsView::CloudConflictRequested);
+		} else if (cloudInfo.isInCloud) {
+			EmitForShownRecord(&AccountDetailsView::RemoveFromGoogleRequested);
+		} else {
+			EmitForShownRecord(&AccountDetailsView::AddToGoogleRequested);
+		}
+	});
+
 	confirmationsCard = new QFrame(this);
 	confirmationsCard->setObjectName(CARD_STYLE);
 	confirmationsSectionLabel = CreateLabel(confirmationsCard);
@@ -254,6 +281,7 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	pageLayout->addWidget(restrictionNotice);
 	pageLayout->addWidget(signInCard);
 	pageLayout->addWidget(confirmationsCard);
+	pageLayout->addWidget(googleCard);
 	pageLayout->addWidget(guardCard);
 	pageLayout->addWidget(dataCard);
 	pageLayout->addStretch();
@@ -338,6 +366,43 @@ void AccountDetailsView::ShowRecord(const AuthenticatorRecord& record, const std
 	shownSession = session;
 	shownConfirmations = confirmations;
 	RetranslateUi();
+	UpdateGoogleCard();
+}
+
+void AccountDetailsView::SetCloudInfo(const RecordCloudInfo& info) {
+	cloudInfo = info;
+	UpdateGoogleCard();
+}
+
+void AccountDetailsView::UpdateGoogleCard() {
+	// Without Google, or for an account without codes, there is nothing to sync.
+	const bool isShown = cloudInfo.isGoogleConnected && shownRecord.has_value() && DetermineCapabilities(*shownRecord).canGenerateCodes;
+	googleCard->setVisible(isShown);
+	if (!isShown) {
+		return;
+	}
+	googleSectionLabel->setText(tr("Google"));
+	googleActionButton->setVisible(!cloudInfo.isChanging);
+	if (cloudInfo.isChanging) {
+		googleStatusLabel->setText(tr("Saving to Google…"));
+		return;
+	}
+	if (cloudInfo.hasConflict) {
+		googleStatusLabel->setText(tr("Your Google has a different version of this account. Choose which one to keep. Nothing changes until you choose."));
+		googleActionButton->setText(tr("Choose…"));
+		SetButtonRole(*googleActionButton, ButtonRole::PRIMARY);
+		return;
+	}
+	if (cloudInfo.isInCloud) {
+		const QString syncedText = cloudInfo.lastSyncedAt.isValid() ? tr("Last synced at %1.").arg(QLocale().toString(cloudInfo.lastSyncedAt.time(), QLocale::ShortFormat)) : QString();
+		googleStatusLabel->setText(tr("An encrypted copy of this account is kept in your Google. It appears by itself on any computer where you connect the same Google.") + (syncedText.isEmpty() ? QString() : QLatin1Char(' ') + syncedText));
+		googleActionButton->setText(tr("Remove from Google…"));
+		SetButtonRole(*googleActionButton, ButtonRole::SECONDARY);
+		return;
+	}
+	googleStatusLabel->setText(tr("This account is only on this computer. Add it to Google, and it appears on your other computers too."));
+	googleActionButton->setText(tr("Add to Google"));
+	SetButtonRole(*googleActionButton, ButtonRole::PRIMARY);
 }
 
 std::optional<QUuid> AccountDetailsView::ShownRecordId() const {
@@ -350,6 +415,7 @@ std::optional<QUuid> AccountDetailsView::ShownRecordId() const {
 void AccountDetailsView::changeEvent(QEvent* event) {
 	if (event->type() == QEvent::LanguageChange) {
 		RetranslateUi();
+		UpdateGoogleCard();
 	}
 	QWidget::changeEvent(event);
 }

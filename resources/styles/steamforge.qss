@@ -79,6 +79,51 @@ QWidget#TopBar {
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* A status of the top bar: plain until hovered, so only "Add account" reads as a button. */
+QPushButton#StatusChip {
+	background-color: transparent;
+	color: #b8bcbf;
+	border: none;
+	border-radius: 2px;
+	padding: 0 8px;
+	min-height: 30px;
+	font-size: 13px;
+}
+
+QPushButton#StatusChip:hover {
+	background-color: rgba(255, 255, 255, 0.07);
+	color: #ffffff;
+}
+
+QPushButton#StatusChip[attention="true"] {
+	color: #ffc82c;
+}
+
+QListWidget#SettingsNavigation {
+	background-color: #12171e;
+	border: none;
+	border-right: 1px solid rgba(255, 255, 255, 0.08);
+	padding-top: 16px;
+	outline: 0;
+}
+
+QListWidget#SettingsNavigation::item {
+	color: #b8bcbf;
+	padding: 8px 16px;
+	border-left: 3px solid transparent;
+}
+
+QListWidget#SettingsNavigation::item:hover {
+	background-color: rgba(255, 255, 255, 0.05);
+	color: #dcdedf;
+}
+
+QListWidget#SettingsNavigation::item:selected {
+	background-color: #1f2630;
+	color: #ffffff;
+	border-left: 3px solid #1a9fff;
+}
+
 QLabel#TopBarTitle {
 	color: #ffffff;
 	font-size: 15px;
@@ -305,6 +350,28 @@ QTreeView::indicator:checked {
 }
 
 QCheckBox[keyboardFocus="true"]::indicator:focus {
+	border-color: #06bfff;
+}
+
+QRadioButton {
+	spacing: 8px;
+}
+
+QRadioButton::indicator {
+	width: 16px;
+	height: 16px;
+	background-color: #32353c;
+	border: 1px solid #67707b;
+	border-radius: 9px;
+}
+
+QRadioButton::indicator:checked {
+	background-color: #1a9fff;
+	border-color: #1a9fff;
+	image: url(:/styles/radio-dot.svg);
+}
+
+QRadioButton[keyboardFocus="true"]::indicator:focus {
 	border-color: #06bfff;
 }
 

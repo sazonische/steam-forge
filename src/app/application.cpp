@@ -3,10 +3,13 @@
 #include "app/account_library.h"
 #include "app/account_profiles.h"
 #include "app/application_settings.h"
+#include "app/cloud_sync.h"
 #include "app/confirmation_monitor.h"
+#include "app/google_connection.h"
 #include "app/storage_encryption.h"
 #include "app/update_check.h"
 #include "common/constants.h"
+#include "common/google_client.h"
 #include "common/version.h"
 #include "platform/application_icons.h"
 #include "platform/data_location.h"
@@ -25,6 +28,7 @@ namespace {
 	constexpr QLatin1StringView SESSIONS_DIRECTORY_NAME{"sessions"};
 	constexpr QLatin1StringView PROFILE_CACHE_FILE_PATH{"cache/profiles.json"};
 	constexpr QLatin1StringView ENCRYPTION_STATE_FILE_NAME{"encryption.json"};
+	constexpr QLatin1StringView GOOGLE_STATE_FILE_NAME{"google.json"};
 } // namespace
 
 Application::Application(int& argumentCount, char** argumentValues) :
@@ -80,8 +84,15 @@ int Application::Run() {
 	steamImageCache = std::make_unique<SteamImageCache>();
 	accountProfiles = std::make_unique<AccountProfiles>(*communityTransport, *steamImageCache, dataDirectory.filePath(PROFILE_CACHE_FILE_PATH));
 	updateCheck = std::make_unique<UpdateCheck>(QVersionNumber::fromString(APPLICATION_VERSION), QUrl(LATEST_RELEASE_API_URL));
+	googleTransport = std::make_unique<NetworkGoogleTransport>();
+	const GoogleClient googleClient{.clientId = QString(GOOGLE_CLIENT_ID), .clientSecret = QString(GOOGLE_CLIENT_SECRET)};
+	googleConnection = std::make_unique<GoogleConnection>(*googleTransport, *storageEncryption, googleClient, DefaultGoogleEndpoints(), dataDirectory.filePath(GOOGLE_STATE_FILE_NAME));
+	googleConnection->Load();
+	// The saved connection opens once the data is unlocked.
+	connect(storageEncryption.get(), &StorageEncryption::StatusChanged, googleConnection.get(), &GoogleConnection::Load);
+	cloudSync = std::make_unique<CloudSync>(*googleConnection, *accountLibrary);
 
-	mainWindow = std::make_unique<MainWindow>(*accountLibrary, *steamClock, *confirmationMonitor, *steamImageCache, *accountProfiles, *storageEncryption, *settings, dataLocation);
+	mainWindow = std::make_unique<MainWindow>(*accountLibrary, *steamClock, *confirmationMonitor, *steamImageCache, *accountProfiles, *storageEncryption, *googleConnection, *cloudSync, *settings, dataLocation);
 	connect(&singleInstanceGuard, &SingleInstanceGuard::ActivationRequested, mainWindow.get(), &MainWindow::BringToFront);
 	connect(mainWindow.get(), &MainWindow::LanguageChangeRequested, this, &Application::ChangeLanguage);
 	connect(mainWindow.get(), &MainWindow::UpdateChecksChangeRequested, this, &Application::ChangeUpdateChecks);
@@ -91,6 +102,7 @@ int Application::Run() {
 	mainWindow->UnlockIfLocked();
 	steamClock->Synchronize();
 	confirmationMonitor->Start();
+	cloudSync->Start();
 	if (settings->ChecksForUpdates()) {
 		updateCheck->Start();
 	}

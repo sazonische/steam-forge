@@ -13,6 +13,9 @@ public:
 
 	// Shown large and selectable, such as a new recovery code.
 	void SetKeptValue(const QString& title, const QString& value, const QString& hint);
+	// A box to tick below the text, such as adding the account to Google.
+	void SetChoice(const QString& text, bool isChecked);
+	[[nodiscard]] bool IsChoiceChecked() const;
 
 private:
 	IllustrationView* illustration = nullptr;
@@ -22,6 +25,7 @@ private:
 	QLabel* keptValueTitleLabel = nullptr;
 	QLabel* keptValueLabel = nullptr;
 	QLabel* keptValueHintLabel = nullptr;
+	QCheckBox* choiceCheckBox = nullptr;
 	QPushButton* doneButton = nullptr;
 };
 

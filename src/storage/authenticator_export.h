@@ -11,6 +11,17 @@ namespace SteamForge {
 // The otpauth link of the Steam Guard key, the same as the uri field of a .maFile.
 [[nodiscard]] QString SteamGuardUri(const AuthenticatorRecord& record);
 
+// How an authenticator app recognizes Steam in an otpauth link; each app reads one of the two forms.
+enum class SteamGuardLinkStyle {
+	// otpauth://totp/ with encoder=steam: Stratum, 2FAS for iPhone, KeePassDX.
+	STEAM_ENCODER,
+	// otpauth://steam/: Aegis, Ente, 2FAS for Android.
+	STEAM_TYPE
+};
+
+// The link for an authenticator app. digits=5, because 2FAS for iPhone otherwise makes six-character codes.
+[[nodiscard]] QString SteamGuardAppUri(const AuthenticatorRecord& record, SteamGuardLinkStyle style);
+
 // The file name Steam Desktop Authenticator gives an account: its SteamID, or the account name without one.
 [[nodiscard]] QString MaFileName(const AuthenticatorRecord& record);
 

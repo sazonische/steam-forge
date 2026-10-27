@@ -35,6 +35,7 @@ private:
 	void RetranslateUi();
 	void RetranslateSides();
 	void UpdateState();
+	void UpdatePartner();
 	void ShowItems(const TradeOfferDetails& loadedOffer);
 	[[nodiscard]] QWidget* CreateSide(TradeSide side, const std::vector<TradeItem>& items);
 	void SelectItem(TradeSide side, std::size_t itemIndex);

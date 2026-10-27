@@ -48,6 +48,8 @@ SuccessDialog::SuccessDialog(const QString& headline, const QString& text, QWidg
 	keptValueLayout->addWidget(keptValueLabel);
 	keptValueLayout->addWidget(keptValueHintLabel);
 	keptValueCard->hide();
+	choiceCheckBox = new QCheckBox(this);
+	choiceCheckBox->hide();
 
 	doneButton = new QPushButton(tr("Done"), this);
 	SetButtonRole(*doneButton, ButtonRole::PRIMARY);
@@ -63,6 +65,7 @@ SuccessDialog::SuccessDialog(const QString& headline, const QString& text, QWidg
 	dialogLayout->addWidget(headlineLabel);
 	dialogLayout->addWidget(textLabel);
 	dialogLayout->addWidget(keptValueCard);
+	dialogLayout->addWidget(choiceCheckBox);
 	dialogLayout->addLayout(buttonsLayout);
 
 	connect(doneButton, &QPushButton::clicked, this, &SuccessDialog::accept);
@@ -75,6 +78,17 @@ void SuccessDialog::SetKeptValue(const QString& title, const QString& value, con
 	keptValueHintLabel->setText(hint);
 	keptValueCard->setVisible(!value.isEmpty());
 	FitHeightToContents(*this);
+}
+
+void SuccessDialog::SetChoice(const QString& text, bool isChecked) {
+	choiceCheckBox->setText(text);
+	choiceCheckBox->setChecked(isChecked);
+	choiceCheckBox->show();
+	FitHeightToContents(*this);
+}
+
+bool SuccessDialog::IsChoiceChecked() const {
+	return !choiceCheckBox->isHidden() && choiceCheckBox->isChecked();
 }
 
 } // namespace SteamForge

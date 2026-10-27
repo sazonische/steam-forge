@@ -6,6 +6,7 @@ namespace {
 	constexpr const char* BUTTON_ROLE_PROPERTY = "buttonRole";
 	constexpr const char* EXPIRING_PROPERTY = "expiring";
 	constexpr const char* SELECTED_PROPERTY = "selected";
+	constexpr const char* ATTENTION_PROPERTY = "attention";
 	constexpr const char* COMPACT_PROPERTY = "compact";
 	constexpr QLatin1StringView SECONDARY_BUTTON_ROLE{"secondary"};
 	constexpr QLatin1StringView PRIMARY_BUTTON_ROLE{"primary"};
@@ -27,6 +28,8 @@ namespace {
 				return EXPIRING_PROPERTY;
 			case StyleFlag::SELECTED:
 				return SELECTED_PROPERTY;
+			case StyleFlag::ATTENTION:
+				return ATTENTION_PROPERTY;
 		}
 		return EXPIRING_PROPERTY;
 	}

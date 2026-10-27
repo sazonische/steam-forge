@@ -29,7 +29,7 @@ namespace {
 	constexpr int SELECTION_GAP_COLUMN = 2;
 	constexpr int CONTENT_COLUMN = 3;
 	constexpr int RIGHT_EDGE_COLUMN = 4;
-	constexpr int COLUMN_COUNT = 5;
+	constexpr int ALL_COLUMNS_SPAN = RIGHT_EDGE_COLUMN + 1;
 	constexpr QColor OVERFLOW_BACKGROUND{0x2b, 0x31, 0x3b};
 	constexpr QColor OVERFLOW_TEXT_COLOR{0xff, 0xff, 0xff};
 	constexpr int OVERFLOW_PIXEL_SIZE = 13;
@@ -236,7 +236,7 @@ ConfirmationCard::ConfirmationCard(SteamImageCache& images, QWidget* parent) :
 	headerEdge->setFixedHeight(1);
 	cardLayout->addWidget(selectionBox, 0, SELECTION_COLUMN, Qt::AlignVCenter);
 	cardLayout->addLayout(headLayout, 0, CONTENT_COLUMN);
-	cardLayout->addWidget(headerEdge, 1, LEFT_EDGE_COLUMN, 1, COLUMN_COUNT);
+	cardLayout->addWidget(headerEdge, 1, LEFT_EDGE_COLUMN, 1, ALL_COLUMNS_SPAN);
 	cardLayout->addLayout(bodyLayout, 2, CONTENT_COLUMN);
 	cardLayout->setColumnStretch(CONTENT_COLUMN, 1);
 
@@ -298,7 +298,7 @@ void ConfirmationCard::changeEvent(QEvent* event) {
 }
 
 // As people say it: "just now", "5 min ago", "today, 14:05", "yesterday, 23:50"; the full date is in the tooltip.
-QString ConfirmationCard::TimeText(const QDateTime& createdAt) const {
+QString ConfirmationCard::TimeText(const QDateTime& createdAt) {
 	if (!createdAt.isValid()) {
 		return {};
 	}

@@ -316,6 +316,14 @@ void LoginDialog::UpdateState() {
 	FitHeightToContents(*this);
 }
 
+void LoginDialog::OfferGoogle() {
+	isGoogleOffered = true;
+}
+
+bool LoginDialog::AddsToGoogle() const {
+	return addsToGoogle;
+}
+
 void LoginDialog::HandleSucceeded() {
 	accept();
 }
@@ -327,7 +335,11 @@ void LoginDialog::HandleGuardMoved() {
 	record = *login->MovedRecord();
 	SuccessDialog notice(tr("Steam Guard moved"), tr("Steam Guard of %1 is now in SteamForge. One step is left: enter the password once more, and the code is entered automatically.").arg(accountTitle), this);
 	notice.SetKeptValue(tr("New recovery code"), record.secrets.revocationCode, tr("Write it down and keep it apart from this computer: with it Steam Guard can be removed from the account if SteamForge is lost. The account details show it as well."));
+	if (isGoogleOffered) {
+		notice.SetChoice(tr("Add to Google, so the account is on your other computers too"), true);
+	}
 	notice.exec();
+	addsToGoogle = notice.IsChoiceChecked();
 
 	// Called through a queued connection, so the finished sign-in is no longer running when it is released.
 	login.reset();

@@ -32,6 +32,9 @@ public:
 	[[nodiscard]] std::expected<void, StorageError> SaveSession(const AccountSession& session);
 	[[nodiscard]] std::expected<void, StorageError> RemoveSession(const QUuid& recordId);
 
+	// A copy of a record before it is replaced, kept apart from the accounts and sealed like them.
+	[[nodiscard]] std::expected<void, StorageError> SaveBackup(const AuthenticatorRecord& record) const;
+
 	// Set before Load(): sealed files open only with the key.
 	void SetDataKey(const std::optional<DataKey>& key);
 	// Writes every loaded record and session again, sealed or plain as the current key says.
@@ -43,6 +46,7 @@ Q_SIGNALS:
 
 private:
 	AuthenticatorStore authenticatorStore;
+	AuthenticatorStore backupStore;
 	SessionStore sessionStore;
 	std::vector<AuthenticatorRecord> records;
 	QHash<QUuid, AccountSession> sessions;

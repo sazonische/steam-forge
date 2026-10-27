@@ -1,7 +1,9 @@
 #include "app/account_library.h"
 #include "app/account_profiles.h"
 #include "app/application_settings.h"
+#include "app/cloud_sync.h"
 #include "app/confirmation_monitor.h"
+#include "app/google_connection.h"
 #include "app/interface_translator.h"
 #include "app/storage_encryption.h"
 #include "platform/application_icons.h"
@@ -11,12 +13,14 @@
 #include "steam/steam_clock.h"
 #include "steam/steam_image_cache.h"
 #include "support/fake_community_transport.h"
+#include "support/fake_google_transport.h"
 #include "support/fake_key_store.h"
 #include "support/fake_web_api_transport.h"
 #include "support/render_language.h"
 #include "support/synthetic_tokens.h"
 #include "ui/account_list_view.h"
 #include "ui/confirmations_dialog.h"
+#include "ui/google_connect_dialog.h"
 #include "ui/guard_setup_dialog.h"
 #include "ui/import_dialog.h"
 #include "ui/item_tiles.h"
@@ -56,7 +60,7 @@ class IllustrationsRenderTest final : public QObject {
 	Q_OBJECT
 
 private Q_SLOTS:
-	void initTestCase() {
+	void initTestCase() { // NOLINT(readability-identifier-naming): QtTest calls this slot by its name.
 		QApplication::setWindowIcon(SteamForge::ApplicationIcon());
 	}
 
@@ -111,7 +115,10 @@ private Q_SLOTS:
 		FakeKeyStore keyStore;
 		SteamForge::StorageEncryption encryption(keyStore, emptyLibrary, dataDirectory.filePath(QStringLiteral("encryption.json")));
 		encryption.PrepareLibrary();
-		SteamForge::MainWindow mainWindow(emptyLibrary, clock, emptyMonitor, imageCache, profiles, encryption, settings, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false});
+		FakeGoogleTransport googleTransport;
+		SteamForge::GoogleConnection googleConnection(googleTransport, encryption, SteamForge::GoogleClient{.clientId = QStringLiteral("render-client"), .clientSecret = {}}, SteamForge::DefaultGoogleEndpoints(), dataDirectory.filePath(QStringLiteral("google.json")));
+		SteamForge::CloudSync cloudSync(googleConnection, emptyLibrary);
+		SteamForge::MainWindow mainWindow(emptyLibrary, clock, emptyMonitor, imageCache, profiles, encryption, googleConnection, cloudSync, settings, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false});
 		mainWindow.show();
 		SteamForge::ConfirmationsDialog dialog(monitor, imageCache, record, SteamForge::RecordDisplayName(record), QImage());
 		SteamForge::ConfirmationsDialog signInDialog(monitor, imageCache, expiredRecord, SteamForge::RecordDisplayName(expiredRecord), QImage());
@@ -240,7 +247,10 @@ private Q_SLOTS:
 		SteamForge::ApplicationSettings settings(dataRoot.filePath(QStringLiteral("settings.ini")));
 		FakeCommunityTransport profileTransport;
 		SteamForge::AccountProfiles profiles(profileTransport, imageCache, dataRoot.filePath(QStringLiteral("profiles.json")));
-		SteamForge::MainWindow mainWindow(library, clock, monitor, imageCache, profiles, encryption, settings, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false});
+		FakeGoogleTransport googleTransport;
+		SteamForge::GoogleConnection googleConnection(googleTransport, encryption, SteamForge::GoogleClient{.clientId = QStringLiteral("render-client"), .clientSecret = {}}, SteamForge::DefaultGoogleEndpoints(), dataDirectory.filePath(QStringLiteral("google.json")));
+		SteamForge::CloudSync cloudSync(googleConnection, library);
+		SteamForge::MainWindow mainWindow(library, clock, monitor, imageCache, profiles, encryption, googleConnection, cloudSync, settings, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false});
 		mainWindow.show();
 		QTest::qWait(500);
 		QVERIFY(mainWindow.grab().save(QDir(renderDirectory).filePath(fileName)));
@@ -284,7 +294,11 @@ private Q_SLOTS:
 		QTest::qWait(300);
 		QVERIFY(loginDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("login_unencrypted.png"))));
 
-		SteamForge::SteamGuardQrDialog qrDialog(QStringLiteral("Artie"), QStringLiteral("otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam"));
+		const SteamForge::SteamGuardLinks qrLinks{
+			.steamEncoderLink = QStringLiteral("otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam&digits=5&encoder=steam"),
+			.steamTypeLink = QStringLiteral("otpauth://steam/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam&digits=5"),
+		};
+		SteamForge::SteamGuardQrDialog qrDialog(QStringLiteral("Artie"), qrLinks);
 		qrDialog.show();
 		QTest::qWait(300);
 		QVERIFY(qrDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("steam_guard_qr_hidden.png"))));
@@ -296,6 +310,13 @@ private Q_SLOTS:
 		(*showQrButton)->click();
 		QTest::qWait(100);
 		QVERIFY(qrDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("steam_guard_qr.png"))));
+		const auto steamTypeTab = std::ranges::find_if(qrButtons, [](const QPushButton* button) {
+			return button->text() == QCoreApplication::translate("SteamForge::SteamGuardQrDialog", "Aegis, Ente, 2FAS for Android");
+		});
+		QVERIFY(steamTypeTab != qrButtons.end());
+		(*steamTypeTab)->click();
+		QTest::qWait(100);
+		QVERIFY(qrDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("steam_guard_qr_steam_type.png"))));
 	}
 
 	void RenderTour() {
@@ -367,7 +388,10 @@ private Q_SLOTS:
 		FakeKeyStore keyStore;
 		SteamForge::StorageEncryption encryption(keyStore, library, dataDirectory.filePath(QStringLiteral("encryption.json")));
 		encryption.PrepareLibrary();
-		SteamForge::MainWindow mainWindow(library, clock, monitor, imageCache, profiles, encryption, settings, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false});
+		FakeGoogleTransport googleTransport;
+		SteamForge::GoogleConnection googleConnection(googleTransport, encryption, SteamForge::GoogleClient{.clientId = QStringLiteral("render-client"), .clientSecret = {}}, SteamForge::DefaultGoogleEndpoints(), dataDirectory.filePath(QStringLiteral("google.json")));
+		SteamForge::CloudSync cloudSync(googleConnection, library);
+		SteamForge::MainWindow mainWindow(library, clock, monitor, imageCache, profiles, encryption, googleConnection, cloudSync, settings, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false});
 		monitor.Start();
 		SteamForge::AccountConfirmations* fullRecordConfirmations = monitor.Find(fullRecord.id);
 		QVERIFY(fullRecordConfirmations != nullptr);
@@ -408,7 +432,7 @@ private Q_SLOTS:
 		recordLoginDialog.show();
 		SteamForge::ImportDialog importDialog(library);
 		importDialog.show();
-		SteamForge::SettingsDialog settingsDialog(std::nullopt, true, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false}, SteamForge::EncryptionStatus::OFF);
+		SteamForge::SettingsDialog settingsDialog(std::nullopt, true, SteamForge::DataLocation{.directoryPath = dataDirectory.path(), .isPortable = false}, encryption, googleConnection, SteamForge::SettingsDialog::CloudAccountsSource{.sync = cloudSync, .library = library, .titleProvider = SteamForge::RecordDisplayName}, SteamForge::SettingsSection::ENCRYPTION);
 		settingsDialog.show();
 		SteamForge::RecordDataDialog recordDataDialog(library, codesOnlyRecord, SteamForge::RecordDisplayName(codesOnlyRecord), std::nullopt);
 		recordDataDialog.show();
@@ -417,7 +441,40 @@ private Q_SLOTS:
 		QVERIFY(recordLoginDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_login_record.png"))));
 		QVERIFY(importDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_import.png"))));
 		QVERIFY(settingsDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_settings.png"))));
+		settingsDialog.ShowSection(SteamForge::SettingsSection::GOOGLE);
+		QTest::qWait(100);
+		QVERIFY(settingsDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_settings_google.png"))));
 		QVERIFY(recordDataDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_record_data.png"))));
+
+		// The Google connection window: what goes to Google, then the recovery key written down or typed in.
+		const SteamForge::GoogleConnectDialog::EncryptionStarter noEncryption = []() {
+			return false;
+		};
+		SteamForge::GoogleConnectDialog googleIntroDialog(googleConnection, cloudSync, library, SteamForge::RecordDisplayName, noEncryption, false);
+		googleIntroDialog.show();
+		QTest::qWait(300);
+		QVERIFY(googleIntroDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_google_intro.png"))));
+		googleIntroDialog.hide();
+		SteamForge::GoogleConnectDialog googleKeyDialog(googleConnection, cloudSync, library, SteamForge::RecordDisplayName, noEncryption, true);
+		googleKeyDialog.show();
+		Q_EMIT googleConnection.NewVaultCreated(QStringLiteral("K7QX-M2PA-VR4D-9TBN-HC3W-ZJ5E-LF6S-UY8G").replace(u'9', u'R').replace(u'8', u'B'));
+		QTest::qWait(300);
+		QVERIFY(googleKeyDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_google_new_key.png"))));
+		Q_EMIT googleConnection.RecoveryKeyNeeded();
+		QTest::qWait(300);
+		QVERIFY(googleKeyDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_google_enter_key.png"))));
+		Q_EMIT googleConnection.Connected();
+		QTest::qWait(300);
+		QVERIFY(googleKeyDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_google_choose.png"))));
+		const QList<QPushButton*> googleButtons = googleKeyDialog.findChildren<QPushButton*>();
+		const auto notNowButton = std::ranges::find_if(googleButtons, [](const QPushButton* button) {
+			return button->text() == QCoreApplication::translate("SteamForge::GoogleConnectDialog", "Not now");
+		});
+		QVERIFY(notNowButton != googleButtons.end());
+		(*notNowButton)->click();
+		QTest::qWait(300);
+		QVERIFY(googleKeyDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_google_done.png"))));
+		googleKeyDialog.hide();
 	}
 };
 

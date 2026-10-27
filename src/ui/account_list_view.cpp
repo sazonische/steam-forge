@@ -127,6 +127,12 @@ void AccountListView::SetConfirmationCount(const QUuid& recordId, int waitingCou
 	}
 }
 
+void AccountListView::SetCloudState(const QUuid& recordId, RowCloudState state) {
+	if (AccountRow* row = FindRow(recordId); row != nullptr) {
+		row->SetCloudState(state);
+	}
+}
+
 void AccountListView::changeEvent(QEvent* event) {
 	if (event->type() == QEvent::LanguageChange) {
 		UpdateCodes();

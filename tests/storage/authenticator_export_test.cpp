@@ -32,6 +32,24 @@ class AuthenticatorExportTest final : public QObject {
 	Q_OBJECT
 
 private Q_SLOTS:
+	// Stratum, 2FAS for iPhone and KeePassDX read encoder=steam; Aegis, Ente and 2FAS for Android read the steam type.
+	void WritesTheLinksAuthenticatorAppsRecognize() {
+		const SteamForge::AuthenticatorRecord record = FullRecord();
+		QCOMPARE(SteamForge::SteamGuardAppUri(record, SteamForge::SteamGuardLinkStyle::STEAM_ENCODER), QStringLiteral("otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam&digits=5&encoder=steam"));
+		QCOMPARE(SteamForge::SteamGuardAppUri(record, SteamForge::SteamGuardLinkStyle::STEAM_TYPE), QStringLiteral("otpauth://steam/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam&digits=5"));
+		// The .maFile keeps the link Steam itself returns, as Steam Desktop Authenticator writes it.
+		QCOMPARE(SteamForge::SteamGuardUri(record), QStringLiteral("otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam"));
+	}
+
+	void ImportsItsOwnLinksBack() {
+		for (const SteamForge::SteamGuardLinkStyle style : {SteamForge::SteamGuardLinkStyle::STEAM_ENCODER, SteamForge::SteamGuardLinkStyle::STEAM_TYPE}) {
+			const std::expected<SteamForge::ImportResult, SteamForge::ImportError> imported = SteamForge::ParseOtpauthLinks(SteamForge::SteamGuardAppUri(FullRecord(), style), QString());
+			QVERIFY(imported.has_value());
+			QCOMPARE(imported->records.size(), std::size_t{1});
+			QCOMPARE(imported->records.front().secrets.sharedSecret, FullRecord().secrets.sharedSecret);
+		}
+	}
+
 	void WritesTheFieldsSteamDesktopAuthenticatorReads() {
 		const QJsonObject exported = QJsonDocument::fromJson(SteamForge::ExportMaFile(FullRecord())).object();
 		QCOMPARE(exported.value(QStringLiteral("shared_secret")).toString(), QString(SHARED_SECRET));

@@ -152,6 +152,10 @@ std::expected<void, EncryptionFailure> StorageEncryption::FinishInterruptedChang
 	return {};
 }
 
+const std::optional<DataKey>& StorageEncryption::CurrentKey() const {
+	return dataKey;
+}
+
 EncryptionStatus StorageEncryption::Status() const {
 	return status;
 }

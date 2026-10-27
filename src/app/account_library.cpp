@@ -2,9 +2,15 @@
 
 namespace SteamForge {
 
+namespace {
+	// Next to the accounts folder, so a backup never shows up as an account.
+	constexpr QLatin1StringView BACKUPS_RELATIVE_PATH{"../backups"};
+} // namespace
+
 AccountLibrary::AccountLibrary(AuthenticatorStore accountsStore, SessionStore sessionsStore, QObject* parent) :
 	QObject(parent),
 	authenticatorStore(std::move(accountsStore)),
+	backupStore(QDir::cleanPath(QDir(authenticatorStore.DirectoryPath()).filePath(BACKUPS_RELATIVE_PATH))),
 	sessionStore(std::move(sessionsStore)) {
 }
 
@@ -82,8 +88,16 @@ std::expected<void, StorageError> AccountLibrary::Remove(const QUuid& recordId) 
 	return {};
 }
 
+std::expected<void, StorageError> AccountLibrary::SaveBackup(const AuthenticatorRecord& record) const {
+	// A new ID, so several backups of one record stay apart.
+	AuthenticatorRecord backup = record;
+	backup.id = QUuid::createUuid();
+	return backupStore.Save(backup);
+}
+
 void AccountLibrary::SetDataKey(const std::optional<DataKey>& key) {
 	authenticatorStore.SetDataKey(key);
+	backupStore.SetDataKey(key);
 	sessionStore.SetDataKey(key);
 }
 

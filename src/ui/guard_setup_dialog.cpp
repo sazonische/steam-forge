@@ -65,6 +65,9 @@ GuardSetupDialog::GuardSetupDialog(AccountLibrary& library, const SteamClock& cl
 	recoveryLayout->addWidget(recoveryTitleLabel);
 	recoveryLayout->addWidget(recoveryCodeLabel);
 	recoveryLayout->addWidget(recoveryHintLabel);
+	googleCheckBox = new QCheckBox(this);
+	googleCheckBox->setChecked(true);
+	googleCheckBox->hide();
 
 	statusLabel = new QLabel(this);
 	statusLabel->setWordWrap(true);
@@ -86,6 +89,7 @@ GuardSetupDialog::GuardSetupDialog(AccountLibrary& library, const SteamClock& cl
 	dialogLayout->addWidget(introLabel);
 	dialogLayout->addWidget(codeRow);
 	dialogLayout->addWidget(recoveryCard);
+	dialogLayout->addWidget(googleCheckBox);
 	dialogLayout->addWidget(statusLabel);
 	dialogLayout->addLayout(buttonsLayout);
 
@@ -125,7 +129,17 @@ void GuardSetupDialog::RetranslateUi() {
 	startButton->setText(tr("Set up Steam Guard"));
 	recoveryTitleLabel->setText(tr("Recovery code"));
 	recoveryHintLabel->setText(tr("Write it down and keep it apart from this computer. With this code Steam Guard can be removed from the account if SteamForge is lost. The account details show it as well."));
+	googleCheckBox->setText(tr("Add to Google, so the account is on your other computers too"));
 	UpdateState();
+}
+
+void GuardSetupDialog::OfferGoogle() {
+	isGoogleOffered = true;
+	UpdateState();
+}
+
+bool GuardSetupDialog::AddsToGoogle() const {
+	return isGoogleOffered && setup.Stage() == GuardSetupStage::SUCCEEDED && googleCheckBox->isChecked();
 }
 
 void GuardSetupDialog::StartSetup() {
@@ -161,6 +175,7 @@ void GuardSetupDialog::UpdateState() {
 	const bool isActivatedButNotSaved = stage == GuardSetupStage::FAILED && setup.Failure().has_value() && setup.Failure()->kind == GuardSetupFailureKind::ACTIVATED_NOT_SAVED;
 	recoveryCard->setVisible(stage == GuardSetupStage::SUCCEEDED || isActivatedButNotSaved);
 	recoveryCodeLabel->setText(setup.Record().secrets.revocationCode);
+	googleCheckBox->setVisible(isGoogleOffered && isSuccess);
 	closeButton->setText(stage == GuardSetupStage::SUCCEEDED ? tr("Done") : tr("Close"));
 	SetButtonRole(*closeButton, stage == GuardSetupStage::SUCCEEDED ? ButtonRole::PRIMARY : ButtonRole::SECONDARY);
 

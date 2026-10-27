@@ -5,18 +5,22 @@
 #include "platform/data_location.h"
 #include "platform/system_key_store.h"
 #include "steam/confirmation_service.h"
+#include "ui/account_details_view.h"
+#include "ui/account_row.h"
 #include "ui/login_dialog.h"
+#include "ui/settings_dialog.h"
 
 namespace SteamForge {
 
-class AccountDetailsView;
 class AccountLibrary;
 class AccountProfiles;
 class AccountListView;
 class ApplicationSettings;
+class CloudSync;
 class ConfirmationMonitor;
 class ConfirmationsDialog;
 class DesktopNotifications;
+class GoogleConnection;
 class SteamImageCache;
 class StorageEncryption;
 struct EncryptionFailure;
@@ -27,7 +31,7 @@ class MainWindow final : public QMainWindow {
 	Q_OBJECT
 
 public:
-	MainWindow(AccountLibrary& library, const SteamClock& clock, ConfirmationMonitor& monitor, SteamImageCache& images, AccountProfiles& profiles, StorageEncryption& encryption, ApplicationSettings& applicationSettings, DataLocation location, QWidget* parent = nullptr);
+	MainWindow(AccountLibrary& library, const SteamClock& clock, ConfirmationMonitor& monitor, SteamImageCache& images, AccountProfiles& profiles, StorageEncryption& encryption, GoogleConnection& google, CloudSync& sync, ApplicationSettings& applicationSettings, DataLocation location, QWidget* parent = nullptr);
 
 	void BringToFront();
 	void QuitApplication();
@@ -57,12 +61,24 @@ private:
 	void RetranslateUi();
 	void UpdatePages();
 	void ForgetProfilesOfRemovedRecords();
-	void UpdateEncryptionButton();
-	void ShowEncryption();
-	void OfferEncryption();
+	void UpdateStatusButtons();
+	void ShowSyncStatus();
+	void OpenEncryptionStatus();
+	void OpenGoogleStatus();
+	void UpdateCloudStates();
+	[[nodiscard]] RowCloudState CloudStateOf(const AuthenticatorRecord& record) const;
+	[[nodiscard]] RecordCloudInfo CloudInfoOf(const QUuid& recordId) const;
+	void SyncIfStale();
+	void NotifyCloudArrivals();
+	void ConfirmCloudRemoval(const QUuid& recordId);
+	void OpenCloudConflict(const QUuid& recordId);
+	// The open modal window, so a question asked from the settings appears over them.
+	[[nodiscard]] QWidget* DialogParent();
+	// True once encryption is on.
+	bool OfferEncryption();
 	[[nodiscard]] bool OfferEncryptionWithoutPrompt(KeyProtection missingProtection);
-	void ShowEncryptionOn();
-	[[nodiscard]] QString MissingProtectionText(KeyProtection protection) const;
+	void TurnOffEncryption();
+	[[nodiscard]] static QString MissingProtectionText(KeyProtection protection);
 	[[nodiscard]] QString EncryptionFailureText(const EncryptionFailure& failure) const;
 	// Results of the user's own actions, shown as notifications of the system like every other event.
 	void Notify(const QString& title, const QString& text);
@@ -88,7 +104,9 @@ private:
 	void RefreshShownRecord(const QUuid& recordId);
 	void OpenImportDialog();
 	void RunImportDialog(const QStringList& filePaths);
-	void OpenSettingsDialog();
+	void OpenSettingsDialog(SettingsSection section);
+	void OpenGoogleConnectDialog();
+	void ConfirmGoogleDisconnect();
 	void ConfirmRemoval(const QUuid& recordId);
 	void OpenRecordDataDialog(const QUuid& recordId);
 	void ExportRecord(const QUuid& recordId);
@@ -101,15 +119,20 @@ private:
 	SteamImageCache& steamImageCache;
 	AccountProfiles& accountProfiles;
 	StorageEncryption& storageEncryption;
+	GoogleConnection& googleConnection;
+	CloudSync& cloudSync;
 	ApplicationSettings& settings;
 	DataLocation dataLocation;
 	SystemTray* systemTray = nullptr;
 	DesktopNotifications* desktopNotifications = nullptr;
 	QHash<QUuid, QPointer<ConfirmationsDialog>> confirmationsDialogs;
+	// Told in one notification once the pass ends.
+	std::vector<QUuid> arrivedRecordIds;
 	bool isQuitRequested = false;
 
 	QLabel* topBarTitleLabel = nullptr;
-	QPushButton* encryptionButton = nullptr;
+	QPushButton* encryptionStatusButton = nullptr;
+	QPushButton* googleStatusButton = nullptr;
 	QPushButton* addAccountButton = nullptr;
 	QPushButton* settingsButton = nullptr;
 	QLabel* loadProblemLabel = nullptr;

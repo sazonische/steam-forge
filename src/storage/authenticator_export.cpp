@@ -22,6 +22,8 @@ namespace {
 	constexpr QLatin1StringView SESSION_STEAM_ID_KEY{"SteamID"};
 	// The uri Steam returns from AddAuthenticator.
 	constexpr QLatin1StringView OTPAUTH_URI_PATTERN{"otpauth://totp/Steam:%1?secret=%2&issuer=Steam"};
+	constexpr QLatin1StringView STEAM_ENCODER_URI_PATTERN{"otpauth://totp/Steam:%1?secret=%2&issuer=Steam&digits=5&encoder=steam"};
+	constexpr QLatin1StringView STEAM_TYPE_URI_PATTERN{"otpauth://steam/Steam:%1?secret=%2&issuer=Steam&digits=5"};
 	constexpr QLatin1StringView MA_FILE_SUFFIX{".maFile"};
 	constexpr QLatin1StringView UNSAFE_FILE_NAME_CHARACTERS{R"([^A-Za-z0-9._-])"};
 	constexpr QLatin1StringView FALLBACK_FILE_NAME{"account"};
@@ -65,6 +67,11 @@ QByteArray ExportMaFile(const AuthenticatorRecord& record) {
 
 QString SteamGuardUri(const AuthenticatorRecord& record) {
 	return QString(OTPAUTH_URI_PATTERN).arg(QString::fromLatin1(QUrl::toPercentEncoding(AccountName(record))), EncodeBase32(record.secrets.sharedSecret));
+}
+
+QString SteamGuardAppUri(const AuthenticatorRecord& record, SteamGuardLinkStyle style) {
+	const QLatin1StringView pattern = style == SteamGuardLinkStyle::STEAM_ENCODER ? STEAM_ENCODER_URI_PATTERN : STEAM_TYPE_URI_PATTERN;
+	return QString(pattern).arg(QString::fromLatin1(QUrl::toPercentEncoding(AccountName(record))), EncodeBase32(record.secrets.sharedSecret));
 }
 
 QString MaFileName(const AuthenticatorRecord& record) {

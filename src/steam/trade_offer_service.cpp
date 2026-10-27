@@ -394,14 +394,14 @@ void TradeOfferService::LoadAssetProperties(QString accessToken, TradeOfferDetai
 		.encoding = WebApiEncoding::JSON,
 		.jsonParameters = {{INPUT_JSON_PARAMETER, QString::fromUtf8(QJsonDocument(input).toJson(QJsonDocument::Compact))}},
 	};
-	webApiTransport.Send(request, context, [this, accessToken = std::move(accessToken), offer = std::move(offer), queries = std::move(queries), found = std::move(found), &context, resultHandler = std::move(handler)](const WebApiResponse& response) mutable {
+	webApiTransport.Send(request, context, [this, pendingAccessToken = std::move(accessToken), pendingOffer = std::move(offer), remainingQueries = std::move(queries), foundProperties = std::move(found), &context, resultHandler = std::move(handler)](const WebApiResponse& response) mutable {
 		// Without the properties the offer still shows; only the inspect links of those items stay empty.
 		if (response.has_value()) {
 			if (std::expected<AssetPropertiesByAsset, WebApiError> properties = ParseAssetProperties(*response); properties.has_value()) {
-				found.insert(*properties);
+				foundProperties.insert(*properties);
 			}
 		}
-		LoadAssetProperties(std::move(accessToken), std::move(offer), std::move(queries), std::move(found), context, std::move(resultHandler));
+		LoadAssetProperties(std::move(pendingAccessToken), std::move(pendingOffer), std::move(remainingQueries), std::move(foundProperties), context, std::move(resultHandler));
 	});
 }
 

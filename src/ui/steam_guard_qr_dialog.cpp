@@ -9,7 +9,8 @@ namespace SteamForge {
 
 namespace {
 	constexpr int QUIET_ZONE_MODULES = 4;
-	constexpr int MODULE_SIZE = 6;
+	// The same for both links, large for a phone camera, and the window with the app tabs still fits a small laptop.
+	constexpr int QR_EDGE_LENGTH = 340;
 	// Shrunk to so few pixels, the hidden picture keeps nothing a camera could read back.
 	constexpr int HIDDEN_QR_PIXELS = 12;
 	constexpr int MINIMUM_DIALOG_WIDTH = 440;
@@ -17,7 +18,6 @@ namespace {
 	constexpr int COVER_SPACING = 12;
 	constexpr QSize COVER_ICON_SIZE{32, 32};
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
-	constexpr QMargins QR_CARD_MARGINS{12, 12, 12, 12};
 	// The blurred code dims evenly and darkens further towards the edges, so the icon and button in the middle
 	// stand out without a panel behind them.
 	constexpr QColor SHADE_COLOR{14, 20, 27};
@@ -29,6 +29,9 @@ namespace {
 	constexpr QColor QR_BACKGROUND{0xff, 0xff, 0xff};
 	constexpr QColor QR_MODULE_COLOR{0x00, 0x00, 0x00};
 	constexpr QLatin1StringView HIDE_ICON_RESOURCE{":/styles/eye-off.svg"};
+	constexpr int STEAM_ENCODER_LINK_INDEX = 0;
+	constexpr int STEAM_TYPE_LINK_INDEX = 1;
+	constexpr int APP_TABS_SPACING = 4;
 
 	QImage HiddenQrImage(const QImage& qrImage) {
 		QImage blurred = qrImage.scaled(HIDDEN_QR_PIXELS, HIDDEN_QR_PIXELS, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
@@ -52,29 +55,29 @@ namespace {
 	}
 } // namespace
 
-QImage QrCodeImage(const QString& text, int moduleSize) {
+QImage QrCodeImage(const QString& text, int edgeLength) {
 	ZXing::MultiFormatWriter writer(ZXing::BarcodeFormat::QRCode);
 	writer.setMargin(QUIET_ZONE_MODULES);
 	const ZXing::BitMatrix matrix = writer.encode(text.toStdString(), 0, 0);
-	QImage image(matrix.width() * moduleSize, matrix.height() * moduleSize, QImage::Format_RGB32);
+	// Whole pixels per module keep the edges sharp for the camera.
+	const int moduleSize = std::max(1, edgeLength / matrix.width());
+	const int offset = std::max(0, (edgeLength - matrix.width() * moduleSize) / 2);
+	QImage image(std::max(edgeLength, matrix.width()), std::max(edgeLength, matrix.height()), QImage::Format_RGB32);
 	image.fill(QR_BACKGROUND);
 	QPainter painter(&image);
 	for (int row = 0; row < matrix.height(); ++row) {
 		for (int column = 0; column < matrix.width(); ++column) {
 			if (matrix.get(column, row)) {
-				painter.fillRect(column * moduleSize, row * moduleSize, moduleSize, moduleSize, QR_MODULE_COLOR);
+				painter.fillRect(offset + (column * moduleSize), offset + (row * moduleSize), moduleSize, moduleSize, QR_MODULE_COLOR);
 			}
 		}
 	}
 	return image;
 }
 
-SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, QString steamGuardUri, QWidget* parent) :
+SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, SteamGuardLinks steamGuardLinks, QWidget* parent) :
 	QDialog(parent),
-	uri(std::move(steamGuardUri)),
-	qrImage(QrCodeImage(uri, MODULE_SIZE)),
-	shownQrPixmap(QPixmap::fromImage(qrImage)),
-	hiddenQrPixmap(QPixmap::fromImage(HiddenQrImage(qrImage))) {
+	links{std::move(steamGuardLinks.steamEncoderLink), std::move(steamGuardLinks.steamTypeLink)} {
 	setWindowTitle(tr("QR code of Steam Guard"));
 	setMinimumWidth(MINIMUM_DIALOG_WIDTH);
 
@@ -83,13 +86,30 @@ SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, QString stea
 	warningLabel->setTextFormat(Qt::PlainText);
 	warningLabel->setWordWrap(true);
 
-	auto* qrCard = new QFrame(this);
-	qrCard->setObjectName(CARD_STYLE);
-	qrLabel = new QLabel(qrCard);
-	qrLabel->setAlignment(Qt::AlignCenter);
-	qrLabel->setFixedSize(qrImage.size());
+	auto* appLabel = new QLabel(tr("The app you add the account to:"), this);
+	appLabel->setObjectName(SECONDARY_TEXT_STYLE);
+	auto* encoderAppsTab = new QPushButton(tr("Stratum, 2FAS for iPhone, KeePassDX"), this);
+	auto* steamTypeAppsTab = new QPushButton(tr("Aegis, Ente, 2FAS for Android"), this);
+	auto* appTabsLayout = new QHBoxLayout();
+	appTabsLayout->setSpacing(APP_TABS_SPACING);
+	for (QPushButton* appTab : {encoderAppsTab, steamTypeAppsTab}) {
+		appTab->setObjectName(FILTER_TAB_STYLE);
+		appTab->setCheckable(true);
+		appTab->setCursor(Qt::PointingHandCursor);
+		appTabsLayout->addWidget(appTab);
+	}
+	appTabsLayout->addStretch();
+	appGroup.addButton(encoderAppsTab, STEAM_ENCODER_LINK_INDEX);
+	appGroup.addButton(steamTypeAppsTab, STEAM_TYPE_LINK_INDEX);
+	encoderAppsTab->setChecked(true);
 
-	qrCover = new QWidget(qrCard);
+	// No card around it: the white border of the code itself frames it.
+	auto* qrArea = new QWidget(this);
+	qrLabel = new QLabel(qrArea);
+	qrLabel->setAlignment(Qt::AlignCenter);
+	qrLabel->setFixedSize(QR_EDGE_LENGTH, QR_EDGE_LENGTH);
+
+	qrCover = new QWidget(qrArea);
 	auto* coverIconLabel = new QLabel(qrCover);
 	coverIconLabel->setPixmap(QIcon(HIDE_ICON_RESOURCE).pixmap(COVER_ICON_SIZE, devicePixelRatioF()));
 	coverIconLabel->setAlignment(Qt::AlignCenter);
@@ -102,11 +122,11 @@ SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, QString stea
 	coverLayout->addWidget(coverIconLabel, 0, Qt::AlignHCenter);
 	coverLayout->addWidget(showCodeButton, 0, Qt::AlignHCenter);
 
-	auto* qrCardLayout = new QGridLayout(qrCard);
-	qrCardLayout->setContentsMargins(QR_CARD_MARGINS);
+	auto* qrAreaLayout = new QGridLayout(qrArea);
+	qrAreaLayout->setContentsMargins(0, 0, 0, 0);
 	// The icon and the button lie over the blurred code in the same cell.
-	qrCardLayout->addWidget(qrLabel, 0, 0);
-	qrCardLayout->addWidget(qrCover, 0, 0, Qt::AlignCenter);
+	qrAreaLayout->addWidget(qrLabel, 0, 0);
+	qrAreaLayout->addWidget(qrCover, 0, 0, Qt::AlignCenter);
 
 	hideCodeButton = new QPushButton(QIcon(HIDE_ICON_RESOURCE), tr("Hide QR code"), this);
 	hideCodeButton->setObjectName(LINK_BUTTON_STYLE);
@@ -115,7 +135,7 @@ SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, QString stea
 	hideButtonPolicy.setRetainSizeWhenHidden(true);
 	hideCodeButton->setSizePolicy(hideButtonPolicy);
 
-	auto* hintLabel = new QLabel(tr("The app must support Steam Guard: Steam accepts only its own five-character codes, not the usual six digits."), this);
+	auto* hintLabel = new QLabel(tr("The app must support Steam Guard. Check that it shows the same five-character code as SteamForge; if it does not, try the other tab."), this);
 	hintLabel->setObjectName(SECONDARY_TEXT_STYLE);
 	hintLabel->setWordWrap(true);
 
@@ -129,10 +149,14 @@ SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, QString stea
 	buttonsLayout->addWidget(closeButton);
 
 	auto* dialogLayout = new QVBoxLayout(this);
+	// An explicit minimum width would stop Qt from growing the window to the app tabs and the code.
+	dialogLayout->setSizeConstraint(QLayout::SetMinimumSize);
 	dialogLayout->setContentsMargins(DIALOG_MARGINS);
 	dialogLayout->setSpacing(DIALOG_SPACING);
 	dialogLayout->addWidget(warningLabel);
-	dialogLayout->addWidget(qrCard, 0, Qt::AlignHCenter);
+	dialogLayout->addWidget(appLabel);
+	dialogLayout->addLayout(appTabsLayout);
+	dialogLayout->addWidget(qrArea, 0, Qt::AlignHCenter);
 	dialogLayout->addWidget(hideCodeButton, 0, Qt::AlignHCenter);
 	dialogLayout->addWidget(hintLabel);
 	dialogLayout->addLayout(buttonsLayout);
@@ -158,11 +182,32 @@ SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, QString stea
 	connect(hideCodeButton, &QPushButton::clicked, this, [this]() {
 		SetCodeShown(false);
 	});
-	SetCodeShown(false);
+	connect(&appGroup, &QButtonGroup::idClicked, this, &SteamGuardQrDialog::SelectLink);
+	SelectLink(STEAM_ENCODER_LINK_INDEX);
+	FitHeightToContents(*this);
+}
+
+void SteamGuardQrDialog::showEvent(QShowEvent* event) {
+	QDialog::showEvent(event);
+	// The wrapped texts need their height at the width the app tabs gave the window.
+	FitHeightToContents(*this);
+}
+
+void SteamGuardQrDialog::SelectLink(int linkIndex) {
+	uri = links.at(static_cast<std::size_t>(linkIndex));
+	const qreal pixelRatio = devicePixelRatioF();
+	qrImage = QrCodeImage(uri, qRound(QR_EDGE_LENGTH * pixelRatio));
+	qrImage.setDevicePixelRatio(pixelRatio);
+	QImage hiddenQrImage = HiddenQrImage(qrImage);
+	hiddenQrImage.setDevicePixelRatio(pixelRatio);
+	shownQrPixmap = QPixmap::fromImage(qrImage);
+	hiddenQrPixmap = QPixmap::fromImage(hiddenQrImage);
+	SetCodeShown(isCodeShown);
 	FitHeightToContents(*this);
 }
 
 void SteamGuardQrDialog::SetCodeShown(bool isShown) {
+	isCodeShown = isShown;
 	qrLabel->setPixmap(isShown ? shownQrPixmap : hiddenQrPixmap);
 	qrLabel->setAccessibleName(isShown ? tr("QR code of Steam Guard") : tr("Hidden QR code"));
 	qrCover->setVisible(!isShown);

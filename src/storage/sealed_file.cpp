@@ -16,6 +16,7 @@ namespace {
 	constexpr QLatin1StringView ASSOCIATED_DATA_PATTERN{"steamforge-sealed/%1/%2/%3"};
 	constexpr QLatin1StringView ACCOUNT_KIND_NAME{"account"};
 	constexpr QLatin1StringView SESSION_KIND_NAME{"session"};
+	constexpr QLatin1StringView GOOGLE_KIND_NAME{"google"};
 
 	QLatin1StringView KindName(SealedFileKind kind) {
 		switch (kind) {
@@ -23,6 +24,8 @@ namespace {
 				return ACCOUNT_KIND_NAME;
 			case SealedFileKind::SESSION:
 				return SESSION_KIND_NAME;
+			case SealedFileKind::GOOGLE:
+				return GOOGLE_KIND_NAME;
 		}
 		return {};
 	}

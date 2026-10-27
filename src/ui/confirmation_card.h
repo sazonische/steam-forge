@@ -65,7 +65,7 @@ protected:
 private:
 	void RetranslateUi();
 	void ShowItems(const TradeOfferDetails* tradeOffer);
-	[[nodiscard]] QString TimeText(const QDateTime& createdAt) const;
+	[[nodiscard]] static QString TimeText(const QDateTime& createdAt);
 	[[nodiscard]] QWidget* CreateItemRow(bool isGiven, const std::vector<TradeItem>& items);
 
 	SteamImageCache& imageCache;

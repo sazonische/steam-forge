@@ -115,8 +115,12 @@ jobs:
             vcpkg-windows-
 
       # vcpkg builds Qt and the other packages here.
+      # Without the repository secrets the program builds without Google sync.
       - name: Configure
         id: configure
+        env:
+          STEAMFORGE_GOOGLE_CLIENT_ID: ${{ secrets.STEAMFORGE_GOOGLE_CLIENT_ID }}
+          STEAMFORGE_GOOGLE_CLIENT_SECRET: ${{ secrets.STEAMFORGE_GOOGLE_CLIENT_SECRET }}
         run: cmake --preset windows-release "-DSTEAMFORGE_VERSION=${{ needs.meta.outputs.version }}"
 
       # Saved even when a later step fails, so hours of Qt building are not lost; never after a failed package
@@ -196,6 +200,9 @@ jobs:
       # vcpkg builds Qt and the other packages here.
       - name: Configure
         id: configure
+        env:
+          STEAMFORGE_GOOGLE_CLIENT_ID: ${{ secrets.STEAMFORGE_GOOGLE_CLIENT_ID }}
+          STEAMFORGE_GOOGLE_CLIENT_SECRET: ${{ secrets.STEAMFORGE_GOOGLE_CLIENT_SECRET }}
         run: bash tools/ci/build-linux.sh release configure
 
       - name: Save vcpkg binary cache

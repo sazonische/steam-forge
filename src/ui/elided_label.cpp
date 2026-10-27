@@ -16,9 +16,11 @@ void ElidedLabel::SetFullText(const QString& text) {
 }
 
 QSize ElidedLabel::sizeHint() const {
-	// Based on the full text, so replacing the shown text while resizing never changes the layout.
+	// Based on the full text, so replacing the shown text while resizing never changes the layout. Rounded up: with
+	// fractional glyph widths, as on Linux, the rounded width is short of the text and would cut its last letter.
 	const QMargins margins = contentsMargins();
-	return {fontMetrics().horizontalAdvance(fullText) + margins.left() + margins.right(), QLabel::sizeHint().height()};
+	const auto textWidth = static_cast<int>(std::ceil(QFontMetricsF(font()).horizontalAdvance(fullText)));
+	return {textWidth + margins.left() + margins.right(), QLabel::sizeHint().height()};
 }
 
 QSize ElidedLabel::minimumSizeHint() const {

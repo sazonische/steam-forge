@@ -1,6 +1,7 @@
 #pragma once
 
 #include "domain/authenticator_record.h"
+#include "ui/account_row.h"
 
 namespace SteamForge {
 
@@ -20,6 +21,7 @@ public:
 	[[nodiscard]] std::optional<QUuid> SelectedRecordId() const;
 	[[nodiscard]] bool Contains(const QUuid& recordId) const;
 	void SetConfirmationCount(const QUuid& recordId, int waitingCount);
+	void SetCloudState(const QUuid& recordId, RowCloudState state);
 	[[nodiscard]] bool IsRevealed(const QUuid& recordId) const;
 
 Q_SIGNALS:

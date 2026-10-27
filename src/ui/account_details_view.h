@@ -11,6 +11,16 @@ class IllustrationView;
 class PictureView;
 
 // Keeps its own copy of the record, so actions always refer to the record that is shown.
+// What the panel tells about Google for the shown account.
+struct RecordCloudInfo {
+	bool isGoogleConnected = false;
+	bool isInCloud = false;
+	bool hasConflict = false;
+	// A change asked for the account is on its way to Google.
+	bool isChanging = false;
+	QDateTime lastSyncedAt;
+};
+
 class AccountDetailsView final : public QWidget {
 	Q_OBJECT
 
@@ -21,6 +31,7 @@ public:
 	[[nodiscard]] std::optional<QUuid> ShownRecordId() const;
 	// Follows the eye button of the account in the list.
 	void SetAccountNameHidden(bool isHidden);
+	void SetCloudInfo(const RecordCloudInfo& info);
 
 Q_SIGNALS:
 	void RemoveRequested(const QUuid& recordId);
@@ -34,6 +45,9 @@ Q_SIGNALS:
 	void SignOutRequested(const QUuid& recordId);
 	void SetUpGuardRequested(const QUuid& recordId);
 	void MoveGuardRequested(const QUuid& recordId);
+	void AddToGoogleRequested(const QUuid& recordId);
+	void RemoveFromGoogleRequested(const QUuid& recordId);
+	void CloudConflictRequested(const QUuid& recordId);
 
 protected:
 	void changeEvent(QEvent* event) override;
@@ -48,6 +62,7 @@ private:
 	void UpdateConfirmationsCard(bool canUseSession);
 	void UpdateSetupSteps(bool hasConfirmationData, bool canUseSession);
 	void UpdateRestrictionNotice();
+	void UpdateGoogleCard();
 	void ToggleRevocationCode();
 	[[nodiscard]] bool HidesAccountName() const;
 	[[nodiscard]] QString SessionAccountName() const;
@@ -74,6 +89,11 @@ private:
 	QPushButton* signInButton = nullptr;
 	QPushButton* approveSignInButton = nullptr;
 	QPushButton* signOutButton = nullptr;
+	QFrame* googleCard = nullptr;
+	QLabel* googleSectionLabel = nullptr;
+	QLabel* googleStatusLabel = nullptr;
+	QPushButton* googleActionButton = nullptr;
+	RecordCloudInfo cloudInfo;
 	QFrame* confirmationsCard = nullptr;
 	QLabel* confirmationsSectionLabel = nullptr;
 	QLabel* confirmationsSummaryLabel = nullptr;

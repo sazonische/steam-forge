@@ -1,10 +1,14 @@
 # Helpers shared by tests; their precompiled header is reused by every test, so Qt headers are compiled once.
 function(steamforge_add_test_support)
 	add_library(steamforge_test_support STATIC
+		tests/support/cloud_computer.h
 		tests/support/fake_community_transport.h
+		tests/support/fake_drive.h
+		tests/support/fake_google_transport.h
 		tests/support/fake_key_store.h
 		tests/support/fake_web_api_transport.h
 		tests/support/local_http_server.h
+		tests/support/loopback_browser.h
 		tests/support/render_language.cpp
 		tests/support/render_language.h
 		tests/support/synthetic_tokens.cpp

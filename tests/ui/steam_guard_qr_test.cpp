@@ -3,8 +3,9 @@
 #include <ZXing/ReadBarcode.h>
 
 namespace {
-constexpr QLatin1StringView STEAM_GUARD_URI{"otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam"};
-constexpr int TEST_MODULE_SIZE = 4;
+constexpr QLatin1StringView STEAM_GUARD_URI{"otpauth://totp/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam&digits=5&encoder=steam"};
+constexpr QLatin1StringView STEAM_TYPE_URI{"otpauth://steam/Steam:synthetic_user?secret=AEBAGBAFAYDQQCIKBMGA2DQPCAIREEYU&issuer=Steam&digits=5"};
+constexpr int TEST_EDGE_LENGTH = 300;
 
 QStringList ReadQrCodes(const QImage& image) {
 	const QImage grayscaleImage = image.convertToFormat(QImage::Format_Grayscale8);
@@ -25,6 +26,10 @@ QPushButton* FindButton(const QWidget& window, const QString& text) {
 	});
 	return found == buttons.end() ? nullptr : *found;
 }
+
+SteamForge::SteamGuardLinks TestLinks() {
+	return SteamForge::SteamGuardLinks{.steamEncoderLink = QString(STEAM_GUARD_URI), .steamTypeLink = QString(STEAM_TYPE_URI)};
+}
 } // namespace
 
 class SteamGuardQrTest final : public QObject {
@@ -32,19 +37,27 @@ class SteamGuardQrTest final : public QObject {
 
 private Q_SLOTS:
 	void ReadsBackTheSameLink() {
-		const QImage image = SteamForge::QrCodeImage(QString(STEAM_GUARD_URI), TEST_MODULE_SIZE);
+		const QImage image = SteamForge::QrCodeImage(QString(STEAM_GUARD_URI), TEST_EDGE_LENGTH);
 		QVERIFY(!image.isNull());
 		QCOMPARE(ReadQrCodes(image), QStringList{QString(STEAM_GUARD_URI)});
 	}
 
+	void HasTheSameSizeForBothLinks() {
+		const QImage encoderImage = SteamForge::QrCodeImage(QString(STEAM_GUARD_URI), TEST_EDGE_LENGTH);
+		const QImage steamTypeImage = SteamForge::QrCodeImage(QString(STEAM_TYPE_URI), TEST_EDGE_LENGTH);
+		QCOMPARE(encoderImage.size(), QSize(TEST_EDGE_LENGTH, TEST_EDGE_LENGTH));
+		QCOMPARE(steamTypeImage.size(), QSize(TEST_EDGE_LENGTH, TEST_EDGE_LENGTH));
+		QCOMPARE(ReadQrCodes(steamTypeImage), QStringList{QString(STEAM_TYPE_URI)});
+	}
+
 	void KeepsTheQuietZoneWhite() {
-		const QImage image = SteamForge::QrCodeImage(QString(STEAM_GUARD_URI), TEST_MODULE_SIZE);
+		const QImage image = SteamForge::QrCodeImage(QString(STEAM_GUARD_URI), TEST_EDGE_LENGTH);
 		QCOMPARE(image.pixelColor(0, 0), QColor(Qt::white));
 		QCOMPARE(image.pixelColor(image.width() - 1, image.height() - 1), QColor(Qt::white));
 	}
 
 	void HidesTheCodeUntilShown() {
-		SteamForge::SteamGuardQrDialog dialog(QStringLiteral("synthetic_user"), QString(STEAM_GUARD_URI));
+		SteamForge::SteamGuardQrDialog dialog(QStringLiteral("synthetic_user"), TestLinks());
 		dialog.show();
 		QVERIFY(QTest::qWaitForWindowExposed(&dialog));
 		// Not even a picture of the window gives the code away.
@@ -52,7 +65,9 @@ private Q_SLOTS:
 
 		QPushButton* showButton = FindButton(dialog, QStringLiteral("Show QR code"));
 		QPushButton* hideButton = FindButton(dialog, QStringLiteral("Hide QR code"));
-		QVERIFY(showButton != nullptr && hideButton != nullptr);
+		if (showButton == nullptr || hideButton == nullptr) {
+			QFAIL("The buttons that show and hide the code are missing.");
+		}
 		QVERIFY(!hideButton->isVisible());
 		showButton->click();
 		QCOMPARE(ReadQrCodes(dialog.grab().toImage()), QStringList{QString(STEAM_GUARD_URI)});
@@ -61,6 +76,26 @@ private Q_SLOTS:
 		hideButton->click();
 		QVERIFY(ReadQrCodes(dialog.grab().toImage()).isEmpty());
 		QVERIFY(showButton->isVisible());
+	}
+
+	void ShowsTheLinkOfTheChosenApps() {
+		SteamForge::SteamGuardQrDialog dialog(QStringLiteral("synthetic_user"), TestLinks());
+		dialog.show();
+		QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+		QPushButton* steamTypeTab = FindButton(dialog, QStringLiteral("Aegis, Ente, 2FAS for Android"));
+		QPushButton* copyLinkButton = FindButton(dialog, QStringLiteral("Copy link"));
+		QPushButton* showButton = FindButton(dialog, QStringLiteral("Show QR code"));
+		if (steamTypeTab == nullptr || copyLinkButton == nullptr || showButton == nullptr) {
+			QFAIL("The app tab, the copy button or the show button is missing.");
+		}
+
+		showButton->click();
+		QCOMPARE(ReadQrCodes(dialog.grab().toImage()), QStringList{QString(STEAM_GUARD_URI)});
+		steamTypeTab->click();
+		// A shown code stays shown and changes to the link of the chosen apps.
+		QCOMPARE(ReadQrCodes(dialog.grab().toImage()), QStringList{QString(STEAM_TYPE_URI)});
+		copyLinkButton->click();
+		QCOMPARE(QGuiApplication::clipboard()->text(), QString(STEAM_TYPE_URI));
 	}
 };
 

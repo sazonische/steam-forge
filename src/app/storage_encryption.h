@@ -42,6 +42,8 @@ public:
 	[[nodiscard]] std::expected<void, EncryptionFailure> FinishInterruptedChange();
 
 	[[nodiscard]] EncryptionStatus Status() const;
+	// While encryption is on and unlocked; the Google connection is kept under it as well.
+	[[nodiscard]] const std::optional<DataKey>& CurrentKey() const;
 	[[nodiscard]] KeyProtection Protection() const;
 	[[nodiscard]] KeyProtection PreferredProtection() const;
 	[[nodiscard]] std::expected<void, EncryptionFailure> Enable(KeyProtection protection);

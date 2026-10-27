@@ -278,6 +278,28 @@ void TradeOfferDialog::UpdateState() {
 			}
 		}
 	}
+	UpdatePartner();
+
+	const bool isHeld = offer.has_value() && offer->holdEndsAt.isValid() && offer->holdEndsAt > QDateTime::currentDateTimeUtc();
+	holdLabel->setText(isHeld ? tr("Steam holds the items of this trade until %1 before they change hands.").arg(FormatTime(offer->holdEndsAt)) : QString());
+	holdLabel->setVisible(isHeld);
+	const QStringList warnings = confirmation.has_value() ? confirmation->warnings : QStringList();
+	warningsLabel->setText(warnings.join(QLatin1Char('\n')));
+	warningsLabel->setVisible(!warnings.isEmpty());
+	const QString message = offer.has_value() ? offer->message.trimmed() : QString();
+	messageLabel->setText(tr("Message: %1").arg(message));
+	messageLabel->setVisible(!message.isEmpty());
+	loadingLabel->setVisible(!offer.has_value());
+	loadingTiles->setVisible(!offer.has_value());
+
+	const bool canDecide = IsListed() && confirmations->Activity() == ConfirmationsActivity::IDLE;
+	acceptButton->setEnabled(canDecide);
+	rejectButton->setEnabled(canDecide);
+	statusLabel->setText(StatusText());
+	statusLabel->setVisible(!statusLabel->text().isEmpty());
+}
+
+void TradeOfferDialog::UpdatePartner() {
 	const QString partnerName = confirmation.has_value() ? confirmation->headline : QString();
 	setWindowTitle(tr("Trade with %1 · %2").arg(partnerName, accountTitle));
 	partnerNameLabel->setText(partnerName);
@@ -300,24 +322,6 @@ void TradeOfferDialog::UpdateState() {
 	partnerPicture->setToolTip(partnerSteamIdText);
 	profileButton->setEnabled(offer.has_value() && offer->partnerSteamId != 0);
 	steamOfferButton->setEnabled(confirmation.has_value() && TradeOfferUrl(confirmation->creatorId).isValid());
-
-	const bool isHeld = offer.has_value() && offer->holdEndsAt.isValid() && offer->holdEndsAt > QDateTime::currentDateTimeUtc();
-	holdLabel->setText(isHeld ? tr("Steam holds the items of this trade until %1 before they change hands.").arg(FormatTime(offer->holdEndsAt)) : QString());
-	holdLabel->setVisible(isHeld);
-	const QStringList warnings = confirmation.has_value() ? confirmation->warnings : QStringList();
-	warningsLabel->setText(warnings.join(QLatin1Char('\n')));
-	warningsLabel->setVisible(!warnings.isEmpty());
-	const QString message = offer.has_value() ? offer->message.trimmed() : QString();
-	messageLabel->setText(tr("Message: %1").arg(message));
-	messageLabel->setVisible(!message.isEmpty());
-	loadingLabel->setVisible(!offer.has_value());
-	loadingTiles->setVisible(!offer.has_value());
-
-	const bool canDecide = IsListed() && confirmations->Activity() == ConfirmationsActivity::IDLE;
-	acceptButton->setEnabled(canDecide);
-	rejectButton->setEnabled(canDecide);
-	statusLabel->setText(StatusText());
-	statusLabel->setVisible(!statusLabel->text().isEmpty());
 }
 
 void TradeOfferDialog::ShowItems(const TradeOfferDetails& loadedOffer) {

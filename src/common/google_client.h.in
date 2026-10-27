@@ -1,0 +1,9 @@
+#pragma once
+
+namespace SteamForge {
+
+// The OAuth client of the official build, filled in from its secrets; empty in a build without one.
+inline constexpr QLatin1StringView GOOGLE_CLIENT_ID{"@STEAMFORGE_GOOGLE_CLIENT_ID@"};
+inline constexpr QLatin1StringView GOOGLE_CLIENT_SECRET{"@STEAMFORGE_GOOGLE_CLIENT_SECRET@"};
+
+} // namespace SteamForge

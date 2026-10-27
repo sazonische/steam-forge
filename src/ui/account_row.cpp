@@ -15,6 +15,11 @@ namespace {
 	constexpr QLatin1StringView HIDE_ICON_RESOURCE{":/styles/eye-off.svg"};
 	constexpr QLatin1StringView COPY_ICON_RESOURCE{":/styles/copy.svg"};
 	constexpr QLatin1StringView COPIED_ICON_RESOURCE{":/styles/copied.svg"};
+	constexpr QLatin1StringView CLOUD_SYNCED_ICON_RESOURCE{":/styles/cloud-check.svg"};
+	constexpr QLatin1StringView CLOUD_CONFLICT_ICON_RESOURCE{":/styles/cloud-alert.svg"};
+	constexpr QLatin1StringView CLOUD_OFF_ICON_RESOURCE{":/styles/cloud-off.svg"};
+	constexpr QSize CLOUD_ICON_SIZE{16, 16};
+	constexpr int CLOUD_ICON_SPACING = 6;
 	constexpr QStringView MASKED_CODE{u"•••••"};
 	// Widest possible code, so the row keeps its layout when the code is shown or hidden.
 	constexpr QLatin1StringView WIDEST_CODE{"WWWWW"};
@@ -48,6 +53,11 @@ AccountRow::AccountRow(AuthenticatorRecord accountRecord, AccountProfiles& profi
 	avatarPicture = new PictureView(AVATAR_EDGE, this);
 	nameLabel = new ElidedLabel(this);
 	nameLabel->setObjectName(ROW_NAME_STYLE);
+	// As wide as the name while there is room, so the cloud mark stands right after it.
+	nameLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+	cloudLabel = new QLabel(this);
+	cloudLabel->setFixedSize(CLOUD_ICON_SIZE);
+	cloudLabel->hide();
 	subtitleLabel = new ElidedLabel(this);
 	subtitleLabel->setObjectName(ROW_SUBTITLE_STYLE);
 	confirmationBadge = new QLabel(this);
@@ -63,9 +73,14 @@ AccountRow::AccountRow(AuthenticatorRecord accountRecord, AccountProfiles& profi
 	copyButton = CreateIconButton(this);
 	copyButton->setIcon(QIcon(COPY_ICON_RESOURCE));
 
+	auto* nameLayout = new QHBoxLayout();
+	nameLayout->setSpacing(CLOUD_ICON_SPACING);
+	nameLayout->addWidget(nameLabel);
+	nameLayout->addWidget(cloudLabel);
+	nameLayout->addStretch();
 	auto* textLayout = new QVBoxLayout();
 	textLayout->setSpacing(2);
-	textLayout->addWidget(nameLabel);
+	textLayout->addLayout(nameLayout);
 	textLayout->addWidget(subtitleLabel);
 	auto* rowLayout = new QHBoxLayout(this);
 	rowLayout->setContentsMargins(ROW_MARGINS);
@@ -96,6 +111,14 @@ AccountRow::AccountRow(AuthenticatorRecord accountRecord, AccountProfiles& profi
 
 const QUuid& AccountRow::RecordId() const {
 	return record.id;
+}
+
+void AccountRow::SetCloudState(RowCloudState state) {
+	if (cloudState == state) {
+		return;
+	}
+	cloudState = state;
+	RetranslateUi();
 }
 
 void AccountRow::SetSelected(bool isSelected) {
@@ -165,15 +188,28 @@ void AccountRow::RetranslateUi() {
 	const QString identity = leadsWithPersonaName ? accountName : SteamIdText(record);
 	nameLabel->SetFullText(title);
 	setAccessibleName(leadsWithPersonaName && isRevealed ? QStringList{title, accountName}.join(QStringLiteral(", ")) : title);
+	QString subtitle = identity;
 	if (record.pendingActivation.has_value()) {
-		subtitleLabel->SetFullText(tr("%1 · Steam Guard setup not finished").arg(identity));
+		subtitle = tr("%1 · Steam Guard setup not finished").arg(identity);
 	} else if (record.secrets.sharedSecret.isEmpty()) {
-		subtitleLabel->SetFullText(tr("%1 · Steam Guard not in SteamForge").arg(identity));
-	} else if (DetermineCapabilities(record).canSignConfirmations) {
-		subtitleLabel->SetFullText(identity);
-	} else {
-		subtitleLabel->SetFullText(tr("%1 · codes only").arg(identity));
+		subtitle = tr("%1 · Steam Guard not in SteamForge").arg(identity);
+	} else if (!DetermineCapabilities(record).canSignConfirmations) {
+		subtitle = tr("%1 · codes only").arg(identity);
 	}
+	subtitleLabel->SetFullText(subtitle);
+	cloudLabel->setVisible(cloudState != RowCloudState::NONE);
+	if (cloudState == RowCloudState::LOCAL_ONLY) {
+		// The usual state, so its mark stays quiet.
+		cloudLabel->setPixmap(QIcon(CLOUD_OFF_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF(), QIcon::Disabled));
+		cloudLabel->setToolTip(tr("Only on this computer"));
+	} else if (cloudState == RowCloudState::IN_CLOUD) {
+		cloudLabel->setPixmap(QIcon(CLOUD_SYNCED_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF()));
+		cloudLabel->setToolTip(tr("Saved in Google"));
+	} else if (cloudState == RowCloudState::CONFLICT) {
+		cloudLabel->setPixmap(QIcon(CLOUD_CONFLICT_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF()));
+		cloudLabel->setToolTip(tr("Google has a different version: choose which one to keep"));
+	}
+	cloudLabel->setAccessibleName(cloudLabel->toolTip());
 
 	confirmationBadge->setVisible(confirmationCount > 0);
 	confirmationBadge->setText(QString::number(confirmationCount));

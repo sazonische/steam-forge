@@ -13,6 +13,20 @@ set(STEAMFORGE_VERSION_MAJOR "${CMAKE_MATCH_1}")
 set(STEAMFORGE_VERSION_MINOR "${CMAKE_MATCH_2}")
 set(STEAMFORGE_VERSION_PATCH "${CMAKE_MATCH_3}")
 
+# The OAuth client of Google sign-in comes from the environment or -D, never from Git: release builds take it
+# from the repository secrets. It stays in the cache, so a later configure without it keeps Google in the build.
+# Without it the build works, only Google sync is not offered.
+foreach(googleClientVariable STEAMFORGE_GOOGLE_CLIENT_ID STEAMFORGE_GOOGLE_CLIENT_SECRET)
+	if(NOT "$ENV{${googleClientVariable}}" STREQUAL "")
+		set(${googleClientVariable} "$ENV{${googleClientVariable}}" CACHE STRING "Google OAuth client of SteamForge" FORCE)
+	else()
+		set(${googleClientVariable} "" CACHE STRING "Google OAuth client of SteamForge")
+	endif()
+	if(NOT ${googleClientVariable} MATCHES "^[A-Za-z0-9._-]*$")
+		message(FATAL_ERROR "${googleClientVariable} may only contain letters, digits, dots, dashes and underscores")
+	endif()
+endforeach()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -63,6 +77,7 @@ target_link_libraries(steamforge_protocol PUBLIC protobuf::libprotobuf-lite)
 qt_add_library(steamforge_application STATIC ${applicationSources})
 
 configure_file(src/common/version.h.in "${PROJECT_BINARY_DIR}/generated/common/version.h" @ONLY)
+configure_file(src/common/google_client.h.in "${PROJECT_BINARY_DIR}/generated/common/google_client.h" @ONLY)
 
 target_include_directories(steamforge_application
 	PUBLIC src
@@ -117,6 +132,7 @@ qt_add_resources(steamforge_application "application_styles"
 	FILES
 		resources/styles/steamforge.qss
 		resources/styles/check.svg
+		resources/styles/radio-dot.svg
 		resources/styles/chevron-down.svg
 		resources/styles/eye.svg
 		resources/styles/eye-off.svg
@@ -126,6 +142,10 @@ qt_add_resources(steamforge_application "application_styles"
 		resources/styles/lock.svg
 		resources/styles/lock-open.svg
 		resources/styles/lock-alert.svg
+		resources/styles/cloud.svg
+		resources/styles/cloud-check.svg
+		resources/styles/cloud-off.svg
+		resources/styles/cloud-alert.svg
 )
 
 qt_add_resources(steamforge_application "application_illustrations"
@@ -142,6 +162,8 @@ qt_add_resources(steamforge_application "application_illustrations"
 		resources/illustrations/import_files.svg
 		resources/illustrations/step_done.svg
 		resources/illustrations/step_todo.svg
+		resources/illustrations/google_sync.svg
+		resources/illustrations/recovery_key.svg
 )
 
 set_property(TARGET steamforge_application PROPERTY QT_EXCLUDE_SOURCES_FROM_TRANSLATION "resources/*")

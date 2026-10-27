@@ -3,7 +3,9 @@
 #include "app/account_library.h"
 #include "app/account_profiles.h"
 #include "app/application_settings.h"
+#include "app/cloud_sync.h"
 #include "app/confirmation_monitor.h"
+#include "app/google_connection.h"
 #include "app/storage_encryption.h"
 #include "app/update_check.h"
 #include "common/constants.h"
@@ -12,9 +14,10 @@
 #include "steam/steam_clock.h"
 #include "storage/authenticator_export.h"
 #include "storage/private_file.h"
-#include "ui/account_details_view.h"
 #include "ui/account_list_view.h"
+#include "ui/cloud_conflict_dialog.h"
 #include "ui/confirmations_dialog.h"
+#include "ui/google_connect_dialog.h"
 #include "ui/guard_setup_dialog.h"
 #include "ui/illustration_view.h"
 #include "ui/import_dialog.h"
@@ -29,10 +32,14 @@
 namespace SteamForge {
 
 namespace {
-	constexpr QSize ENCRYPTION_ICON_SIZE{18, 18};
+	constexpr QSize STATUS_ICON_SIZE{18, 18};
 	constexpr QLatin1StringView LOCK_ICON_RESOURCE{":/styles/lock.svg"};
 	constexpr QLatin1StringView LOCK_OPEN_ICON_RESOURCE{":/styles/lock-open.svg"};
 	constexpr QLatin1StringView LOCK_ALERT_ICON_RESOURCE{":/styles/lock-alert.svg"};
+	constexpr QLatin1StringView CLOUD_ICON_RESOURCE{":/styles/cloud.svg"};
+	constexpr QLatin1StringView CLOUD_CHECK_ICON_RESOURCE{":/styles/cloud-check.svg"};
+	constexpr QLatin1StringView CLOUD_OFF_ICON_RESOURCE{":/styles/cloud-off.svg"};
+	constexpr QLatin1StringView CLOUD_ALERT_ICON_RESOURCE{":/styles/cloud-alert.svg"};
 	// A second of difference is usual and changes no code.
 	constexpr qint64 NOTICEABLE_CLOCK_OFFSET_SECONDS = 2;
 	constexpr QSize INITIAL_WINDOW_SIZE{1024, 680};
@@ -51,6 +58,22 @@ namespace {
 	constexpr int TOP_BAR_SPACING = 8;
 	// More would make a notification too long to read at a glance.
 	constexpr std::size_t NOTIFIED_CONFIRMATION_LIMIT = 3;
+	// Coming back to the window after this long syncs at once instead of waiting for the next round.
+	constexpr qint64 ACTIVATION_SYNC_AGE_SECONDS = 60;
+
+	QString BulletLines(const QStringList& lines) {
+		QStringList bulletLines;
+		for (const QString& line : lines) {
+			bulletLines.append(QStringLiteral("• ") + line);
+		}
+		return bulletLines.join(QLatin1Char('\n'));
+	}
+
+	void ShowStatus(QPushButton& statusButton, QLatin1StringView iconResource, const QString& text, bool needsAttention) {
+		statusButton.setIcon(QIcon(iconResource));
+		statusButton.setText(text);
+		SetStyleFlag(statusButton, StyleFlag::ATTENTION, needsAttention);
+	}
 
 	QString ConfirmationLine(const PendingConfirmation& confirmation) {
 		if (confirmation.headline.isEmpty()) {
@@ -60,7 +83,7 @@ namespace {
 	}
 } // namespace
 
-MainWindow::MainWindow(AccountLibrary& library, const SteamClock& clock, ConfirmationMonitor& monitor, SteamImageCache& images, AccountProfiles& profiles, StorageEncryption& encryption, ApplicationSettings& applicationSettings, DataLocation location, QWidget* parent) :
+MainWindow::MainWindow(AccountLibrary& library, const SteamClock& clock, ConfirmationMonitor& monitor, SteamImageCache& images, AccountProfiles& profiles, StorageEncryption& encryption, GoogleConnection& google, CloudSync& sync, ApplicationSettings& applicationSettings, DataLocation location, QWidget* parent) :
 	QMainWindow(parent),
 	accountLibrary(library),
 	steamClock(clock),
@@ -68,6 +91,8 @@ MainWindow::MainWindow(AccountLibrary& library, const SteamClock& clock, Confirm
 	steamImageCache(images),
 	accountProfiles(profiles),
 	storageEncryption(encryption),
+	googleConnection(google),
+	cloudSync(sync),
 	settings(applicationSettings),
 	dataLocation(std::move(location)) {
 	setWindowTitle(APPLICATION_NAME);
@@ -115,6 +140,21 @@ MainWindow::MainWindow(AccountLibrary& library, const SteamClock& clock, Confirm
 	connect(&monitor, &ConfirmationMonitor::AccountsChanged, this, &MainWindow::ConnectConfirmations);
 	connect(&monitor, &ConfirmationMonitor::ConfirmationsArrived, this, &MainWindow::NotifyConfirmations);
 	connect(&monitor, &ConfirmationMonitor::SignInRequired, this, &MainWindow::NotifySignInRequired);
+	connect(&sync, &CloudSync::StatusChanged, this, &MainWindow::UpdateCloudStates);
+	connect(&google, &GoogleConnection::LinksChanged, this, &MainWindow::UpdateCloudStates);
+	connect(&sync, &CloudSync::RecordAdded, this, [this](const QUuid& recordId) {
+		arrivedRecordIds.push_back(recordId);
+	});
+	connect(&sync, &CloudSync::RecordUnlinked, this, [this](const QUuid& recordId) {
+		if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
+			Notify(tr("Removed from Google"), tr("%1 was removed from Google on another computer. It stays here, but no longer syncs.").arg(AccountTitleFor(*record)));
+		}
+	});
+	connect(&sync, &CloudSync::KeyReplaced, this, [this](const QUuid& recordId) {
+		if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
+			Notify(tr("Steam Guard replaced"), tr("%1 now has the Steam Guard from Google. The previous one is saved in the backups folder.").arg(AccountTitleFor(*record)));
+		}
+	});
 
 	CreateSystemTray();
 	desktopNotifications = new DesktopNotifications(systemTray != nullptr ? &systemTray->Icon() : nullptr, this);
@@ -175,6 +215,7 @@ void MainWindow::changeEvent(QEvent* event) {
 	}
 	if (event->type() == QEvent::ActivationChange && isActiveWindow()) {
 		QTimer::singleShot(0, this, &MainWindow::OfferPendingUpdate);
+		SyncIfStale();
 	}
 	QMainWindow::changeEvent(event);
 }
@@ -185,8 +226,13 @@ QWidget* MainWindow::CreateTopBar() {
 	topBar->setAttribute(Qt::WA_StyledBackground, true);
 	topBarTitleLabel = new QLabel(topBar);
 	topBarTitleLabel->setObjectName(TOP_BAR_TITLE_STYLE);
-	encryptionButton = new QPushButton(topBar);
-	encryptionButton->setIconSize(ENCRYPTION_ICON_SIZE);
+	// Statuses, not buttons: they tell the state and open its settings, so "Add account" stays the only call to action.
+	for (QPushButton** statusButton : {&encryptionStatusButton, &googleStatusButton}) {
+		*statusButton = new QPushButton(topBar);
+		(*statusButton)->setObjectName(STATUS_CHIP_STYLE);
+		(*statusButton)->setIconSize(STATUS_ICON_SIZE);
+		(*statusButton)->setCursor(Qt::PointingHandCursor);
+	}
 	addAccountButton = new QPushButton(topBar);
 	SetButtonRole(*addAccountButton, ButtonRole::PRIMARY);
 	settingsButton = new QPushButton(topBar);
@@ -199,17 +245,22 @@ QWidget* MainWindow::CreateTopBar() {
 	topBarLayout->setSpacing(TOP_BAR_SPACING);
 	topBarLayout->addWidget(topBarTitleLabel);
 	topBarLayout->addStretch();
-	topBarLayout->addWidget(encryptionButton);
+	topBarLayout->addWidget(encryptionStatusButton);
+	topBarLayout->addWidget(googleStatusButton);
 	topBarLayout->addWidget(addAccountButton);
 	topBarLayout->addWidget(settingsButton);
 
-	connect(encryptionButton, &QPushButton::clicked, this, &MainWindow::ShowEncryption);
-	connect(&storageEncryption, &StorageEncryption::StatusChanged, this, &MainWindow::UpdateEncryptionButton);
+	connect(encryptionStatusButton, &QPushButton::clicked, this, &MainWindow::OpenEncryptionStatus);
+	connect(googleStatusButton, &QPushButton::clicked, this, &MainWindow::OpenGoogleStatus);
+	connect(&storageEncryption, &StorageEncryption::StatusChanged, this, &MainWindow::UpdateStatusButtons);
+	connect(&googleConnection, &GoogleConnection::StateChanged, this, &MainWindow::UpdateCloudStates);
 	connect(&storageEncryption, &StorageEncryption::StatusChanged, this, &MainWindow::UpdatePages);
 	connect(addAccountButton, &QPushButton::clicked, this, &MainWindow::ShowAddAccountMenu);
 	connect(signInAction, &QAction::triggered, this, &MainWindow::OpenNewAccountLogin);
 	connect(importAction, &QAction::triggered, this, &MainWindow::OpenImportDialog);
-	connect(settingsButton, &QPushButton::clicked, this, &MainWindow::OpenSettingsDialog);
+	connect(settingsButton, &QPushButton::clicked, this, [this]() {
+		OpenSettingsDialog(SettingsSection::GENERAL);
+	});
 	return topBar;
 }
 
@@ -369,6 +420,9 @@ QWidget* MainWindow::CreateAccountsPage() {
 	connect(accountDetailsView, &AccountDetailsView::SignOutRequested, this, &MainWindow::ConfirmSignOut);
 	connect(accountDetailsView, &AccountDetailsView::SetUpGuardRequested, this, &MainWindow::OpenGuardSetupDialog);
 	connect(accountDetailsView, &AccountDetailsView::MoveGuardRequested, this, &MainWindow::OpenGuardMoveLogin);
+	connect(accountDetailsView, &AccountDetailsView::AddToGoogleRequested, &cloudSync, &CloudSync::AddToCloud);
+	connect(accountDetailsView, &AccountDetailsView::RemoveFromGoogleRequested, this, &MainWindow::ConfirmCloudRemoval);
+	connect(accountDetailsView, &AccountDetailsView::CloudConflictRequested, this, &MainWindow::OpenCloudConflict);
 	return page;
 }
 
@@ -391,7 +445,7 @@ void MainWindow::RetranslateUi() {
 		lockedTextLabel->setText(tr("The data is protected with Windows Hello. Unlock it with your PIN, face or fingerprint."));
 	}
 	unlockButton->setText(tr("Unlock"));
-	UpdateEncryptionButton();
+	UpdateStatusButtons();
 	addAccountButton->setText(tr("Add account"));
 	settingsButton->setText(tr("Settings"));
 	emptyStateTitleLabel->setText(tr("No accounts yet"));
@@ -427,66 +481,202 @@ void MainWindow::UpdatePages() {
 
 	accountListView->SetRecords(accountLibrary.Records());
 	UpdateConfirmationIndicators();
+	UpdateCloudStates();
 	const std::optional<QUuid> selectedRecordId = accountListView->SelectedRecordId();
 	const QUuid recordId = selectedRecordId.value_or(accountLibrary.Records().front().id);
 	accountListView->SelectRecord(recordId);
 	ShowRecord(recordId);
 }
 
-void MainWindow::UpdateEncryptionButton() {
-	// The lock screen has its own button for unlocking.
-	encryptionButton->setVisible(storageEncryption.Status() != EncryptionStatus::LOCKED);
+void MainWindow::UpdateStatusButtons() {
 	switch (storageEncryption.Status()) {
 		case EncryptionStatus::OFF:
-			encryptionButton->setIcon(QIcon(LOCK_OPEN_ICON_RESOURCE));
-			encryptionButton->setText(tr("Turn on encryption"));
+			ShowStatus(*encryptionStatusButton, LOCK_OPEN_ICON_RESOURCE, tr("Not encrypted"), false);
 			break;
 		case EncryptionStatus::ON:
-			encryptionButton->setIcon(QIcon(LOCK_ICON_RESOURCE));
-			encryptionButton->setText(tr("Encryption is on"));
+			ShowStatus(*encryptionStatusButton, LOCK_ICON_RESOURCE, tr("Encrypted"), false);
 			break;
 		case EncryptionStatus::LOCKED:
-			encryptionButton->setIcon(QIcon(LOCK_ICON_RESOURCE));
-			encryptionButton->setText(tr("Unlock"));
+			ShowStatus(*encryptionStatusButton, LOCK_ALERT_ICON_RESOURCE, tr("Locked"), true);
 			break;
 		case EncryptionStatus::KEY_UNAVAILABLE:
-			encryptionButton->setIcon(QIcon(LOCK_ALERT_ICON_RESOURCE));
-			encryptionButton->setText(tr("Encryption key unavailable"));
+			ShowStatus(*encryptionStatusButton, LOCK_ALERT_ICON_RESOURCE, tr("Key unavailable"), true);
 			break;
 		case EncryptionStatus::UNSUPPORTED:
-			encryptionButton->setIcon(QIcon(LOCK_OPEN_ICON_RESOURCE));
-			encryptionButton->setText(tr("Encryption unavailable"));
+			ShowStatus(*encryptionStatusButton, LOCK_OPEN_ICON_RESOURCE, tr("Encryption unavailable"), false);
+			break;
+	}
+	encryptionStatusButton->setToolTip(tr("Encryption settings"));
+	googleStatusButton->setVisible(true);
+	googleStatusButton->setToolTip(googleConnection.Email().isEmpty() ? tr("Google settings") : googleConnection.Email());
+	switch (googleConnection.State()) {
+		case GoogleConnectionState::UNAVAILABLE:
+		case GoogleConnectionState::LOCKED:
+			// Without a client there is nothing to offer; locked, the encryption status already says what to do.
+			googleStatusButton->setVisible(false);
+			break;
+		case GoogleConnectionState::DISCONNECTED:
+			ShowStatus(*googleStatusButton, CLOUD_OFF_ICON_RESOURCE, tr("Google not connected"), false);
+			break;
+		case GoogleConnectionState::CONNECTING:
+			ShowStatus(*googleStatusButton, CLOUD_ICON_RESOURCE, tr("Connecting to Google…"), false);
+			break;
+		case GoogleConnectionState::CONNECTED:
+			ShowSyncStatus();
+			break;
+		case GoogleConnectionState::SIGN_IN_REQUIRED:
+			ShowStatus(*googleStatusButton, CLOUD_ALERT_ICON_RESOURCE, tr("Sign in to Google again"), true);
 			break;
 	}
 }
 
-void MainWindow::ShowEncryption() {
-	switch (storageEncryption.Status()) {
-		case EncryptionStatus::OFF:
-			OfferEncryption();
+void MainWindow::ShowSyncStatus() {
+	const QDateTime& syncedAt = cloudSync.LastSyncedAt();
+	const QString& email = googleConnection.Email();
+	switch (cloudSync.Status()) {
+		case CloudSyncStatus::INACTIVE:
+			ShowStatus(*googleStatusButton, CLOUD_CHECK_ICON_RESOURCE, tr("Google connected"), false);
 			return;
-		case EncryptionStatus::ON:
-			ShowEncryptionOn();
+		case CloudSyncStatus::SYNCING:
+			// After the first sync the text stays: a pass every few minutes would make the top bar jump.
+			ShowStatus(*googleStatusButton, CLOUD_ICON_RESOURCE, syncedAt.isValid() ? tr("Synced") : tr("Syncing…"), false);
 			return;
-		case EncryptionStatus::LOCKED:
-			Unlock();
+		case CloudSyncStatus::SYNCED:
+			ShowStatus(*googleStatusButton, CLOUD_CHECK_ICON_RESOURCE, tr("Synced"), false);
+			if (syncedAt.isValid()) {
+				googleStatusButton->setToolTip(tr("%1, synced at %2").arg(email, QLocale().toString(syncedAt.time(), QLocale::ShortFormat)));
+			}
 			return;
-		case EncryptionStatus::KEY_UNAVAILABLE: {
-			QMessageBox notice(QMessageBox::Warning, tr("Encryption"), tr("The encryption key is not available."), QMessageBox::Ok, this);
-			notice.setInformativeText(tr("The encrypted files stay unchanged in %1. They open again under the same user account on the computer where encryption was turned on, once the system key store is unlocked. Without it, import the authenticators again from their .maFile copies.").arg(QDir::toNativeSeparators(dataLocation.directoryPath)));
-			notice.exec();
+		case CloudSyncStatus::NEEDS_DECISION:
+			ShowStatus(*googleStatusButton, CLOUD_ALERT_ICON_RESOURCE, tr("Choose a version"), true);
+			googleStatusButton->setToolTip(tr("Google has another version of an account: choose which one to keep"));
 			return;
-		}
-		case EncryptionStatus::UNSUPPORTED: {
-			QMessageBox notice(QMessageBox::Information, tr("Encryption"), tr("This system has nowhere to keep the encryption key."), QMessageBox::Ok, this);
-			notice.setInformativeText(tr("The key is kept in the keyring of the system, such as GNOME Keyring or KWallet. Start one of them, then turn on encryption."));
-			notice.exec();
+		case CloudSyncStatus::UNREACHABLE:
+			ShowStatus(*googleStatusButton, CLOUD_OFF_ICON_RESOURCE, tr("No connection to Google"), false);
+			googleStatusButton->setToolTip(tr("SteamForge tries again in a few minutes"));
 			return;
-		}
 	}
 }
 
-void MainWindow::OfferEncryption() {
+void MainWindow::OpenGoogleStatus() {
+	// A version to choose is the one thing that waits for the user.
+	if (const std::vector<CloudConflict>& conflicts = cloudSync.Conflicts(); googleConnection.State() == GoogleConnectionState::CONNECTED && !conflicts.empty()) {
+		OpenCloudConflict(conflicts.front().localRecordId);
+		return;
+	}
+	OpenSettingsDialog(SettingsSection::GOOGLE);
+}
+
+void MainWindow::UpdateCloudStates() {
+	for (const AuthenticatorRecord& record : accountLibrary.Records()) {
+		accountListView->SetCloudState(record.id, CloudStateOf(record));
+	}
+	if (const std::optional<QUuid> shownRecordId = accountDetailsView->ShownRecordId(); shownRecordId.has_value()) {
+		accountDetailsView->SetCloudInfo(CloudInfoOf(*shownRecordId));
+	}
+	UpdateStatusButtons();
+	NotifyCloudArrivals();
+}
+
+RowCloudState MainWindow::CloudStateOf(const AuthenticatorRecord& record) const {
+	if (googleConnection.State() != GoogleConnectionState::CONNECTED || !DetermineCapabilities(record).canGenerateCodes) {
+		return RowCloudState::NONE;
+	}
+	if (cloudSync.HasConflict(record.id)) {
+		return RowCloudState::CONFLICT;
+	}
+	return cloudSync.IsInCloud(record.id) ? RowCloudState::IN_CLOUD : RowCloudState::LOCAL_ONLY;
+}
+
+RecordCloudInfo MainWindow::CloudInfoOf(const QUuid& recordId) const {
+	return RecordCloudInfo{
+		.isGoogleConnected = googleConnection.State() == GoogleConnectionState::CONNECTED,
+		.isInCloud = cloudSync.IsInCloud(recordId),
+		.hasConflict = cloudSync.HasConflict(recordId),
+		.isChanging = cloudSync.IsChanging(recordId),
+		.lastSyncedAt = cloudSync.LastSyncedAt(),
+	};
+}
+
+void MainWindow::SyncIfStale() {
+	if (googleConnection.State() != GoogleConnectionState::CONNECTED || cloudSync.Status() == CloudSyncStatus::SYNCING) {
+		return;
+	}
+	if (const QDateTime& syncedAt = cloudSync.LastSyncedAt(); !syncedAt.isValid() || syncedAt.secsTo(QDateTime::currentDateTime()) >= ACTIVATION_SYNC_AGE_SECONDS) {
+		cloudSync.Synchronize();
+	}
+}
+
+void MainWindow::NotifyCloudArrivals() {
+	if (arrivedRecordIds.empty() || cloudSync.Status() == CloudSyncStatus::SYNCING) {
+		return;
+	}
+	QStringList titles;
+	for (const QUuid& recordId : std::exchange(arrivedRecordIds, {})) {
+		if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
+			titles.append(AccountTitleFor(*record));
+		}
+	}
+	if (!titles.isEmpty()) {
+		Notify(tr("Accounts from Google: %n", nullptr, static_cast<int>(titles.size())), titles.join(QStringLiteral(", ")));
+	}
+}
+
+void MainWindow::ConfirmCloudRemoval(const QUuid& recordId) {
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (record == nullptr || !cloudSync.IsInCloud(recordId)) {
+		return;
+	}
+	QMessageBox confirmation(QMessageBox::Question, tr("Remove from Google"), tr("Remove %1 from Google?").arg(AccountTitleFor(*record)), QMessageBox::NoButton, DialogParent());
+	confirmation.setInformativeText(BulletLines({
+		tr("The copy in Google is deleted."),
+		tr("On this computer the account stays, and its codes and confirmations keep working."),
+		tr("On your other computers the account stays too, but no longer syncs."),
+		tr("Steam Guard stays on the Steam account."),
+	}));
+	QPushButton* removeButton = confirmation.addButton(tr("Remove from Google"), QMessageBox::DestructiveRole);
+	SetButtonRole(*removeButton, ButtonRole::PRIMARY);
+	confirmation.setDefaultButton(confirmation.addButton(QMessageBox::Cancel));
+	confirmation.exec();
+	if (confirmation.clickedButton() == removeButton) {
+		cloudSync.RemoveFromCloud(recordId);
+	}
+}
+
+void MainWindow::OpenCloudConflict(const QUuid& recordId) {
+	const std::vector<CloudConflict>& conflicts = cloudSync.Conflicts();
+	const auto found = std::ranges::find(conflicts, recordId, &CloudConflict::localRecordId);
+	const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
+	if (found == conflicts.end() || record == nullptr) {
+		return;
+	}
+	// The dialog keeps its own copy: a pass may change the list while it is open.
+	CloudConflictDialog conflictDialog(*found, *record, AccountTitleFor(*record), steamClock, DialogParent());
+	if (conflictDialog.exec() != QDialog::Accepted) {
+		return;
+	}
+	if (const std::optional<ConflictChoice> choice = conflictDialog.Choice(); choice.has_value()) {
+		cloudSync.ResolveConflict(conflictDialog.CloudRecordId(), *choice);
+	}
+}
+
+QWidget* MainWindow::DialogParent() {
+	if (QApplication::activeModalWidget() != nullptr) {
+		return QApplication::activeModalWidget();
+	}
+	return this;
+}
+
+void MainWindow::OpenEncryptionStatus() {
+	// Locked, the one useful step is to unlock; the settings would only say the same.
+	if (storageEncryption.Status() == EncryptionStatus::LOCKED) {
+		Unlock();
+		return;
+	}
+	OpenSettingsDialog(SettingsSection::ENCRYPTION);
+}
+
+bool MainWindow::OfferEncryption() {
 	const KeyProtection preferredProtection = storageEncryption.PreferredProtection();
 	QString protectionFact = tr("The keyring of the system keeps the key, so no password is asked.");
 	if (preferredProtection == KeyProtection::WINDOWS_HELLO) {
@@ -514,12 +704,12 @@ void MainWindow::OfferEncryption() {
 	offer.setDefaultButton(offer.addButton(QMessageBox::Cancel));
 	offer.exec();
 	if (offer.clickedButton() != encryptButton) {
-		return;
+		return false;
 	}
 	std::expected<void, EncryptionFailure> enabled = storageEncryption.Enable(preferredProtection);
 	if (!enabled.has_value() && enabled.error().keyStoreFailure == KeyStoreFailure::NOT_SET_UP && preferredProtection != KeyProtection::USER_ACCOUNT) {
 		if (!OfferEncryptionWithoutPrompt(preferredProtection)) {
-			return;
+			return false;
 		}
 		enabled = storageEncryption.Enable(KeyProtection::USER_ACCOUNT);
 	}
@@ -527,9 +717,10 @@ void MainWindow::OfferEncryption() {
 		if (enabled.error().keyStoreFailure != KeyStoreFailure::DISMISSED) {
 			QMessageBox::critical(this, tr("Turn on encryption"), EncryptionFailureText(enabled.error()));
 		}
-		return;
+		return false;
 	}
 	Notify(tr("Encryption is on"), tr("The authenticators and Steam sign-ins on this computer are stored encrypted."));
+	return true;
 }
 
 bool MainWindow::OfferEncryptionWithoutPrompt(KeyProtection missingProtection) {
@@ -546,27 +737,18 @@ bool MainWindow::OfferEncryptionWithoutPrompt(KeyProtection missingProtection) {
 	return fallback.clickedButton() == fallbackButton;
 }
 
-void MainWindow::ShowEncryptionOn() {
-	QMessageBox status(QMessageBox::Information, tr("Encryption"), tr("The authenticators and Steam sign-ins on this computer are encrypted."), QMessageBox::NoButton, this);
-	switch (storageEncryption.Protection()) {
-		case KeyProtection::WINDOWS_HELLO:
-			status.setInformativeText(tr("Windows Hello guards the key and is asked at every start and to turn encryption off. Turned off, the data is stored on this computer without encryption again."));
-			break;
-		case KeyProtection::KEYRING_PASSWORD:
-			status.setInformativeText(tr("The key is in the SteamForge keyring. Its password is asked at every start and to turn encryption off. Turned off, the data is stored on this computer without encryption again, and the SteamForge keyring is deleted."));
-			break;
-		case KeyProtection::USER_ACCOUNT:
-#ifdef Q_OS_WIN
-			status.setInformativeText(tr("Windows keeps the key for your user account. Turned off, the data is stored on this computer without encryption again."));
-#else
-			status.setInformativeText(tr("The keyring of the system keeps the key. Turned off, the data is stored on this computer without encryption again."));
-#endif
-			break;
+void MainWindow::TurnOffEncryption() {
+	// The key of the Google cloud copy is kept under the local key: turned off, it would lie on the disk in the clear.
+	if (googleConnection.HasSavedConnection()) {
+		QMessageBox::information(this, tr("Turn off encryption"), tr("The key of your Google cloud copy is kept under this encryption, so it stays on while Google is connected. To turn it off, disconnect Google in the settings first."));
+		return;
 	}
-	const QPushButton* turnOffButton = status.addButton(tr("Turn off encryption"), QMessageBox::DestructiveRole);
-	status.setDefaultButton(status.addButton(QMessageBox::Close));
-	status.exec();
-	if (status.clickedButton() != turnOffButton) {
+	QMessageBox confirmation(QMessageBox::Question, tr("Turn off encryption"), tr("Store the data on this computer without encryption?"), QMessageBox::NoButton, this);
+	confirmation.setInformativeText(tr("The authenticators and Steam sign-ins are then kept in the data folder unencrypted, as before encryption was turned on."));
+	const QPushButton* turnOffButton = confirmation.addButton(tr("Turn off encryption"), QMessageBox::DestructiveRole);
+	confirmation.setDefaultButton(confirmation.addButton(QMessageBox::Cancel));
+	confirmation.exec();
+	if (confirmation.clickedButton() != turnOffButton) {
 		return;
 	}
 	const std::expected<void, EncryptionFailure> disabled = storageEncryption.Disable();
@@ -579,7 +761,7 @@ void MainWindow::ShowEncryptionOn() {
 	Notify(tr("Encryption is off"), tr("The data on this computer is stored without encryption."));
 }
 
-QString MainWindow::MissingProtectionText(KeyProtection protection) const {
+QString MainWindow::MissingProtectionText(KeyProtection protection) {
 	if (protection == KeyProtection::KEYRING_PASSWORD) {
 		return tr("The keyring of the system cannot make a separate keyring.");
 	}
@@ -652,6 +834,7 @@ void MainWindow::ShowRecord(const QUuid& recordId) {
 	if (const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId); record != nullptr) {
 		accountDetailsView->SetAccountNameHidden(!accountListView->IsRevealed(recordId));
 		accountDetailsView->ShowRecord(*record, accountLibrary.FindSession(recordId), confirmationMonitor.Find(recordId));
+		accountDetailsView->SetCloudInfo(CloudInfoOf(recordId));
 	}
 }
 
@@ -686,7 +869,16 @@ void MainWindow::OpenGuardMoveLogin(const QUuid& recordId) {
 void MainWindow::RunLoginDialog(const AuthenticatorRecord& loginRecord, LoginPurpose purpose) {
 	LoginDialog loginDialog(accountLibrary, steamClock, storageEncryption, loginRecord, AccountTitleFor(loginRecord), purpose, this);
 	connect(&loginDialog, &LoginDialog::EncryptionRequested, this, &MainWindow::OfferEncryption);
-	if (loginDialog.exec() != QDialog::Accepted) {
+	// A Steam Guard that is in Google already goes there by itself after the move.
+	if (purpose == LoginPurpose::MOVE_GUARD && googleConnection.State() == GoogleConnectionState::CONNECTED && !cloudSync.IsInCloud(loginRecord.id)) {
+		loginDialog.OfferGoogle();
+	}
+	const int result = loginDialog.exec();
+	// The move is saved even when the sign-in after it is cancelled.
+	if (loginDialog.AddsToGoogle()) {
+		cloudSync.AddToCloud(loginRecord.id);
+	}
+	if (result != QDialog::Accepted) {
 		return;
 	}
 	if (const std::optional<QUuid> signedInRecordId = loginDialog.SignedInRecordId(); signedInRecordId.has_value()) {
@@ -702,7 +894,13 @@ void MainWindow::OpenGuardSetupDialog(const QUuid& recordId) {
 		return;
 	}
 	GuardSetupDialog guardSetupDialog(accountLibrary, steamClock, *record, AccountTitleFor(*record), *session, this);
+	if (googleConnection.State() == GoogleConnectionState::CONNECTED) {
+		guardSetupDialog.OfferGoogle();
+	}
 	guardSetupDialog.exec();
+	if (guardSetupDialog.AddsToGoogle()) {
+		cloudSync.AddToCloud(recordId);
+	}
 }
 
 void MainWindow::OpenLoginApprovalDialog(const QUuid& recordId) {
@@ -845,10 +1043,18 @@ void MainWindow::RunImportDialog(const QStringList& filePaths) {
 	if (!filePaths.isEmpty()) {
 		importDialog.AddFiles(filePaths);
 	}
+	if (googleConnection.State() == GoogleConnectionState::CONNECTED) {
+		importDialog.OfferGoogle();
+	}
 	if (importDialog.exec() != QDialog::Accepted || importDialog.ImportedRecordIds().empty()) {
 		return;
 	}
 	const std::vector<QUuid>& importedRecordIds = importDialog.ImportedRecordIds();
+	if (importDialog.AddsToGoogle()) {
+		for (const QUuid& recordId : importedRecordIds) {
+			cloudSync.AddToCloud(recordId);
+		}
+	}
 	accountListView->SelectRecord(importedRecordIds.front());
 	const bool isEveryRecordReady = std::ranges::all_of(importedRecordIds, [this](const QUuid& recordId) {
 		const AuthenticatorRecord* record = accountLibrary.FindRecord(recordId);
@@ -868,7 +1074,11 @@ void MainWindow::ShowSteamGuardQr(const QUuid& recordId) {
 	if (record == nullptr || !DetermineCapabilities(*record).canGenerateCodes) {
 		return;
 	}
-	SteamGuardQrDialog qrDialog(AccountTitleFor(*record), SteamGuardUri(*record), this);
+	const SteamGuardLinks links{
+		.steamEncoderLink = SteamGuardAppUri(*record, SteamGuardLinkStyle::STEAM_ENCODER),
+		.steamTypeLink = SteamGuardAppUri(*record, SteamGuardLinkStyle::STEAM_TYPE),
+	};
+	SteamGuardQrDialog qrDialog(AccountTitleFor(*record), links, this);
 	qrDialog.exec();
 }
 
@@ -905,11 +1115,73 @@ void MainWindow::ExportRecord(const QUuid& recordId) {
 	QMessageBox::information(this, tr("Export to .maFile"), tr("The authenticator of %1 is saved to %2.").arg(AccountTitleFor(*record), QDir::toNativeSeparators(filePath)));
 }
 
-void MainWindow::OpenSettingsDialog() {
-	SettingsDialog settingsDialog(settings.Language(), settings.ChecksForUpdates(), dataLocation, storageEncryption.Status(), this);
+void MainWindow::OpenSettingsDialog(SettingsSection section) {
+	const SettingsDialog::CloudAccountsSource cloudAccounts{
+		.sync = cloudSync,
+		.library = accountLibrary,
+		.titleProvider =
+			[this](const AuthenticatorRecord& record) {
+				return AccountTitleFor(record);
+			},
+	};
+	SettingsDialog settingsDialog(settings.Language(), settings.ChecksForUpdates(), dataLocation, storageEncryption, googleConnection, cloudAccounts, section, this);
+	const CloudAccountsView& cloudAccountsView = settingsDialog.CloudAccounts();
+	connect(&cloudAccountsView, &CloudAccountsView::AddRequested, &cloudSync, &CloudSync::AddToCloud);
+	connect(&cloudAccountsView, &CloudAccountsView::RemoveRequested, this, &MainWindow::ConfirmCloudRemoval);
+	connect(&cloudAccountsView, &CloudAccountsView::ConflictRequested, this, &MainWindow::OpenCloudConflict);
+	connect(&cloudAccountsView, &CloudAccountsView::ReturnRequested, &cloudSync, &CloudSync::ReturnFromCloud);
+	connect(&cloudAccountsView, &CloudAccountsView::SyncRequested, &cloudSync, &CloudSync::Synchronize);
 	connect(&settingsDialog, &SettingsDialog::LanguageSelected, this, &MainWindow::LanguageChangeRequested);
 	connect(&settingsDialog, &SettingsDialog::UpdateChecksToggled, this, &MainWindow::UpdateChecksChangeRequested);
+	connect(&settingsDialog, &SettingsDialog::GoogleConnectRequested, this, &MainWindow::OpenGoogleConnectDialog);
+	connect(&settingsDialog, &SettingsDialog::GoogleDisconnectRequested, this, &MainWindow::ConfirmGoogleDisconnect);
+	connect(&settingsDialog, &SettingsDialog::EncryptionTurnOnRequested, this, &MainWindow::OfferEncryption);
+	connect(&settingsDialog, &SettingsDialog::EncryptionTurnOffRequested, this, &MainWindow::TurnOffEncryption);
+	connect(&settingsDialog, &SettingsDialog::UnlockRequested, this, &MainWindow::Unlock);
 	settingsDialog.exec();
+}
+
+void MainWindow::OpenGoogleConnectDialog() {
+	switch (storageEncryption.Status()) {
+		case EncryptionStatus::OFF:
+		case EncryptionStatus::ON:
+			break;
+		case EncryptionStatus::LOCKED:
+			Unlock();
+			if (storageEncryption.Status() != EncryptionStatus::ON) {
+				return;
+			}
+			break;
+		case EncryptionStatus::KEY_UNAVAILABLE:
+		case EncryptionStatus::UNSUPPORTED:
+			QMessageBox::information(this, tr("Connect Google"), tr("Google needs encryption on this computer, and encryption is not available now. The Encryption section of the settings tells why."));
+			return;
+	}
+	const GoogleConnectDialog::EncryptionStarter turnOnEncryption = [this]() {
+		return OfferEncryption();
+	};
+	const GoogleConnectDialog::AccountTitleProvider titleProvider = [this](const AuthenticatorRecord& record) {
+		return AccountTitleFor(record);
+	};
+	GoogleConnectDialog connectDialog(googleConnection, cloudSync, accountLibrary, titleProvider, turnOnEncryption, storageEncryption.Status() == EncryptionStatus::ON, this);
+	connectDialog.exec();
+}
+
+void MainWindow::ConfirmGoogleDisconnect() {
+	QMessageBox confirmation(QMessageBox::Question, tr("Disconnect Google"), tr("Disconnect Google on this computer?"), QMessageBox::NoButton, this);
+	confirmation.setInformativeText(tr("The cloud copy stays in your Google account, and other computers keep working with it. The accounts on this computer stay as they are. To connect this computer again, you need the recovery key."));
+	QPushButton* disconnectButton = confirmation.addButton(tr("Disconnect"), QMessageBox::AcceptRole);
+	SetButtonRole(*disconnectButton, ButtonRole::PRIMARY);
+	confirmation.setDefaultButton(confirmation.addButton(QMessageBox::Cancel));
+	confirmation.exec();
+	if (confirmation.clickedButton() != disconnectButton) {
+		return;
+	}
+	if (const std::expected<void, StorageError> disconnected = googleConnection.Disconnect(); !disconnected.has_value()) {
+		QMessageBox::critical(this, tr("Disconnect Google"), StorageErrorText(disconnected.error()));
+		return;
+	}
+	Notify(tr("Google is disconnected"), tr("This computer no longer syncs with Google. The cloud copy stays in your Google account."));
 }
 
 void MainWindow::ConfirmRemoval(const QUuid& recordId) {
@@ -925,18 +1197,26 @@ void MainWindow::ConfirmRemoval(const QUuid& recordId) {
 	if (accountLibrary.FindSession(recordId).has_value()) {
 		consequences.append(tr("The saved Steam sign-in is removed from this computer as well."));
 	}
-	consequences.append(capabilities.hasRevocationCode ? tr("Without another copy of the secrets or the recovery code you can lose access to the account.") : tr("No recovery code is saved: without another copy of the secrets you can lose access to the account."));
-	QStringList consequenceLines;
-	for (const QString& consequence : consequences) {
-		consequenceLines.append(QStringLiteral("• ") + consequence);
+	const bool isInCloud = cloudSync.IsInCloud(recordId);
+	// Removing from Google needs the connection; otherwise only the choice to keep the copy there is left.
+	const bool canRemoveFromCloud = isInCloud && googleConnection.State() == GoogleConnectionState::CONNECTED;
+	if (isInCloud) {
+		consequences.append(tr("The copy in Google stays for your other computers unless you tick the box below. The account does not come back here by itself; you can return it in the settings, in the Google section."));
 	}
+	consequences.append(capabilities.hasRevocationCode ? tr("Without another copy of the secrets or the recovery code you can lose access to the account.") : tr("No recovery code is saved: without another copy of the secrets you can lose access to the account."));
+	QString consequenceText = BulletLines(consequences);
 	if (capabilities.canGenerateCodes) {
-		consequenceLines.append(QString());
-		consequenceLines.append(tr("Recommended: export the authenticator to a .maFile first and keep it as safely as a password."));
+		consequenceText += QStringLiteral("\n\n") + tr("Recommended: export the authenticator to a .maFile first and keep it as safely as a password.");
 	}
 
-	QMessageBox confirmation(QMessageBox::Warning, tr("Remove account"), tr("Remove %1 from SteamForge?").arg(AccountTitleFor(*record)), QMessageBox::NoButton, this);
-	confirmation.setInformativeText(consequenceLines.join(QLatin1Char('\n')));
+	const QString accountTitle = AccountTitleFor(*record);
+	QMessageBox confirmation(QMessageBox::Warning, tr("Remove account"), tr("Remove %1 from SteamForge?").arg(accountTitle), QMessageBox::NoButton, this);
+	confirmation.setInformativeText(consequenceText);
+	QCheckBox* cloudRemovalCheckBox = nullptr;
+	if (canRemoveFromCloud) {
+		cloudRemovalCheckBox = new QCheckBox(tr("Also remove it from Google"), &confirmation);
+		confirmation.setCheckBox(cloudRemovalCheckBox);
+	}
 	const QPushButton* exportButton = capabilities.canGenerateCodes ? confirmation.addButton(tr("Export first…"), QMessageBox::ActionRole) : nullptr;
 	QPushButton* removeButton = confirmation.addButton(tr("Remove"), QMessageBox::DestructiveRole);
 	SetButtonRole(*removeButton, ButtonRole::PRIMARY);
@@ -952,7 +1232,16 @@ void MainWindow::ConfirmRemoval(const QUuid& recordId) {
 
 	if (const std::expected<void, StorageError> removed = accountLibrary.Remove(recordId); !removed.has_value()) {
 		QMessageBox::critical(this, tr("Remove account"), StorageErrorText(removed.error()));
+		return;
 	}
+	if (!isInCloud) {
+		return;
+	}
+	if (cloudRemovalCheckBox != nullptr && cloudRemovalCheckBox->isChecked()) {
+		cloudSync.RemoveFromCloud(recordId);
+	}
+	// Until the copy in Google is gone it counts as left there, so a removal that fails cannot bring it back here.
+	cloudSync.LeaveInCloud(recordId, accountTitle);
 }
 
 void MainWindow::OpenRecordDataDialog(const QUuid& recordId) {

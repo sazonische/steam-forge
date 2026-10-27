@@ -17,6 +17,9 @@ class SteamImageCache;
 class SteamCommunityTransport;
 class SteamWebApiTransport;
 class UpdateCheck;
+class GoogleConnection;
+class NetworkGoogleTransport;
+class CloudSync;
 
 class Application final : public QApplication {
 	Q_OBJECT
@@ -47,6 +50,9 @@ private:
 	std::unique_ptr<SteamImageCache> steamImageCache;
 	std::unique_ptr<AccountProfiles> accountProfiles;
 	std::unique_ptr<UpdateCheck> updateCheck;
+	std::unique_ptr<NetworkGoogleTransport> googleTransport;
+	std::unique_ptr<GoogleConnection> googleConnection;
+	std::unique_ptr<CloudSync> cloudSync;
 	std::unique_ptr<MainWindow> mainWindow;
 };
 

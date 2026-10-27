@@ -128,6 +128,9 @@ ImportDialog::ImportDialog(AccountLibrary& library, QWidget* parent) :
 	messageLabel->setObjectName(ERROR_TEXT_STYLE);
 	messageLabel->setWordWrap(true);
 	messageLabel->hide();
+	googleCheckBox = new QCheckBox(this);
+	googleCheckBox->setChecked(true);
+	googleCheckBox->hide();
 
 	buttonBox = new QDialogButtonBox(QDialogButtonBox::Cancel, this);
 	importButton = buttonBox->addButton(QString(), QDialogButtonBox::AcceptRole);
@@ -153,6 +156,7 @@ ImportDialog::ImportDialog(AccountLibrary& library, QWidget* parent) :
 	dialogLayout->addWidget(pasteToggleButton, 0, Qt::AlignLeft);
 	dialogLayout->addWidget(pasteArea);
 	dialogLayout->addWidget(messageLabel);
+	dialogLayout->addWidget(googleCheckBox);
 	dialogLayout->addWidget(buttonBox);
 
 	connect(chooseFilesButton, &QPushButton::clicked, this, &ImportDialog::ChooseFiles);
@@ -195,8 +199,17 @@ void ImportDialog::changeEvent(QEvent* event) {
 	QDialog::changeEvent(event);
 }
 
+void ImportDialog::OfferGoogle() {
+	googleCheckBox->show();
+}
+
+bool ImportDialog::AddsToGoogle() const {
+	return !googleCheckBox->isHidden() && googleCheckBox->isChecked();
+}
+
 void ImportDialog::RetranslateUi() {
 	setWindowTitle(tr("Import authenticator"));
+	googleCheckBox->setText(tr("Add the new accounts to Google, so they are on your other computers too"));
 	dropTitleLabel->setText(tr("Drop authenticator files here"));
 	dropHintLabel->setText(tr("or"));
 	chooseFilesButton->setText(tr("Choose files…"));

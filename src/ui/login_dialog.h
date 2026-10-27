@@ -24,6 +24,9 @@ public:
 	void reject() override;
 	// The record the saved sign-in belongs to; it differs from the given one after a Steam Guard move or for a known account.
 	[[nodiscard]] std::optional<QUuid> SignedInRecordId() const;
+	// While Google is connected: the window of a moved Steam Guard offers a ticked box to add it to Google.
+	void OfferGoogle();
+	[[nodiscard]] bool AddsToGoogle() const;
 
 Q_SIGNALS:
 	// The user wants to turn on encryption from the note below the form.
@@ -59,6 +62,8 @@ private:
 	LoginPurpose purpose;
 	bool isNewAccount = false;
 	bool isGuardJustMoved = false;
+	bool isGoogleOffered = false;
+	bool addsToGoogle = false;
 	SteamWebApiTransport transport;
 	std::unique_ptr<SteamLogin> login;
 

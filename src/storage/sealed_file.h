@@ -7,7 +7,8 @@ namespace SteamForge {
 
 enum class SealedFileKind {
 	ACCOUNT,
-	SESSION
+	SESSION,
+	GOOGLE
 };
 
 // The bytes to write for a document: sealed with the key when there is one, plain JSON otherwise.
