@@ -18,6 +18,7 @@
 #include "ui/cloud_conflict_dialog.h"
 #include "ui/import_dialog.h"
 #include "ui/main_window.h"
+#include "ui/record_data_dialog.h"
 #include "ui/record_presentation.h"
 #include "ui/settings_dialog.h"
 #include "ui/success_dialog.h"
@@ -239,6 +240,62 @@ private Q_SLOTS:
 		QCOMPARE(thisComputer.sync->Status(), SteamForge::CloudSyncStatus::NOT_SAVED);
 		QTest::qWait(300);
 		QVERIFY(mainWindow.grab().save(QDir(renderDirectory).filePath(QStringLiteral("not-synced-%1.png").arg(suffix))));
+	}
+
+	// The window of the account data holds a copy of the account: saving it must not bring back the Steam Guard key
+	// that Google replaced while the window was open.
+	void KeepsTheKeyFromGoogleWhenAccountDataIsSaved() {
+		FakeDrive drive;
+		CloudComputer otherComputer(drive);
+		CloudComputer thisComputer(drive);
+		SteamForge::AuthenticatorRecord account = DemoRecord(QStringLiteral("dmitry_v"), LOCAL_STEAM_ID, 0x37);
+		QVERIFY(otherComputer.library->Add(account).has_value());
+		const QString recoveryKey = ConnectToGoogle(otherComputer);
+		QVERIFY(AddAndWait(otherComputer, account.id));
+		QVERIFY(!ConnectToGoogle(thisComputer, recoveryKey).isEmpty());
+		QVERIFY(SyncAndWait(*thisComputer.sync));
+		const SteamForge::AuthenticatorRecord* here = thisComputer.RecordOf(LOCAL_STEAM_ID);
+		QVERIFY(here != nullptr);
+		const QUuid hereId = here->id;
+
+		SteamForge::RecordDataDialog dialog(*thisComputer.library, *here, QStringLiteral("dmitry_v"), std::nullopt);
+		dialog.show();
+		account.secrets.sharedSecret = QByteArray(20, 0x47);
+		QVERIFY(otherComputer.library->Save(account).has_value());
+		QVERIFY(SyncAndWait(*otherComputer.sync));
+		QVERIFY(SyncAndWait(*thisComputer.sync));
+		QCOMPARE(thisComputer.library->FindRecord(hereId)->secrets.sharedSecret, account.secrets.sharedSecret);
+
+		const QList<QLineEdit*> edits = dialog.findChildren<QLineEdit*>();
+		const auto revocationCodeEdit = std::ranges::find_if(edits, [](const QLineEdit* edit) {
+			return edit->placeholderText() == QStringLiteral("R00000");
+		});
+		QVERIFY(revocationCodeEdit != edits.end());
+		(*revocationCodeEdit)->setText(QStringLiteral("R54321"));
+		dialog.accept();
+
+		// Nothing is saved, and the window stays open to say why.
+		QVERIFY(dialog.isVisible());
+		const SteamForge::AuthenticatorRecord* saved = thisComputer.library->FindRecord(hereId);
+		QVERIFY(saved != nullptr);
+		QCOMPARE(saved->secrets.sharedSecret, account.secrets.sharedSecret);
+		QVERIFY(saved->secrets.revocationCode.isEmpty());
+
+		// Opened again, the window shows the account as it is now and saves.
+		SteamForge::RecordDataDialog reopened(*thisComputer.library, *saved, QStringLiteral("dmitry_v"), std::nullopt);
+		reopened.show();
+		const QList<QLineEdit*> reopenedEdits = reopened.findChildren<QLineEdit*>();
+		const auto reopenedCodeEdit = std::ranges::find_if(reopenedEdits, [](const QLineEdit* edit) {
+			return edit->placeholderText() == QStringLiteral("R00000");
+		});
+		QVERIFY(reopenedCodeEdit != reopenedEdits.end());
+		(*reopenedCodeEdit)->setText(QStringLiteral("R54321"));
+		reopened.accept();
+		QVERIFY(!reopened.isVisible());
+		const SteamForge::AuthenticatorRecord* completed = thisComputer.library->FindRecord(hereId);
+		QVERIFY(completed != nullptr);
+		QCOMPARE(completed->secrets.sharedSecret, account.secrets.sharedSecret);
+		QCOMPARE(completed->secrets.revocationCode, QStringLiteral("R54321"));
 	}
 
 	// Sync goes on in the event loop of every question: an account that comes from Google meanwhile moves the records

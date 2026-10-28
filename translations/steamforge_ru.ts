@@ -3102,142 +3102,147 @@
 <context>
     <name>SteamForge::RecordDataDialog</name>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="158"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="157"/>
+        <source>The data of this account changed while this window was open, for example by Google sync. Nothing was saved: close the window and open it again.</source>
+        <translation>Данные этого аккаунта изменились, пока окно было открыто, например при синхронизации с Google. Ничего не сохранено: закройте окно и откройте его снова.</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/record_data_dialog.cpp" line="172"/>
         <source>The SteamID must be the 17-digit SteamID64 of a user account, for example from the profile link.</source>
         <translation>SteamID должен быть 17-значным SteamID64 пользовательского аккаунта, например из ссылки на профиль.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="161"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="175"/>
         <source>The confirmation key must be identity_secret in Base64 as in the .maFile: 28 characters ending with &quot;=&quot;.</source>
         <translation>Ключ подтверждений должен быть identity_secret в Base64, как в .maFile: 28 символов с «=» в конце.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="164"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="178"/>
         <source>This is the code key (shared_secret) of the record, not the confirmation key. Take the identity_secret field of the same file.</source>
         <translation>Это ключ кодов (shared_secret) этой записи, а не ключ подтверждений. Возьмите поле identity_secret из того же файла.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="167"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="181"/>
         <source>The device ID must look like android: followed by a UUID, as device_id in the .maFile.</source>
         <translation>Идентификатор устройства должен выглядеть как android: и UUID, как device_id в .maFile.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="170"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="184"/>
         <source>The recovery code is R followed by five digits, as revocation_code in the .maFile.</source>
         <translation>Код восстановления состоит из R и пяти цифр, как revocation_code в .maFile.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="199"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="213"/>
         <source>Add data · %1</source>
         <translation>Дополнить данные · %1</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="200"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="214"/>
         <source>Trade and market confirmations need a Steam sign-in of this account and three values of the same authenticator: the SteamID, the confirmation key (identity_secret) and the device ID (device_id). The easiest way is to import the whole authenticator file again (.maFile or twofactor_&lt;SteamID&gt;.json), and the missing data is added to this record. Leave a field empty to keep what is saved.</source>
         <translation>Для подтверждений обменов и Торговой площадки нужны вход в Steam этого аккаунта и три значения того же аутентификатора: SteamID, ключ подтверждений (identity_secret) и идентификатор устройства (device_id). Проще всего заново импортировать весь файл аутентификатора (.maFile или twofactor_&lt;SteamID&gt;.json), и недостающее добавится в эту запись. Пустое поле оставляет сохранённое значение.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="201"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="215"/>
         <source>SteamID</source>
         <translation>SteamID</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="202"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="216"/>
         <source>Confirmation key</source>
         <translation>Ключ подтверждений</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="203"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="217"/>
         <source>Device ID</source>
         <translation>Идентификатор устройства</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="204"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="218"/>
         <source>Calculate from SteamID</source>
         <translation>Вычислить из SteamID</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="205"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="219"/>
         <source>For a twofactor_&lt;SteamID&gt;.json file of node-steamcommunity the device ID is calculated from the SteamID. A .maFile of Steam Desktop Authenticator has it as device_id.</source>
         <translation>Для файла twofactor_&lt;SteamID&gt;.json от node-steamcommunity идентификатор вычисляется из SteamID. В .maFile от Steam Desktop Authenticator он есть в поле device_id.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="206"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="220"/>
         <source>Recovery code</source>
         <translation>Код восстановления</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="207"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="221"/>
         <source>Saved</source>
         <translation>Сохранён</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="209"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="223"/>
         <source>The revocation_code field of the file. It is needed to remove Steam Guard from the account when the codes are lost.</source>
         <translation>Поле revocation_code из файла. Он нужен, чтобы удалить Steam Guard из аккаунта, если коды потеряны.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="211"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="225"/>
         <source>Saved with the record. It is shown on the account page.</source>
         <translation>Сохранён в записи. Его можно посмотреть на странице аккаунта.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="213"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="227"/>
         <source>Show recovery code</source>
         <translation>Показать код восстановления</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="213"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="227"/>
         <source>Hide recovery code</source>
         <translation>Скрыть код восстановления</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="215"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="229"/>
         <source>Saved with the record.</source>
         <translation>Сохранён в записи.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="217"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="231"/>
         <source>Steam reported this SteamID when you signed in for this record. Change it only if the record belongs to another account.</source>
         <translation>Этот SteamID сообщил Steam при входе для этой записи. Меняйте его, только если запись относится к другому аккаунту.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="219"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="233"/>
         <source>The 17-digit SteamID64, for example from the profile link.</source>
         <translation>17-значный SteamID64, например из ссылки на профиль.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="221"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="235"/>
         <source>identity_secret from the .maFile</source>
         <translation>identity_secret из .maFile</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="221"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="235"/>
         <source>Saved. Enter a new one only to replace it.</source>
         <translation>Сохранён. Вводите новый, только чтобы заменить его.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="222"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="236"/>
         <source>The identity_secret field of the .maFile or twofactor_&lt;SteamID&gt;.json file: 28 characters ending with &quot;=&quot;. Not shared_secret: that one is the code key.</source>
         <translation>Поле identity_secret из .maFile или twofactor_&lt;SteamID&gt;.json: 28 символов с «=» в конце. Не shared_secret: это ключ кодов.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="223"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="237"/>
         <source>Hide key</source>
         <translation>Скрыть ключ</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="223"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="237"/>
         <source>Show key</source>
         <translation>Показать ключ</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="224"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="238"/>
         <source>The code key is not changed here, and a recovery code can only be added when none is saved. A confirmation key of another authenticator does no harm: Steam simply rejects the confirmations.</source>
         <translation>Ключ кодов здесь не меняется, а код восстановления можно только добавить, если его нет. Ключ подтверждений от другого аутентификатора ничего не сломает: Steam просто отклонит подтверждения.</translation>
     </message>
     <message>
-        <location filename="../src/ui/record_data_dialog.cpp" line="225"/>
+        <location filename="../src/ui/record_data_dialog.cpp" line="239"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>

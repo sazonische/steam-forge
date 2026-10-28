@@ -43,6 +43,11 @@ namespace {
 	bool HasChanged(const AuthenticatorRecord& savedRecord, const AuthenticatorRecord& updatedRecord) {
 		return savedRecord.account.steamId != updatedRecord.account.steamId || savedRecord.secrets.identitySecret != updatedRecord.secrets.identitySecret || savedRecord.secrets.deviceId != updatedRecord.secrets.deviceId || savedRecord.secrets.revocationCode != updatedRecord.secrets.revocationCode;
 	}
+
+	// The values this window shows and fills belong to one authenticator.
+	bool HasSameAuthenticator(const AuthenticatorRecord& savedRecord, const AuthenticatorRecord& shownRecord) {
+		return savedRecord.secrets.sharedSecret == shownRecord.secrets.sharedSecret && !HasChanged(savedRecord, shownRecord);
+	}
 } // namespace
 
 RecordDataDialog::RecordDataDialog(AccountLibrary& library, AuthenticatorRecord editedRecord, QString title, const std::optional<AccountSession>& session, QWidget* parent) :
@@ -145,13 +150,22 @@ RecordDataDialog::RecordDataDialog(AccountLibrary& library, AuthenticatorRecord 
 }
 
 void RecordDataDialog::accept() {
+	// Google sync may change the account while the window is open. Its copy would undo that change, and the typed
+	// values may belong to the authenticator the window showed, not to a new one.
+	const AuthenticatorRecord* savedRecord = accountLibrary.FindRecord(record.id);
+	if (savedRecord == nullptr || !HasSameAuthenticator(*savedRecord, record)) {
+		errorLabel->setText(tr("The data of this account changed while this window was open, for example by Google sync. Nothing was saved: close the window and open it again."));
+		errorLabel->show();
+		FitHeightToContents(*this);
+		return;
+	}
 	const ManualRecordData typedData{
 		.steamId = steamIdEdit->isReadOnly() ? QString() : steamIdEdit->text(),
 		.identitySecret = identitySecretEdit->text(),
 		.deviceId = deviceIdEdit->text(),
 		.revocationCode = revocationCodeEdit->isReadOnly() ? QString() : revocationCodeEdit->text(),
 	};
-	const std::expected<AuthenticatorRecord, ManualRecordDataError> updatedRecord = ApplyManualRecordData(record, typedData);
+	const std::expected<AuthenticatorRecord, ManualRecordDataError> updatedRecord = ApplyManualRecordData(*savedRecord, typedData);
 	if (!updatedRecord.has_value()) {
 		switch (updatedRecord.error()) {
 			case ManualRecordDataError::INVALID_STEAM_ID:
@@ -174,7 +188,7 @@ void RecordDataDialog::accept() {
 		FitHeightToContents(*this);
 		return;
 	}
-	if (HasChanged(record, *updatedRecord)) {
+	if (HasChanged(*savedRecord, *updatedRecord)) {
 		if (const std::expected<void, StorageError> saved = accountLibrary.Save(*updatedRecord); !saved.has_value()) {
 			QMessageBox::critical(this, windowTitle(), StorageErrorText(saved.error()));
 			return;
