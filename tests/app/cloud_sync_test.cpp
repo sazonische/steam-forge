@@ -534,6 +534,66 @@ private Q_SLOTS:
 		QCOMPARE(second.RecordOf(FIRST_STEAM_ID)->label, QStringLiteral("changed again on the first computer"));
 	}
 
+	// A change saved here while the version of the other computer was on its way: applying that version would wipe it,
+	// so the account counts as changed on both, and the user chooses.
+	void KeepsAChangeSavedWhileTheCloudVersionDownloads() {
+		FakeDrive drive;
+		CloudComputer first(drive);
+		CloudComputer second(drive);
+		SteamForge::AuthenticatorRecord account = MakeRecord(QStringLiteral("first_player"), FIRST_STEAM_ID, 0x41);
+		QVERIFY(first.library->Add(account).has_value());
+		const QString recoveryKey = ConnectToGoogle(first);
+		QVERIFY(AddAndWait(first, account.id));
+		QVERIFY(!ConnectToGoogle(second, recoveryKey).isEmpty());
+		QVERIFY(SyncAndWait(*second.sync));
+		const SteamForge::AuthenticatorRecord* arrived = second.RecordOf(FIRST_STEAM_ID);
+		QVERIFY(arrived != nullptr);
+		SteamForge::AuthenticatorRecord secondCopy = *arrived;
+
+		account.label = QStringLiteral("changed on the first computer");
+		QVERIFY(first.library->Save(account).has_value());
+		QVERIFY(SyncAndWait(*first.sync));
+		secondCopy.secrets.identitySecret = QByteArray(20, 0x62);
+		drive.BeforeNextDownload([&second, &secondCopy]() {
+			QVERIFY(second.library->Save(secondCopy).has_value());
+		});
+		QVERIFY(SyncAndWait(*second.sync));
+
+		QCOMPARE(second.library->FindRecord(secondCopy.id)->secrets.identitySecret, secondCopy.secrets.identitySecret);
+		QCOMPARE(second.sync->Status(), SteamForge::CloudSyncStatus::NEEDS_DECISION);
+		QCOMPARE(second.sync->Conflicts().front().kind, SteamForge::CloudConflictKind::CHANGED_ON_BOTH);
+	}
+
+	// Google was disconnected while a request of the sync was on its way, so its answer never came: connected again,
+	// Google syncs as before.
+	void SyncsAgainAfterGoogleIsConnectedAgain() {
+		FakeDrive drive;
+		CloudComputer first(drive);
+		CloudComputer second(drive);
+		const SteamForge::AuthenticatorRecord account = MakeRecord(QStringLiteral("first_player"), FIRST_STEAM_ID, 0x41);
+		QVERIFY(first.library->Add(account).has_value());
+		const QString recoveryKey = ConnectToGoogle(first);
+		QVERIFY(AddAndWait(first, account.id));
+		QVERIFY(!ConnectToGoogle(second, recoveryKey).isEmpty());
+		QVERIFY(SyncAndWait(*second.sync));
+
+		drive.HoldResponses();
+		second.sync->Synchronize();
+		QCOMPARE(second.sync->Status(), SteamForge::CloudSyncStatus::SYNCING);
+		QVERIFY(second.connection->Disconnect().has_value());
+		// The objects of the ended connection go away before their answers would come.
+		QTest::qWait(50);
+		drive.ReleaseResponses();
+		QCOMPARE(second.sync->Status(), SteamForge::CloudSyncStatus::INACTIVE);
+
+		QVERIFY(!ConnectToGoogle(second, recoveryKey).isEmpty());
+		QVERIFY(SyncAndWait(*second.sync));
+		QCOMPARE(second.sync->Status(), SteamForge::CloudSyncStatus::SYNCED);
+		const SteamForge::AuthenticatorRecord* secondCopy = second.RecordOf(FIRST_STEAM_ID);
+		QVERIFY(secondCopy != nullptr);
+		QVERIFY(second.sync->IsInCloud(secondCopy->id));
+	}
+
 	// An account from Google that could not be written here is not synced.
 	void DoesNotCallAnUnsavedAccountSynced() {
 		FakeDrive drive;

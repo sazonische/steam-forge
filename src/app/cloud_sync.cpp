@@ -41,6 +41,10 @@ CloudSync::CloudSync(GoogleConnection& connection, AccountLibrary& library, QObj
 			Synchronize();
 			return;
 		}
+		// A request on its way may never answer once its connection is gone: the run ends here, not with the answer.
+		requestContext = std::make_unique<QObject>();
+		isSyncing = false;
+		isResyncPending = false;
 		pendingSteps.clear();
 		requestedSteps.clear();
 		localRecordsInAction.clear();
@@ -83,7 +87,7 @@ void CloudSync::StartPass() {
 	}
 	isSyncing = true;
 	SetStatus(CloudSyncStatus::SYNCING);
-	drive->ListFiles(*this, [this](std::expected<std::vector<DriveFile>, GoogleError> files) {
+	drive->ListFiles(*requestContext, [this](std::expected<std::vector<DriveFile>, GoogleError> files) {
 		if (!files.has_value()) {
 			isRunReachable = false;
 			FinishPass();
@@ -142,7 +146,7 @@ void CloudSync::RemoveFromCloud(const QUuid& recordId) {
 			return;
 		}
 		// Every revision goes, so no leftover file comes back as an account on the next pass.
-		drive->ListFiles(*this, [this, recordId, cloudRecordId](std::expected<std::vector<DriveFile>, GoogleError> files) {
+		drive->ListFiles(*requestContext, [this, recordId, cloudRecordId](std::expected<std::vector<DriveFile>, GoogleError> files) {
 			if (!files.has_value()) {
 				isRunReachable = false;
 				RunNextStep();
@@ -212,7 +216,7 @@ void CloudSync::ApplyDecision(const CloudConflict& conflict, ConflictChoice choi
 	}
 	// The answer is about the version the question showed. When another computer has changed the account since, it
 	// is not applied, and the pass after the decision asks again with the newest version.
-	drive->ListFiles(*this, [this, conflict, choice](std::expected<std::vector<DriveFile>, GoogleError> files) {
+	drive->ListFiles(*requestContext, [this, conflict, choice](std::expected<std::vector<DriveFile>, GoogleError> files) {
 		if (!files.has_value()) {
 			isRunReachable = false;
 			RunNextStep();
@@ -245,7 +249,7 @@ void CloudSync::ApplyDecision(const CloudConflict& conflict, ConflictChoice choi
 			KeepOnlyLinkedRevision(localRecordId, previousFileId);
 		};
 		if (choice == ConflictChoice::USE_CLOUD) {
-			ApplyCloudVersion(link, *shown, std::move(keepOnlyDecided));
+			ApplyCloudVersion(link, *shown, CloudRecordFingerprint(*local), std::move(keepOnlyDecided));
 			return;
 		}
 		PushLocalVersion(link, *local, conflict.cloudRevision, std::move(keepOnlyDecided));
@@ -399,7 +403,7 @@ void CloudSync::PlanLink(const CloudLink& link, const RevisionsByRecord& revisio
 	}
 	if (latest.revision > link.revision) {
 		pendingSteps.emplace_back([this, link, latest]() {
-			ApplyCloudVersion(link, latest, [this](bool /*isApplied*/) {
+			ApplyCloudVersion(link, latest, link.fingerprint, [this](bool /*isApplied*/) {
 				RunNextStep();
 			});
 		});
@@ -426,7 +430,7 @@ void CloudSync::DeleteFiles(std::vector<QString> fileIds, std::function<void(boo
 	}
 	const QString fileId = fileIds.back();
 	fileIds.pop_back();
-	drive->Delete(fileId, *this, [this, remainingIds = std::move(fileIds), deletionDone = std::move(done)](const std::expected<void, GoogleError>& deleted) mutable {
+	drive->Delete(fileId, *requestContext, [this, remainingIds = std::move(fileIds), deletionDone = std::move(done)](const std::expected<void, GoogleError>& deleted) mutable {
 		if (!deleted.has_value() && deleted.error().httpStatus != NOT_FOUND_STATUS) {
 			isRunReachable = false;
 			deletionDone(false);
@@ -444,7 +448,7 @@ void CloudSync::KeepOnlyLinkedRevision(const QUuid& localRecordId, const QString
 		RunNextStep();
 		return;
 	}
-	drive->ListFiles(*this, [this, cloudRecordId = link->cloudRecordId, keptFileId = link->fileId, keptRevision = link->revision, previousFileId](std::expected<std::vector<DriveFile>, GoogleError> files) {
+	drive->ListFiles(*requestContext, [this, cloudRecordId = link->cloudRecordId, keptFileId = link->fileId, keptRevision = link->revision, previousFileId](std::expected<std::vector<DriveFile>, GoogleError> files) {
 		if (!files.has_value()) {
 			isRunReachable = false;
 			RunNextStep();
@@ -519,10 +523,16 @@ void CloudSync::FinishPass() {
 	Q_EMIT StatusChanged();
 }
 
-void CloudSync::ApplyCloudVersion(CloudLink link, const CloudRevision& revision, std::function<void(bool)> done) {
-	DownloadRecord(revision, [this, link, revision, applyDone = std::move(done)](std::optional<AuthenticatorRecord> cloudRecord) mutable {
+void CloudSync::ApplyCloudVersion(CloudLink link, const CloudRevision& revision, const QString& localFingerprint, std::function<void(bool)> done) {
+	DownloadRecord(revision, [this, link, revision, localFingerprint, applyDone = std::move(done)](std::optional<AuthenticatorRecord> cloudRecord) mutable {
 		const AuthenticatorRecord* local = accountLibrary.FindRecord(link.localRecordId);
 		if (!cloudRecord.has_value() || local == nullptr) {
+			applyDone(false);
+			return;
+		}
+		// Changed here since the version was asked for: the next pass of this run finds the change on both sides.
+		if (CloudRecordFingerprint(*local) != localFingerprint) {
+			isResyncPending = true;
 			applyDone(false);
 			return;
 		}
@@ -562,7 +572,7 @@ void CloudSync::PushLocalVersion(CloudLink link, const AuthenticatorRecord& reco
 	}
 	DriveProperties properties = RecordProperties(link.cloudRecordId, revision);
 	properties.insert(PARENT_PROPERTY, link.fileId);
-	drive->Create(RECORD_FILE_NAME, properties, *content, *this, [this, link, revision, fingerprint = CloudRecordFingerprint(record), pushDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) mutable {
+	drive->Create(RECORD_FILE_NAME, properties, *content, *requestContext, [this, link, revision, fingerprint = CloudRecordFingerprint(record), pushDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) mutable {
 		GoogleDrive* uploadingDrive = googleConnection.Drive();
 		if (!uploaded.has_value() || uploadingDrive == nullptr) {
 			isRunReachable = false;
@@ -578,7 +588,7 @@ void CloudSync::PushLocalVersion(CloudLink link, const AuthenticatorRecord& reco
 			return;
 		}
 		// The new revision is in place, so the previous one is no longer needed.
-		uploadingDrive->Delete(previousFileId, *this, [](const std::expected<void, GoogleError>&) {
+		uploadingDrive->Delete(previousFileId, *requestContext, [](const std::expected<void, GoogleError>&) {
 		});
 		pushDone(true);
 	});
@@ -658,7 +668,7 @@ void CloudSync::UploadNewRecord(const AuthenticatorRecord& record, std::function
 		done(false);
 		return;
 	}
-	drive->Create(RECORD_FILE_NAME, RecordProperties(recordId, FIRST_REVISION), *content, *this, [this, recordId, localRecordId = record.id, fingerprint = CloudRecordFingerprint(record), uploadDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) {
+	drive->Create(RECORD_FILE_NAME, RecordProperties(recordId, FIRST_REVISION), *content, *requestContext, [this, recordId, localRecordId = record.id, fingerprint = CloudRecordFingerprint(record), uploadDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) {
 		if (!uploaded.has_value()) {
 			isRunReachable = false;
 			uploadDone(false);
@@ -675,7 +685,7 @@ void CloudSync::DownloadRecord(const CloudRevision& revision, std::function<void
 		done(std::nullopt);
 		return;
 	}
-	drive->Download(revision.file.id, *this, [this, revision, downloadDone = std::move(done)](std::expected<QByteArray, GoogleError> content) {
+	drive->Download(revision.file.id, *requestContext, [this, revision, downloadDone = std::move(done)](std::expected<QByteArray, GoogleError> content) {
 		if (!content.has_value()) {
 			// A file removed since the listing is no failure: the next pass sees the cloud as it is.
 			if (content.error().httpStatus != NOT_FOUND_STATUS) {

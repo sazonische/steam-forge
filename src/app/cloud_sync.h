@@ -121,8 +121,9 @@ private:
 	void PlanLink(const CloudLink& link, const RevisionsByRecord& revisionsByRecord);
 	void RunNextStep();
 	void FinishPass();
-	// done tells whether the record here and its link took the version.
-	void ApplyCloudVersion(CloudLink link, const CloudRevision& revision, std::function<void(bool)> done);
+	// done tells whether the record here and its link took the version. localFingerprint is the record here the
+	// version was meant for: changed while the file was on its way, the record keeps its change.
+	void ApplyCloudVersion(CloudLink link, const CloudRevision& revision, const QString& localFingerprint, std::function<void(bool)> done);
 	void PushLocalVersion(CloudLink link, const AuthenticatorRecord& record, int baseRevision, std::function<void(bool)> done);
 	void AdoptCloudRecord(const CloudRevision& revision);
 	void LinkSameGuard(AuthenticatorRecord local, const AuthenticatorRecord& cloudRecord, const CloudRevision& revision);
@@ -142,6 +143,9 @@ private:
 	AccountLibrary& accountLibrary;
 	QTimer intervalTimer;
 	QTimer changeTimer;
+	// The requests of one Google connection answer to it; replaced when the connection ends, their late answers are
+	// dropped.
+	std::unique_ptr<QObject> requestContext = std::make_unique<QObject>();
 	std::deque<Step> pendingSteps;
 	std::deque<Step> requestedSteps;
 	QSet<QUuid> localRecordsInAction;

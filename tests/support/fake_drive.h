@@ -8,10 +8,32 @@
 class FakeDrive final : public SteamForge::GoogleTransport {
 public:
 	void Send(const SteamForge::GoogleRequest& request, QObject& context, SteamForge::GoogleResponseHandler handler) override {
-		SteamForge::GoogleResponse response = Answer(request);
-		QTimer::singleShot(0, &context, [preparedResponse = std::move(response), responseHandler = std::move(handler)]() {
-			responseHandler(preparedResponse);
-		});
+		PendingResponse pending{.context = &context, .response = Answer(request), .handler = std::move(handler), .beforeAnswer = {}};
+		if (request.method == SteamForge::GoogleHttpMethod::GET && request.url.path().startsWith(FILES_PATH_PREFIX)) {
+			pending.beforeAnswer = std::exchange(nextDownloadAction, {});
+		}
+		if (isHoldingResponses) {
+			heldResponses.push_back(std::move(pending));
+			return;
+		}
+		Deliver(std::move(pending));
+	}
+
+	// Runs the action just before the next download is answered, as a change made while the file is on its way.
+	void BeforeNextDownload(std::function<void()> action) {
+		nextDownloadAction = std::move(action);
+	}
+
+	// Answers wait until released, as on a slow network; an answer whose requester is gone by then never comes.
+	void HoldResponses() {
+		isHoldingResponses = true;
+	}
+
+	void ReleaseResponses() {
+		isHoldingResponses = false;
+		for (PendingResponse& pending : std::exchange(heldResponses, {})) {
+			Deliver(std::move(pending));
+		}
 	}
 
 	[[nodiscard]] qsizetype FileCount() const {
@@ -45,12 +67,34 @@ public:
 	}
 
 private:
+	static constexpr QLatin1StringView FILES_PATH_PREFIX{"/drive/v3/files/"};
+
 	struct StoredFile {
 		QString name;
 		QJsonObject properties;
 		QByteArray content;
 		QDateTime createdTime;
 	};
+
+	struct PendingResponse {
+		QPointer<QObject> context;
+		SteamForge::GoogleResponse response;
+		SteamForge::GoogleResponseHandler handler;
+		std::function<void()> beforeAnswer;
+	};
+
+	static void Deliver(PendingResponse pending) {
+		if (pending.context == nullptr) {
+			return;
+		}
+		QObject* context = pending.context;
+		QTimer::singleShot(0, context, [delivered = std::move(pending)]() {
+			if (delivered.beforeAnswer) {
+				delivered.beforeAnswer();
+			}
+			delivered.handler(delivered.response);
+		});
+	}
 
 	SteamForge::GoogleResponse Answer(const SteamForge::GoogleRequest& request) {
 		const QString path = request.url.path();
@@ -60,9 +104,8 @@ private:
 		if (request.method == SteamForge::GoogleHttpMethod::POST && path.contains(QStringLiteral("/upload/"))) {
 			return Upload(request);
 		}
-		const QString filesPrefix = QStringLiteral("/drive/v3/files/");
-		if (path.startsWith(filesPrefix)) {
-			const QString fileId = path.mid(filesPrefix.size());
+		if (path.startsWith(FILES_PATH_PREFIX)) {
+			const QString fileId = path.mid(FILES_PATH_PREFIX.size());
 			const auto file = files.find(fileId);
 			if (file == files.end()) {
 				return std::unexpected(SteamForge::GoogleError{.kind = SteamForge::GoogleErrorKind::HTTP_STATUS, .httpStatus = 404, .reason = QStringLiteral("NOT_FOUND")});
@@ -131,4 +174,7 @@ private:
 
 	std::map<QString, StoredFile> files;
 	int fileCount = 0;
+	std::function<void()> nextDownloadAction;
+	bool isHoldingResponses = false;
+	std::vector<PendingResponse> heldResponses;
 };
