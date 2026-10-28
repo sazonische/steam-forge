@@ -82,7 +82,7 @@ Google is optional: SteamForge works fully without it. With Google connected, th
 
 On another computer, connect the same Google account and enter the recovery key. The ticked accounts appear by themselves.
 
-![Settings, Google section: every account has an "in Google" tick](.github/readme/google-en.webp)
+![Settings, Google section: ticks next to the accounts and the statuses "In Google", "Only here", "Only in Google"](.github/readme/google-en.webp)
 
 - Only Steam Guard data goes to Google, encrypted on your computer before it leaves. Each computer keeps its own Steam sign-in.
 - The files are in the hidden app folder of your Google Drive. They do not show in the usual list of files.
