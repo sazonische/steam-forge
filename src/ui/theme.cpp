@@ -1,5 +1,7 @@
 #include "ui/theme.h"
 
+#include "ui/widget_styles.h"
+
 namespace SteamForge {
 
 namespace {
@@ -13,8 +15,8 @@ namespace {
 	constexpr QLatin1StringView BASE_STYLE_NAME{"Fusion"};
 	constexpr int DEFAULT_FONT_PIXEL_SIZE = 13;
 	constexpr qreal GUARD_CODE_LETTER_SPACING_RATIO = 0.15;
-	constexpr const char* KEYBOARD_FOCUS_PROPERTY = "keyboardFocus";
 	constexpr QLatin1StringView KEYBOARD_FOCUS_MARKER_NAME{"SteamForgeKeyboardFocusMarker"};
+	constexpr QLatin1StringView DIALOG_HEIGHT_FITTER_NAME{"SteamForgeDialogHeightFitter"};
 
 	// Steam client colors (sp.css, library.css); the style sheet uses the same values.
 	constexpr QRgb WINDOW_COLOR = qRgb(0x17, 0x1D, 0x25);
@@ -90,11 +92,33 @@ namespace {
 			}
 			const Qt::FocusReason reason = static_cast<QFocusEvent*>(event)->reason();
 			const bool isKeyboardFocus = isFocusIn && (reason == Qt::TabFocusReason || reason == Qt::BacktabFocusReason || reason == Qt::ShortcutFocusReason);
-			if (button->property(KEYBOARD_FOCUS_PROPERTY).toBool() != isKeyboardFocus) {
-				button->setProperty(KEYBOARD_FOCUS_PROPERTY, isKeyboardFocus);
-				button->style()->unpolish(button);
-				button->style()->polish(button);
+			SetStyleFlag(*button, StyleFlag::KEYBOARD_FOCUS, isKeyboardFocus);
+			return false;
+		}
+	};
+
+	// Before the first show Qt wraps the texts at the width of the size hint; the minimum width then makes the
+	// dialog wider, and the lines it no longer needs stayed as gaps between the texts.
+	class DialogHeightFitter final : public QObject {
+	public:
+		explicit DialogHeightFitter(QObject* parent) :
+			QObject(parent) {
+			setObjectName(DIALOG_HEIGHT_FITTER_NAME);
+		}
+
+	protected:
+		bool eventFilter(QObject* watched, QEvent* event) override {
+			if (event->type() != QEvent::Show) {
+				return false;
 			}
+			auto* dialog = qobject_cast<QDialog*>(watched);
+			// A size the dialog set itself is kept; only the size Qt chose is corrected.
+			if (dialog == nullptr || dialog->testAttribute(Qt::WA_Resized) || dialog->layout() == nullptr || !dialog->layout()->hasHeightForWidth()) {
+				return false;
+			}
+			FitHeightToContents(*dialog);
+			// Qt sizes the dialog again at the next show, as before.
+			dialog->setAttribute(Qt::WA_Resized, false);
 			return false;
 		}
 	};
@@ -113,6 +137,9 @@ void ApplyTheme(QApplication& application) {
 	application.setStyleSheet(LoadStyleSheet());
 	if (application.findChild<QObject*>(KEYBOARD_FOCUS_MARKER_NAME, Qt::FindDirectChildrenOnly) == nullptr) {
 		application.installEventFilter(new KeyboardFocusMarker(&application));
+	}
+	if (application.findChild<QObject*>(DIALOG_HEIGHT_FITTER_NAME, Qt::FindDirectChildrenOnly) == nullptr) {
+		application.installEventFilter(new DialogHeightFitter(&application));
 	}
 }
 

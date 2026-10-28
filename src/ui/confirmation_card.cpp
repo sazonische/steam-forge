@@ -38,17 +38,6 @@ namespace {
 		const auto count = static_cast<int>(tileCount);
 		return (count * ITEM_TILE_EDGE) + (std::max(count - 1, 0) * ITEM_TILE_SPACING);
 	}
-
-	QLabel* CreatePlainLabel(QWidget* parent, QLatin1StringView styleName = {}) {
-		auto* label = new QLabel(parent);
-		// Steam supplies these texts, so they are never interpreted as rich text.
-		label->setTextFormat(Qt::PlainText);
-		label->setWordWrap(true);
-		if (!styleName.isEmpty()) {
-			label->setObjectName(styleName);
-		}
-		return label;
-	}
 } // namespace
 
 ItemStrip::ItemStrip(SteamImageCache& images, std::vector<TradeItem> tradeItems, QWidget* parent) :

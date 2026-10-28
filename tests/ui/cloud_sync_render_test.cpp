@@ -86,6 +86,25 @@ private Q_SLOTS:
 		QApplication::setWindowIcon(SteamForge::ApplicationIcon());
 	}
 
+	// A press on the text of an answer chooses it, as a press on its round button does.
+	void ChoosesAVersionByTheTextOfItsAnswer() {
+		const SteamForge::AuthenticatorRecord localRecord = DemoRecord(QStringLiteral("foxy_plays"), LOCAL_STEAM_ID, 0x27);
+		const SteamForge::CloudConflict conflict{.kind = SteamForge::CloudConflictKind::OTHER_KEY_OF_ACCOUNT, .localRecordId = localRecord.id, .cloudRecord = DemoRecord(QStringLiteral("foxy_plays"), LOCAL_STEAM_ID, 0x2b), .cloudRecordId = QStringLiteral("cloud-record"), .cloudRevision = 1, .cloudFileId = QStringLiteral("cloud-file")};
+		SteamForge::SteamClock clock;
+		SteamForge::CloudConflictDialog dialog(conflict, localRecord, QStringLiteral("Foxy"), clock);
+		dialog.show();
+		QCOMPARE(dialog.Choice(), std::optional(SteamForge::ConflictChoice::KEEP_BOTH));
+
+		const QString description = QCoreApplication::translate("SteamForge::CloudConflictDialog", "It replaces the version in Google, also on your other computers.");
+		const QList<QLabel*> labels = dialog.findChildren<QLabel*>();
+		const auto descriptionLabel = std::ranges::find_if(labels, [&description](const QLabel* label) {
+			return label->text() == description;
+		});
+		QVERIFY(descriptionLabel != labels.end());
+		QTest::mouseClick(*descriptionLabel, Qt::LeftButton);
+		QCOMPARE(dialog.Choice(), std::optional(SteamForge::ConflictChoice::USE_LOCAL));
+	}
+
 	void RenderGoogleSync() {
 		const QString renderDirectory = qEnvironmentVariable("STEAMFORGE_RENDER_DIRECTORY");
 		if (renderDirectory.isEmpty()) {

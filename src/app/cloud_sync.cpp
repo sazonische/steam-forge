@@ -3,14 +3,12 @@
 #include "app/account_library.h"
 #include "app/google_connection.h"
 #include "cloud/cloud_record.h"
+#include "cloud/cloud_vault.h"
 
 namespace SteamForge {
 
 namespace {
 	constexpr QLatin1StringView RECORD_FILE_NAME{"record.json"};
-	constexpr QLatin1StringView KIND_PROPERTY{"kind"};
-	constexpr QLatin1StringView RECORD_KIND{"record"};
-	constexpr QLatin1StringView VAULT_ID_PROPERTY{"vaultId"};
 	constexpr QLatin1StringView RECORD_ID_PROPERTY{"recordId"};
 	constexpr QLatin1StringView REVISION_PROPERTY{"revision"};
 	constexpr QLatin1StringView PARENT_PROPERTY{"parent"};
@@ -361,7 +359,7 @@ CloudSync::RevisionsByRecord CloudSync::RecordRevisions(const std::vector<DriveF
 		bool isRevisionNumber = false;
 		const int revision = file.appProperties.value(REVISION_PROPERTY).toInt(&isRevisionNumber);
 		const QString recordId = file.appProperties.value(RECORD_ID_PROPERTY);
-		if (file.appProperties.value(KIND_PROPERTY) != RECORD_KIND || file.appProperties.value(VAULT_ID_PROPERTY) != googleConnection.VaultId() || !isRevisionNumber || recordId.isEmpty()) {
+		if (file.appProperties.value(DRIVE_KIND_PROPERTY) != RECORD_FILE_KIND || file.appProperties.value(DRIVE_VAULT_ID_PROPERTY) != googleConnection.VaultId() || !isRevisionNumber || recordId.isEmpty()) {
 			continue;
 		}
 		revisionsByRecord[recordId].push_back(CloudRevision{.recordId = recordId, .revision = revision, .file = file});
@@ -762,8 +760,8 @@ std::optional<QByteArray> CloudSync::Sealed(const QString& recordId, int revisio
 
 DriveProperties CloudSync::RecordProperties(const QString& recordId, int revision) const {
 	return DriveProperties{
-		{KIND_PROPERTY, RECORD_KIND},
-		{VAULT_ID_PROPERTY, googleConnection.VaultId()},
+		{DRIVE_KIND_PROPERTY, RECORD_FILE_KIND},
+		{DRIVE_VAULT_ID_PROPERTY, googleConnection.VaultId()},
 		{RECORD_ID_PROPERTY, recordId},
 		{REVISION_PROPERTY, QString::number(revision)},
 	};

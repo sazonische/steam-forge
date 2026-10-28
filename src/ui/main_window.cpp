@@ -20,6 +20,7 @@
 #include "ui/google_connect_dialog.h"
 #include "ui/guard_setup_dialog.h"
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
 #include "ui/import_dialog.h"
 #include "ui/login_approval_dialog.h"
 #include "ui/record_data_dialog.h"
@@ -33,13 +34,8 @@ namespace SteamForge {
 
 namespace {
 	constexpr QSize STATUS_ICON_SIZE{18, 18};
-	constexpr QLatin1StringView LOCK_ICON_RESOURCE{":/styles/lock.svg"};
-	constexpr QLatin1StringView LOCK_OPEN_ICON_RESOURCE{":/styles/lock-open.svg"};
-	constexpr QLatin1StringView LOCK_ALERT_ICON_RESOURCE{":/styles/lock-alert.svg"};
-	constexpr QLatin1StringView CLOUD_ICON_RESOURCE{":/styles/cloud.svg"};
-	constexpr QLatin1StringView CLOUD_CHECK_ICON_RESOURCE{":/styles/cloud-check.svg"};
-	constexpr QLatin1StringView CLOUD_OFF_ICON_RESOURCE{":/styles/cloud-off.svg"};
-	constexpr QLatin1StringView CLOUD_ALERT_ICON_RESOURCE{":/styles/cloud-alert.svg"};
+	constexpr QSize STATUS_BAR_ICON_SIZE{14, 14};
+	constexpr QMargins TIME_STATUS_MARGINS{12, 0, 0, 0};
 	// A second of difference is usual and changes no code.
 	constexpr qint64 NOTICEABLE_CLOCK_OFFSET_SECONDS = 2;
 	constexpr QSize INITIAL_WINDOW_SIZE{1024, 680};
@@ -49,9 +45,7 @@ namespace {
 	constexpr int EMPTY_STATE_SPACING = 12;
 	constexpr int EMPTY_STATE_BUTTON_SPACING = 24;
 	constexpr int EMPTY_STATE_BUTTONS_GAP = 8;
-	constexpr QLatin1StringView WELCOME_ILLUSTRATION_RESOURCE{":/illustrations/welcome.svg"};
 	constexpr QSize WELCOME_ILLUSTRATION_SIZE{360, 220};
-	constexpr QLatin1StringView LOCKED_ILLUSTRATION_RESOURCE{":/illustrations/locked.svg"};
 	constexpr QSize LOCKED_ILLUSTRATION_SIZE{360, 190};
 	constexpr QMargins TOP_BAR_MARGINS{20, 10, 16, 10};
 	constexpr QMargins BANNER_MARGINS{16, 12, 16, 12};
@@ -60,14 +54,6 @@ namespace {
 	constexpr std::size_t NOTIFIED_CONFIRMATION_LIMIT = 3;
 	// Coming back to the window after this long syncs at once instead of waiting for the next round.
 	constexpr qint64 ACTIVATION_SYNC_AGE_SECONDS = 60;
-
-	QString BulletLines(const QStringList& lines) {
-		QStringList bulletLines;
-		for (const QString& line : lines) {
-			bulletLines.append(QStringLiteral("• ") + line);
-		}
-		return bulletLines.join(QLatin1Char('\n'));
-	}
 
 	void ShowStatus(QPushButton& statusButton, QLatin1StringView iconResource, const QString& text, bool needsAttention) {
 		statusButton.setIcon(QIcon(iconResource));
@@ -129,8 +115,14 @@ MainWindow::MainWindow(AccountLibrary& library, const SteamClock& clock, Confirm
 	centralLayout->addWidget(pageStack, 1);
 	setCentralWidget(centralWidget);
 
-	timeStatusLabel = new QLabel(this);
-	statusBar()->addWidget(timeStatusLabel, 1);
+	auto* timeStatus = new QWidget(this);
+	auto* timeStatusLayout = new QHBoxLayout(timeStatus);
+	timeStatusLayout->setContentsMargins(TIME_STATUS_MARGINS);
+	timeStatusLayout->setSpacing(0);
+	timeStatusLayout->addWidget(new IllustrationView(CLOCK_ICON_RESOURCE, STATUS_BAR_ICON_SIZE, timeStatus));
+	timeStatusLabel = new QLabel(timeStatus);
+	timeStatusLayout->addWidget(timeStatusLabel, 1);
+	statusBar()->addWidget(timeStatus, 1);
 	statusBar()->setSizeGripEnabled(false);
 
 	connect(&library, &AccountLibrary::RecordsChanged, this, &MainWindow::UpdatePages);
@@ -701,12 +693,8 @@ bool MainWindow::OfferEncryption() {
 		tr("Does not protect from programs running under your user account."),
 		tr("A data folder moved to another computer or user account does not open there: move accounts with the export to .maFile."),
 	});
-	QStringList factLines;
-	for (const QString& fact : facts) {
-		factLines.append(QStringLiteral("• ") + fact);
-	}
 	QMessageBox offer(QMessageBox::Question, tr("Turn on encryption"), tr("Encrypt the authenticators and Steam sign-ins on this computer?"), QMessageBox::NoButton, this);
-	offer.setInformativeText(factLines.join(QLatin1Char('\n')));
+	offer.setInformativeText(BulletLines(facts));
 	QPushButton* encryptButton = offer.addButton(tr("Encrypt"), QMessageBox::AcceptRole);
 	SetButtonRole(*encryptButton, ButtonRole::PRIMARY);
 	offer.setDefaultButton(offer.addButton(QMessageBox::Cancel));
@@ -1133,6 +1121,7 @@ void MainWindow::OpenSettingsDialog(SettingsSection section) {
 			[this](const AuthenticatorRecord& record) {
 				return AccountTitleFor(record);
 			},
+		.profiles = &accountProfiles,
 	};
 	SettingsDialog settingsDialog(settings.Language(), settings.ChecksForUpdates(), dataLocation, storageEncryption, googleConnection, cloudAccounts, section, this);
 	const CloudAccountsView& cloudAccountsView = settingsDialog.CloudAccounts();
@@ -1173,7 +1162,7 @@ void MainWindow::OpenGoogleConnectDialog() {
 	const GoogleConnectDialog::AccountTitleProvider titleProvider = [this](const AuthenticatorRecord& record) {
 		return AccountTitleFor(record);
 	};
-	GoogleConnectDialog connectDialog(googleConnection, cloudSync, accountLibrary, titleProvider, turnOnEncryption, storageEncryption.Status() == EncryptionStatus::ON, this);
+	GoogleConnectDialog connectDialog(googleConnection, cloudSync, accountLibrary, titleProvider, &accountProfiles, turnOnEncryption, storageEncryption.Status() == EncryptionStatus::ON, this);
 	connectDialog.exec();
 }
 

@@ -146,6 +146,10 @@ qt_add_resources(steamforge_application "application_styles"
 		resources/styles/cloud-check.svg
 		resources/styles/cloud-off.svg
 		resources/styles/cloud-alert.svg
+		resources/styles/more.svg
+		resources/styles/clock.svg
+		resources/styles/check-circle.svg
+		resources/styles/alert-circle.svg
 )
 
 qt_add_resources(steamforge_application "application_illustrations"

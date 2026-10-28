@@ -1,9 +1,14 @@
 #include "ui/google_connect_dialog.h"
 
 #include "app/account_library.h"
+#include "app/account_profiles.h"
 #include "app/cloud_sync.h"
 #include "storage/private_file.h"
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
+#include "ui/record_presentation.h"
+#include "ui/row_list.h"
+#include "ui/steam_picture.h"
 #include "ui/theme.h"
 #include "ui/widget_styles.h"
 
@@ -22,14 +27,10 @@ namespace {
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
 	constexpr QMargins CARD_MARGINS{16, 12, 16, 12};
 	constexpr QSize ILLUSTRATION_SIZE{360, 190};
-	constexpr QLatin1StringView SYNC_ILLUSTRATION_RESOURCE{":/illustrations/google_sync.svg"};
-	constexpr QLatin1StringView KEY_ILLUSTRATION_RESOURCE{":/illustrations/recovery_key.svg"};
-	constexpr QLatin1StringView DONE_ILLUSTRATION_RESOURCE{":/illustrations/all_set.svg"};
 	constexpr QLatin1StringView KEY_PLACEHOLDER{"XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"};
 	constexpr QLatin1StringView KEY_FILE_NAME{"SteamForge recovery key.txt"};
 	constexpr std::chrono::milliseconds COPIED_FEEDBACK_DURATION{std::chrono::seconds(2)};
 	constexpr int ACCOUNTS_LIST_MAXIMUM_HEIGHT = 180;
-	constexpr int ACCOUNTS_LIST_SPACING = 6;
 
 	QString KeyInTwoLines(const QString& keyText) {
 		const QStringList groups = keyText.split(KEY_GROUP_SEPARATOR);
@@ -38,27 +39,20 @@ namespace {
 		}
 		return groups.mid(0, KEY_GROUPS_PER_LINE).join(KEY_GROUP_SEPARATOR) + QLatin1Char('\n') + groups.mid(KEY_GROUPS_PER_LINE).join(KEY_GROUP_SEPARATOR);
 	}
-
-	QString Bullets(const QStringList& lines) {
-		QStringList bulletLines;
-		for (const QString& line : lines) {
-			bulletLines.append(QStringLiteral("• ") + line);
-		}
-		return bulletLines.join(QLatin1Char('\n'));
-	}
 } // namespace
 
-GoogleConnectDialog::GoogleConnectDialog(GoogleConnection& connection, CloudSync& sync, const AccountLibrary& library, AccountTitleProvider titleProvider, EncryptionStarter turnOnEncryption, bool isEncryptionOn, QWidget* parent) :
+GoogleConnectDialog::GoogleConnectDialog(GoogleConnection& connection, CloudSync& sync, const AccountLibrary& library, AccountTitleProvider titleProvider, AccountProfiles* profiles, EncryptionStarter turnOnEncryption, bool isEncryptionOn, QWidget* parent) :
 	QDialog(parent),
 	googleConnection(connection),
 	cloudSync(sync),
 	accountLibrary(library),
 	accountTitleProvider(std::move(titleProvider)),
+	accountProfiles(profiles),
 	encryptionStarter(std::move(turnOnEncryption)),
 	isEncrypted(isEncryptionOn) {
 	setMinimumWidth(MINIMUM_DIALOG_WIDTH);
 
-	illustration = new IllustrationView(SYNC_ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
+	illustration = new IllustrationView(GOOGLE_SYNC_ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
 	headlineLabel = new QLabel(this);
 	headlineLabel->setObjectName(PAGE_TITLE_STYLE);
 	headlineLabel->setAlignment(Qt::AlignCenter);
@@ -99,16 +93,9 @@ GoogleConnectDialog::GoogleConnectDialog(GoogleConnection& connection, CloudSync
 	replaceVaultButton->setObjectName(LINK_BUTTON_STYLE);
 	replaceVaultButton->setCursor(Qt::PointingHandCursor);
 
-	accountsList = new QWidget(this);
-	auto* accountsListLayout = new QVBoxLayout(accountsList);
-	accountsListLayout->setSpacing(ACCOUNTS_LIST_SPACING);
-	accountsArea = new QScrollArea(this);
-	accountsArea->setObjectName(DETAILS_SCROLL_STYLE);
-	accountsArea->setFrameShape(QFrame::NoFrame);
-	accountsArea->setWidgetResizable(true);
-	accountsArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	accountsArea->setMaximumHeight(ACCOUNTS_LIST_MAXIMUM_HEIGHT);
-	accountsArea->setWidget(accountsList);
+	accountsFrame = CreateListFrame(this);
+	accountList = new ScrollingRowList(ACCOUNTS_LIST_MAXIMUM_HEIGHT, accountsFrame);
+	accountsFrame->layout()->addWidget(accountList);
 
 	statusLabel = new QLabel(this);
 	statusLabel->setObjectName(ERROR_TEXT_STYLE);
@@ -133,7 +120,7 @@ GoogleConnectDialog::GoogleConnectDialog(GoogleConnection& connection, CloudSync
 	dialogLayout->addWidget(keySavedCheckBox);
 	dialogLayout->addWidget(keyEdit);
 	dialogLayout->addWidget(replaceVaultButton, 0, Qt::AlignLeft);
-	dialogLayout->addWidget(accountsArea);
+	dialogLayout->addWidget(accountsFrame);
 	dialogLayout->addWidget(statusLabel);
 	dialogLayout->addLayout(buttonsLayout);
 
@@ -204,7 +191,7 @@ void GoogleConnectDialog::RetranslateUi() {
 	switch (step) {
 		case Step::INTRODUCTION:
 			headlineLabel->setText(tr("Sync through Google"));
-			textLabel->setText(Bullets({
+			textLabel->setText(BulletLines({
 				tr("SteamForge keeps a copy of the accounts you choose in its hidden folder on your Google Drive. The folder does not show up in Drive, and other programs cannot open it."),
 				tr("The accounts are encrypted before they leave this computer. The key stays with you, so Google cannot read them."),
 				tr("Nothing is sent on its own: you add accounts to Google one by one."),
@@ -255,9 +242,9 @@ void GoogleConnectDialog::ShowStep(Step newStep) {
 	step = newStep;
 	const bool isKeyStep = step == Step::NEW_KEY || step == Step::ENTER_KEY;
 	if (step == Step::DONE) {
-		illustration->SetResource(DONE_ILLUSTRATION_RESOURCE);
+		illustration->SetResource(ALL_SET_ILLUSTRATION_RESOURCE);
 	} else {
-		illustration->SetResource(isKeyStep ? KEY_ILLUSTRATION_RESOURCE : SYNC_ILLUSTRATION_RESOURCE);
+		illustration->SetResource(isKeyStep ? RECOVERY_KEY_ILLUSTRATION_RESOURCE : GOOGLE_SYNC_ILLUSTRATION_RESOURCE);
 	}
 	noticeLabel->setVisible((step == Step::INTRODUCTION && !isEncrypted) || step == Step::NEW_KEY);
 	keyCard->setVisible(step == Step::NEW_KEY);
@@ -266,8 +253,8 @@ void GoogleConnectDialog::ShowStep(Step newStep) {
 	keySavedCheckBox->setChecked(false);
 	keyEdit->setVisible(step == Step::ENTER_KEY);
 	replaceVaultButton->setVisible(step == Step::ENTER_KEY);
-	accountsArea->setVisible(step == Step::CHOOSE_ACCOUNTS || step == Step::UPLOADING);
-	accountsList->setEnabled(step == Step::CHOOSE_ACCOUNTS);
+	accountsFrame->setVisible(step == Step::CHOOSE_ACCOUNTS || step == Step::UPLOADING);
+	accountsFrame->setEnabled(step == Step::CHOOSE_ACCOUNTS);
 	if (step == Step::ENTER_KEY) {
 		keyEdit->clear();
 		keyEdit->setFocus();
@@ -330,20 +317,22 @@ void GoogleConnectDialog::ConfirmVaultReplacement() {
 }
 
 void GoogleConnectDialog::FillAccountChoices() {
-	for (const auto& [recordId, checkBox] : accountChoices) {
-		delete checkBox;
-	}
+	accountList->Clear();
 	accountChoices.clear();
 	for (const AuthenticatorRecord& record : accountLibrary.Records()) {
 		// Only an account that makes codes is worth keeping in the cloud.
 		if (!DetermineCapabilities(record).canGenerateCodes || cloudSync.IsInCloud(record.id)) {
 			continue;
 		}
-		auto* checkBox = new QCheckBox(accountTitleProvider(record), accountsList);
-		checkBox->setChecked(true);
-		connect(checkBox, &QCheckBox::toggled, this, &GoogleConnectDialog::UpdateUploadButton);
-		accountsList->layout()->addWidget(checkBox);
-		accountChoices.emplace_back(record.id, checkBox);
+		auto* avatarPicture = new PictureView(LIST_AVATAR_EDGE);
+		if (accountProfiles != nullptr) {
+			avatarPicture->SetPicture(accountProfiles->Profile(record.account.steamId).avatar);
+		}
+		const AccountChoiceRow choiceRow = CreateAccountChoiceRow(avatarPicture, accountTitleProvider(record), accountList);
+		choiceRow.checkBox->setChecked(true);
+		connect(choiceRow.checkBox, &QCheckBox::toggled, this, &GoogleConnectDialog::UpdateUploadButton);
+		accountList->AddRow(choiceRow.row);
+		accountChoices.emplace_back(record.id, choiceRow.checkBox);
 	}
 }
 

@@ -2,6 +2,7 @@
 
 #include "app/account_library.h"
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/widget_styles.h"
 
@@ -14,7 +15,6 @@ namespace {
 	constexpr int DIALOG_SPACING = 12;
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
 	constexpr QMargins CARD_MARGINS{16, 12, 16, 12};
-	constexpr QLatin1StringView ILLUSTRATION_RESOURCE{":/illustrations/qr_approval.svg"};
 	constexpr QSize ILLUSTRATION_SIZE{360, 190};
 	constexpr int DETAILS_HORIZONTAL_SPACING = 16;
 	constexpr int DETAILS_VERTICAL_SPACING = 6;
@@ -62,7 +62,7 @@ LoginApprovalDialog::LoginApprovalDialog(AccountLibrary& library, AuthenticatorR
 	session(std::move(approvingSession)) {
 	setMinimumWidth(MINIMUM_DIALOG_WIDTH);
 
-	illustration = new IllustrationView(ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
+	illustration = new IllustrationView(QR_APPROVAL_ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
 	introLabel = new QLabel(this);
 	introLabel->setWordWrap(true);
 	statusLabel = new QLabel(this);
@@ -265,14 +265,12 @@ void LoginApprovalDialog::UpdateState() {
 
 	const bool isFailure = stage == LoginApprovalStage::FAILED || captureFailure.has_value();
 	if (isFailure) {
-		statusLabel->setObjectName(ERROR_TEXT_STYLE);
+		SetStyleName(*statusLabel, ERROR_TEXT_STYLE);
 	} else if (isPasswordSignInDenied) {
-		statusLabel->setObjectName(NOTICE_STYLE);
+		SetStyleName(*statusLabel, NOTICE_STYLE);
 	} else {
-		statusLabel->setObjectName(SECONDARY_TEXT_STYLE);
+		SetStyleName(*statusLabel, SECONDARY_TEXT_STYLE);
 	}
-	statusLabel->style()->unpolish(statusLabel);
-	statusLabel->style()->polish(statusLabel);
 	statusLabel->setText(StatusText());
 	statusLabel->setVisible(!statusLabel->text().isEmpty());
 	FitHeightToContents(*this);

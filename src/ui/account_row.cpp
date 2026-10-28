@@ -3,6 +3,7 @@
 #include "app/account_profiles.h"
 #include "steam/guard_code.h"
 #include "ui/elided_label.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/steam_picture.h"
 #include "ui/theme.h"
@@ -11,13 +12,6 @@
 namespace SteamForge {
 
 namespace {
-	constexpr QLatin1StringView SHOW_ICON_RESOURCE{":/styles/eye.svg"};
-	constexpr QLatin1StringView HIDE_ICON_RESOURCE{":/styles/eye-off.svg"};
-	constexpr QLatin1StringView COPY_ICON_RESOURCE{":/styles/copy.svg"};
-	constexpr QLatin1StringView COPIED_ICON_RESOURCE{":/styles/copied.svg"};
-	constexpr QLatin1StringView CLOUD_SYNCED_ICON_RESOURCE{":/styles/cloud-check.svg"};
-	constexpr QLatin1StringView CLOUD_CONFLICT_ICON_RESOURCE{":/styles/cloud-alert.svg"};
-	constexpr QLatin1StringView CLOUD_OFF_ICON_RESOURCE{":/styles/cloud-off.svg"};
 	constexpr QSize CLOUD_ICON_SIZE{16, 16};
 	constexpr int CLOUD_ICON_SPACING = 6;
 	constexpr QStringView MASKED_CODE{u"•••••"};
@@ -203,10 +197,10 @@ void AccountRow::RetranslateUi() {
 		cloudLabel->setPixmap(QIcon(CLOUD_OFF_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF(), QIcon::Disabled));
 		cloudLabel->setToolTip(tr("Only on this computer"));
 	} else if (cloudState == RowCloudState::IN_CLOUD) {
-		cloudLabel->setPixmap(QIcon(CLOUD_SYNCED_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF()));
+		cloudLabel->setPixmap(QIcon(CLOUD_CHECK_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF()));
 		cloudLabel->setToolTip(tr("Saved in Google"));
 	} else if (cloudState == RowCloudState::CONFLICT) {
-		cloudLabel->setPixmap(QIcon(CLOUD_CONFLICT_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF()));
+		cloudLabel->setPixmap(QIcon(CLOUD_ALERT_ICON_RESOURCE).pixmap(CLOUD_ICON_SIZE, devicePixelRatioF()));
 		cloudLabel->setToolTip(tr("Google has a different version: choose which one to keep"));
 	}
 	cloudLabel->setAccessibleName(cloudLabel->toolTip());
@@ -226,7 +220,7 @@ void AccountRow::RetranslateUi() {
 	} else {
 		revealText = isRevealed ? tr("Hide account name") : tr("Show account name");
 	}
-	revealButton->setIcon(QIcon(isRevealed ? HIDE_ICON_RESOURCE : SHOW_ICON_RESOURCE));
+	revealButton->setIcon(QIcon(isRevealed ? EYE_OFF_ICON_RESOURCE : EYE_ICON_RESOURCE));
 	revealButton->setToolTip(revealText);
 	revealButton->setAccessibleName(revealText);
 

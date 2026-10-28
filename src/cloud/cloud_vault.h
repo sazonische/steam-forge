@@ -5,6 +5,11 @@
 namespace SteamForge {
 
 inline constexpr qsizetype RECOVERY_KEY_LENGTH = 20;
+// Drive properties that mark the files of a vault among anything else in the application folder.
+inline constexpr QLatin1StringView DRIVE_KIND_PROPERTY{"kind"};
+inline constexpr QLatin1StringView DRIVE_VAULT_ID_PROPERTY{"vaultId"};
+inline constexpr QLatin1StringView VAULT_FILE_KIND{"vault"};
+inline constexpr QLatin1StringView RECORD_FILE_KIND{"record"};
 
 // Opens the cloud vault on a computer that does not have its key yet. The user writes it down when Google is
 // connected; 160 random bits, so it needs no slow password hashing.

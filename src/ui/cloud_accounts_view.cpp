@@ -1,57 +1,58 @@
 #include "ui/cloud_accounts_view.h"
 
 #include "app/account_library.h"
+#include "app/account_profiles.h"
 #include "app/cloud_sync.h"
 #include "app/google_connection.h"
+#include "ui/illustration_view.h"
+#include "ui/image_resources.h"
+#include "ui/row_list.h"
+#include "ui/steam_picture.h"
 #include "ui/widget_styles.h"
 
 namespace SteamForge {
 
 namespace {
 	constexpr int VIEW_SPACING = 10;
-	constexpr int ROW_SPACING = 8;
-	constexpr int ROWS_SPACING = 6;
-	constexpr int ROWS_MAXIMUM_HEIGHT = 220;
+	constexpr int ROWS_MAXIMUM_HEIGHT = 260;
+	constexpr QSize CLOUD_ICON_SIZE{LIST_AVATAR_EDGE, LIST_AVATAR_EDGE};
 } // namespace
 
-CloudAccountsView::CloudAccountsView(const CloudSync& sync, const GoogleConnection& connection, const AccountLibrary& library, AccountTitleProvider titleProvider, QWidget* parent) :
+CloudAccountsView::CloudAccountsView(const CloudSync& sync, const GoogleConnection& connection, const AccountLibrary& library, AccountTitleProvider titleProvider, AccountProfiles* profiles, QWidget* parent) :
 	QWidget(parent),
 	cloudSync(sync),
 	googleConnection(connection),
 	accountLibrary(library),
-	accountTitleProvider(std::move(titleProvider)) {
+	accountTitleProvider(std::move(titleProvider)),
+	accountProfiles(profiles) {
 	accountsSectionLabel = new QLabel(this);
 	MakeSectionLabel(*accountsSectionLabel);
 	hintLabel = new QLabel(this);
-	hintLabel->setObjectName(SECONDARY_TEXT_STYLE);
+	hintLabel->setObjectName(DETAIL_TEXT_STYLE);
 	hintLabel->setWordWrap(true);
-	syncLabel = new QLabel(this);
+
+	QFrame* listFrame = CreateListFrame(this);
+	auto* syncRow = new QWidget(listFrame);
+	syncLabel = new QLabel(syncRow);
 	syncLabel->setWordWrap(true);
-	syncButton = new QPushButton(this);
+	syncButton = new QPushButton(syncRow);
 	MakeCompact(*syncButton);
-	auto* syncLayout = new QHBoxLayout();
+	auto* syncLayout = new QHBoxLayout(syncRow);
+	syncLayout->setContentsMargins(LIST_ROW_MARGINS);
+	syncLayout->setSpacing(LIST_ROW_SPACING);
 	syncLayout->addWidget(syncLabel, 1);
 	syncLayout->addWidget(syncButton);
-
-	rowsWidget = new QWidget(this);
-	rowsLayout = new QVBoxLayout(rowsWidget);
-	rowsLayout->setContentsMargins(0, 0, 0, 0);
-	rowsLayout->setSpacing(ROWS_SPACING);
-	auto* rowsArea = new QScrollArea(this);
-	rowsArea->setObjectName(DETAILS_SCROLL_STYLE);
-	rowsArea->setFrameShape(QFrame::NoFrame);
-	rowsArea->setWidgetResizable(true);
-	rowsArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	rowsArea->setMaximumHeight(ROWS_MAXIMUM_HEIGHT);
-	rowsArea->setWidget(rowsWidget);
+	rowList = new ScrollingRowList(ROWS_MAXIMUM_HEIGHT, listFrame);
+	listFrame->layout()->addWidget(syncRow);
+	listFrame->layout()->addWidget(CreateRowDivider(listFrame));
+	listFrame->layout()->addWidget(rowList);
 
 	auto* viewLayout = new QVBoxLayout(this);
 	viewLayout->setContentsMargins(0, 0, 0, 0);
 	viewLayout->setSpacing(VIEW_SPACING);
 	viewLayout->addWidget(accountsSectionLabel);
 	viewLayout->addWidget(hintLabel);
-	viewLayout->addLayout(syncLayout);
-	viewLayout->addWidget(rowsArea);
+	viewLayout->addWidget(listFrame);
 
 	rebuildTimer.setSingleShot(true);
 	rebuildTimer.setInterval(0);
@@ -62,6 +63,10 @@ CloudAccountsView::CloudAccountsView(const CloudSync& sync, const GoogleConnecti
 	connect(&sync, &CloudSync::StatusChanged, this, scheduleRebuild);
 	connect(&connection, &GoogleConnection::LinksChanged, this, scheduleRebuild);
 	connect(&library, &AccountLibrary::RecordsChanged, this, scheduleRebuild);
+	// Avatars arrive after the window opens.
+	if (accountProfiles != nullptr) {
+		connect(accountProfiles, &AccountProfiles::ProfilesChanged, this, scheduleRebuild);
+	}
 	connect(syncButton, &QPushButton::clicked, this, &CloudAccountsView::SyncRequested);
 	RetranslateUi();
 }
@@ -75,7 +80,7 @@ void CloudAccountsView::changeEvent(QEvent* event) {
 
 void CloudAccountsView::RetranslateUi() {
 	accountsSectionLabel->setText(tr("Accounts"));
-	hintLabel->setText(tr("Ticked accounts are saved in your Google and appear on every computer where you connect it. Without the tick an account stays only on this computer."));
+	hintLabel->setText(tr("Tick the accounts to keep in Google."));
 	syncButton->setText(tr("Sync now"));
 	Rebuild();
 }
@@ -83,34 +88,24 @@ void CloudAccountsView::RetranslateUi() {
 void CloudAccountsView::Rebuild() {
 	syncLabel->setText(SyncText());
 	syncButton->setEnabled(cloudSync.Status() != CloudSyncStatus::SYNCING);
-	// The row that asked for the change may still be on the stack.
-	while (const QLayoutItem* item = rowsLayout->takeAt(0)) {
-		if (QWidget* row = item->widget(); row != nullptr) {
-			row->hide();
-			row->deleteLater();
-		}
-		delete item;
-	}
+	rowList->Clear();
 	for (const AuthenticatorRecord& record : accountLibrary.Records()) {
 		if (DetermineCapabilities(record).canGenerateCodes) {
-			rowsLayout->addWidget(CreateRecordRow(record));
+			rowList->AddRow(CreateRecordRow(record));
 		}
 	}
 	for (const CloudOnlyRecord& record : googleConnection.CloudOnlyRecords()) {
-		rowsLayout->addWidget(CreateCloudOnlyRow(record));
+		rowList->AddRow(CreateCloudOnlyRow(record));
 	}
-	rowsLayout->addStretch();
 }
 
 QWidget* CloudAccountsView::CreateRecordRow(const AuthenticatorRecord& record) {
-	auto* row = new QWidget(rowsWidget);
-	auto* checkBox = new QCheckBox(accountTitleProvider(record), row);
-	auto* stateLabel = new QLabel(row);
-	stateLabel->setObjectName(SECONDARY_TEXT_STYLE);
-	auto* rowLayout = new QHBoxLayout(row);
-	rowLayout->setContentsMargins(0, 0, 0, 0);
-	rowLayout->setSpacing(ROW_SPACING);
-	rowLayout->addWidget(checkBox, 1);
+	auto* avatarPicture = new PictureView(LIST_AVATAR_EDGE);
+	if (accountProfiles != nullptr) {
+		avatarPicture->SetPicture(accountProfiles->Profile(record.account.steamId).avatar);
+	}
+	const auto [row, checkBox, rowLayout] = CreateAccountChoiceRow(avatarPicture, accountTitleProvider(record), rowList);
+	QLabel* stateLabel = CreateLabel(row, DETAIL_TEXT_STYLE);
 	rowLayout->addWidget(stateLabel);
 
 	const QUuid recordId = record.id;
@@ -133,7 +128,7 @@ QWidget* CloudAccountsView::CreateRecordRow(const AuthenticatorRecord& record) {
 		stateLabel->setText(tr("Updating…"));
 		return row;
 	}
-	stateLabel->setText(isInCloud ? tr("In Google") : tr("Only on this computer"));
+	stateLabel->setText(isInCloud ? tr("In Google") : tr("Only here"));
 	connect(checkBox, &QCheckBox::clicked, this, [this, recordId](bool isChecked) {
 		if (isChecked) {
 			Q_EMIT AddRequested(recordId);
@@ -147,17 +142,14 @@ QWidget* CloudAccountsView::CreateRecordRow(const AuthenticatorRecord& record) {
 }
 
 QWidget* CloudAccountsView::CreateCloudOnlyRow(const CloudOnlyRecord& record) {
-	auto* row = new QWidget(rowsWidget);
-	auto* nameLabel = new QLabel(record.title.isEmpty() ? tr("Account") : record.title, row);
-	nameLabel->setEnabled(false);
-	auto* stateLabel = new QLabel(tr("Only in Google: removed from this computer"), row);
-	stateLabel->setObjectName(SECONDARY_TEXT_STYLE);
+	const auto [row, checkBox, rowLayout] = CreateAccountChoiceRow(new IllustrationView(CLOUD_CHECK_ICON_RESOURCE, CLOUD_ICON_SIZE), record.title.isEmpty() ? tr("Account") : record.title, rowList);
+	// Nothing to tick: the account is not on this computer.
+	checkBox->hide();
+	QLabel* stateLabel = CreateLabel(row, DETAIL_TEXT_STYLE);
+	stateLabel->setText(tr("Only in Google"));
+	stateLabel->setToolTip(tr("Removed from this computer; it stays in Google for your other computers."));
 	auto* returnButton = new QPushButton(tr("Return here"), row);
 	MakeCompact(*returnButton);
-	auto* rowLayout = new QHBoxLayout(row);
-	rowLayout->setContentsMargins(0, 0, 0, 0);
-	rowLayout->setSpacing(ROW_SPACING);
-	rowLayout->addWidget(nameLabel, 1);
 	rowLayout->addWidget(stateLabel);
 	rowLayout->addWidget(returnButton);
 	connect(returnButton, &QPushButton::clicked, this, [this, cloudRecordId = record.cloudRecordId]() {

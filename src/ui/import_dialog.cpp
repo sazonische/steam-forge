@@ -2,6 +2,7 @@
 
 #include "app/account_library.h"
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/widget_styles.h"
 
@@ -25,9 +26,7 @@ namespace {
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
 	constexpr QMargins DROP_ZONE_MARGINS{24, 20, 24, 20};
 	constexpr int DROP_ZONE_SPACING = 8;
-	constexpr QLatin1StringView DROP_ILLUSTRATION_RESOURCE{":/illustrations/import_files.svg"};
 	constexpr QSize DROP_ILLUSTRATION_SIZE{300, 160};
-	constexpr QLatin1StringView DROP_ACTIVE_PROPERTY{"dropActive"};
 	constexpr std::array AUTHENTICATOR_FILE_PATTERNS{QLatin1StringView("*.maFile"), QLatin1StringView("twofactor_*.json")};
 
 	QString YesNo(bool value) {
@@ -68,7 +67,7 @@ ImportDialog::ImportDialog(AccountLibrary& library, QWidget* parent) :
 
 	dropZone = new QFrame(this);
 	dropZone->setObjectName(DROP_ZONE_STYLE);
-	auto* dropIllustration = new IllustrationView(DROP_ILLUSTRATION_RESOURCE, DROP_ILLUSTRATION_SIZE, dropZone);
+	auto* dropIllustration = new IllustrationView(IMPORT_FILES_ILLUSTRATION_RESOURCE, DROP_ILLUSTRATION_SIZE, dropZone);
 	dropTitleLabel = new QLabel(dropZone);
 	dropTitleLabel->setObjectName(PAGE_TITLE_STYLE);
 	dropTitleLabel->setAlignment(Qt::AlignCenter);
@@ -255,9 +254,7 @@ void ImportDialog::dropEvent(QDropEvent* event) {
 }
 
 void ImportDialog::SetDropHighlighted(bool isHighlighted) {
-	dropZone->setProperty(DROP_ACTIVE_PROPERTY.data(), isHighlighted);
-	dropZone->style()->unpolish(dropZone);
-	dropZone->style()->polish(dropZone);
+	SetStyleFlag(*dropZone, StyleFlag::DROP_ACTIVE, isHighlighted);
 }
 
 void ImportDialog::ChooseFiles() {

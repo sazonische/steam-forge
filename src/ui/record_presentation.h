@@ -18,6 +18,8 @@ namespace SteamForge {
 [[nodiscard]] QString HiddenAccountName();
 // Where the secrets of the record came from and when, for example "imported from … on …".
 [[nodiscard]] QString RecordSourceText(const AuthenticatorRecord& record);
+// The same in short, without the file and the date, for example "Imported from Steam Desktop Authenticator".
+[[nodiscard]] QString RecordOriginText(const AuthenticatorRecord& record);
 [[nodiscard]] QString StorageErrorText(const StorageError& error);
 // The technical reason of a failed Steam request, shown after the explanation, for example "Steam error 2".
 // Like the Steam mobile application: what failed, why in plain words, what to do, and the code for support last.
@@ -26,5 +28,7 @@ namespace SteamForge {
 [[nodiscard]] QString ImportErrorText(const ImportError& error, const QString& fileName);
 // The kind of a mobile confirmation as Steam names it, for example "Trade Offer".
 [[nodiscard]] QString ConfirmationTypeText(const PendingConfirmation& confirmation);
+// The lines one under another, each after a bullet.
+[[nodiscard]] QString BulletLines(const QStringList& lines);
 
 } // namespace SteamForge

@@ -41,7 +41,58 @@ QLabel#SectionLabel {
 }
 
 QLabel#CapabilityAvailable {
-	color: #59bf40;
+	color: #dcdedf;
+}
+
+QLabel#StateHeadline {
+	color: #ffffff;
+	font-size: 15px;
+	font-weight: 500;
+}
+
+QLabel#DetailText {
+	color: #8b929a;
+	font-size: 14px;
+}
+
+QLabel#MaskedSecret {
+	color: #dcdedf;
+	font-size: 18px;
+}
+
+QLabel#StateDotDone,
+QLabel#StateDotAttention,
+QLabel#StateDotIdle {
+	min-width: 10px;
+	max-width: 10px;
+	min-height: 10px;
+	max-height: 10px;
+	border-radius: 5px;
+}
+
+QLabel#StateDotDone {
+	background-color: #59bf40;
+}
+
+QLabel#StateDotAttention {
+	background-color: #ffc82c;
+}
+
+QLabel#StateDotIdle {
+	background-color: #67707b;
+}
+
+QFrame#ListFrame {
+	background-color: #1b2129;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+}
+
+QFrame#RowDivider {
+	background-color: rgba(255, 255, 255, 0.08);
+	border: none;
+	min-height: 1px;
+	max-height: 1px;
 }
 
 QLabel#CapabilityMissing {
@@ -63,13 +114,6 @@ QLabel#Notice {
 QLabel#ProblemBanner {
 	background-color: #2b2e33;
 	border-left: 3px solid #c15755;
-	color: #dcdedf;
-	padding: 10px 12px;
-}
-
-QLabel#SuccessBanner {
-	background-color: #2b2e33;
-	border-left: 3px solid #59bf40;
 	color: #dcdedf;
 	padding: 10px 12px;
 }
@@ -225,7 +269,6 @@ QStatusBar QLabel {
 	font-size: 12px;
 	padding: 2px 8px;
 }
-
 QPushButton {
 	background-color: #3d4450;
 	color: #dfe3e6;
@@ -387,9 +430,11 @@ QWidget#DetailsPage {
 	background-color: transparent;
 }
 
+/* Every row keeps the room of the selection bar, so the contents do not move when it appears. */
 QFrame#AccountRow {
 	background-color: transparent;
 	border: none;
+	border-left: 3px solid transparent;
 	border-radius: 2px;
 }
 
@@ -399,6 +444,7 @@ QFrame#AccountRow:hover {
 
 QFrame#AccountRow[selected="true"] {
 	background-color: #3e4e69;
+	border-left-color: #1a9fff;
 }
 
 QFrame#AccountRow[selected="true"]:hover {

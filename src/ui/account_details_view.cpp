@@ -3,6 +3,7 @@
 #include "app/account_profiles.h"
 #include "steam/jwt_claims.h"
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/steam_picture.h"
 #include "ui/widget_styles.h"
@@ -13,46 +14,44 @@ namespace {
 	constexpr int HEADER_AVATAR_EDGE = 64;
 	constexpr int HEADER_HORIZONTAL_SPACING = 16;
 	constexpr int HEADER_VERTICAL_SPACING = 4;
-	constexpr QLatin1StringView MANAGE_ICON_RESOURCE{":/styles/gear.svg"};
 	constexpr QSize MANAGE_ICON_SIZE{18, 18};
-	constexpr QMargins PAGE_MARGINS{32, 28, 32, 24};
-	constexpr QMargins CARD_MARGINS{24, 20, 24, 20};
-	constexpr int PAGE_SPACING = 16;
+	constexpr QMargins PAGE_MARGINS{32, 24, 32, 20};
+	constexpr QMargins CARD_MARGINS{24, 16, 24, 16};
+	// A card of one line, such as the copy in Google.
+	constexpr QMargins ROW_CARD_MARGINS{24, 10, 24, 10};
+	constexpr int ROW_CARD_SPACING = 14;
+	constexpr int STATE_HORIZONTAL_SPACING = 14;
+	constexpr int STATE_VERTICAL_SPACING = 2;
+	constexpr QSize STATE_ICON_SIZE{24, 24};
+	constexpr QSize GOOGLE_ICON_SIZE{28, 28};
+	// A saved secret, shown only as being there.
+	constexpr QStringView MASKED_SECRET{u"\u2022\u2022\u2022\u2022\u2022"};
+	constexpr int CODES_ROW = 0;
+	constexpr int CONFIRMATION_KEY_ROW = 2;
+	constexpr int RECOVERY_CODE_ROW = 4;
+	constexpr int DATA_COLUMN_COUNT = 3;
+	// The room above and below a divider of the secret data.
+	constexpr int DATA_ROW_SPACING = 10;
+	constexpr int PAGE_SPACING = 12;
 	constexpr int CARD_SPACING = 10;
 	constexpr int GRID_HORIZONTAL_SPACING = 24;
-	constexpr int GRID_VERTICAL_SPACING = 10;
-	constexpr QLatin1StringView STEP_DONE_RESOURCE{":/illustrations/step_done.svg"};
-	constexpr QLatin1StringView STEP_TODO_RESOURCE{":/illustrations/step_todo.svg"};
 	constexpr QSize STEP_MARKER_SIZE{24, 24};
 	constexpr int STEP_HORIZONTAL_SPACING = 12;
 	constexpr int STEP_VERTICAL_SPACING = 6;
 	constexpr int STEP_GAP = 14;
 	constexpr int STEP_BUTTON_SPACING = 8;
 	constexpr int RESTRICTION_NOTICE_SPACING = 4;
-	constexpr QStringView REASON_BULLET{u"• "};
 	constexpr int INTRO_ROW = 0;
 	constexpr int DATA_STEP_ROW = 1;
 	constexpr int STEP_GAP_ROW = 4;
 	constexpr int SIGN_IN_STEP_ROW = 5;
 
-	QLabel* CreateLabel(QWidget* parent, QLatin1StringView styleName = {}) {
-		auto* label = new QLabel(parent);
-		if (!styleName.isEmpty()) {
-			label->setObjectName(styleName);
-		}
-		return label;
-	}
-
-	void SetStyleName(QLabel& label, QLatin1StringView styleName) {
-		if (label.objectName() != styleName) {
-			label.setObjectName(styleName);
-			label.style()->unpolish(&label);
-			label.style()->polish(&label);
-		}
-	}
-
 	void SetCapabilityState(QLabel& label, bool isAvailable, const QString& text) {
-		SetStyleName(label, isAvailable ? CAPABILITY_AVAILABLE_STYLE : CAPABILITY_MISSING_STYLE);
+		QLatin1StringView styleName = isAvailable ? CAPABILITY_AVAILABLE_STYLE : CAPABILITY_MISSING_STYLE;
+		if (text == MASKED_SECRET) {
+			styleName = MASKED_SECRET_STYLE;
+		}
+		SetStyleName(label, styleName);
 		label.setText(text);
 	}
 } // namespace
@@ -64,10 +63,12 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	// The Steam name is chosen by the account owner and is never interpreted as rich text.
 	nameLabel->setTextFormat(Qt::PlainText);
 	nameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-	detailsLabel = CreateLabel(this, SECONDARY_TEXT_STYLE);
-	detailsLabel->setTextFormat(Qt::PlainText);
-	detailsLabel->setWordWrap(true);
-	detailsLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	steamIdLabel = CreateLabel(this, DETAIL_TEXT_STYLE);
+	steamIdLabel->setTextFormat(Qt::PlainText);
+	steamIdLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	originLabel = CreateLabel(this, DETAIL_TEXT_STYLE);
+	originLabel->setTextFormat(Qt::PlainText);
+	originLabel->setWordWrap(true);
 	restrictionNotice = new QWidget(this);
 	restrictionLabel = CreateLabel(restrictionNotice, NOTICE_STYLE);
 	// Steam supplies the reasons, so they are never interpreted as rich text.
@@ -87,7 +88,9 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	signInCard->setObjectName(CARD_STYLE);
 	signInSectionLabel = CreateLabel(signInCard);
 	MakeSectionLabel(*signInSectionLabel);
-	signInStatusLabel = CreateLabel(signInCard);
+	signInDot = CreateLabel(signInCard, STATE_DOT_IDLE_STYLE);
+	signInHeadlineLabel = CreateLabel(signInCard, STATE_HEADLINE_STYLE);
+	signInStatusLabel = CreateLabel(signInCard, DETAIL_TEXT_STYLE);
 	signInStatusLabel->setWordWrap(true);
 	signInButton = new QPushButton(signInCard);
 	SetButtonRole(*signInButton, ButtonRole::PRIMARY);
@@ -99,61 +102,93 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	signInButtonsLayout->addWidget(approveSignInButton);
 	signInButtonsLayout->addWidget(signOutButton);
 	signInButtonsLayout->addStretch();
+	auto* signInStateLayout = new QGridLayout();
+	signInStateLayout->setHorizontalSpacing(STATE_HORIZONTAL_SPACING);
+	signInStateLayout->setVerticalSpacing(STATE_VERTICAL_SPACING);
+	signInStateLayout->addWidget(signInDot, 0, 0, Qt::AlignCenter);
+	signInStateLayout->addWidget(signInHeadlineLabel, 0, 1);
+	signInStateLayout->addWidget(signInStatusLabel, 1, 1);
+	signInStateLayout->setColumnStretch(1, 1);
 	auto* signInCardLayout = new QVBoxLayout(signInCard);
 	signInCardLayout->setContentsMargins(CARD_MARGINS);
 	signInCardLayout->setSpacing(CARD_SPACING);
 	signInCardLayout->addWidget(signInSectionLabel);
-	signInCardLayout->addWidget(signInStatusLabel);
+	signInCardLayout->addLayout(signInStateLayout);
 	signInCardLayout->addLayout(signInButtonsLayout);
 
+	// One line: the state of the copy, with the explanation in its tooltip and the rare action in a menu.
 	googleCard = new QFrame(this);
 	googleCard->setObjectName(CARD_STYLE);
-	googleSectionLabel = CreateLabel(googleCard);
-	MakeSectionLabel(*googleSectionLabel);
-	googleStatusLabel = CreateLabel(googleCard);
+	googleIcon = new IllustrationView(CLOUD_CHECK_ICON_RESOURCE, GOOGLE_ICON_SIZE, googleCard);
+	googleTitleLabel = CreateLabel(googleCard, STATE_HEADLINE_STYLE);
+	googleStatusLabel = CreateLabel(googleCard, DETAIL_TEXT_STYLE);
+	// Wraps in a narrow window instead of widening the page past its edge.
 	googleStatusLabel->setWordWrap(true);
 	googleActionButton = new QPushButton(googleCard);
-	auto* googleButtonsLayout = new QHBoxLayout();
-	googleButtonsLayout->addWidget(googleActionButton);
-	googleButtonsLayout->addStretch();
-	auto* googleCardLayout = new QVBoxLayout(googleCard);
-	googleCardLayout->setContentsMargins(CARD_MARGINS);
-	googleCardLayout->setSpacing(CARD_SPACING);
-	googleCardLayout->addWidget(googleSectionLabel);
-	googleCardLayout->addWidget(googleStatusLabel);
-	googleCardLayout->addLayout(googleButtonsLayout);
+	googleMenuButton = new QPushButton(googleCard);
+	googleMenuButton->setObjectName(ICON_BUTTON_STYLE);
+	googleMenuButton->setIcon(QIcon(MORE_ICON_RESOURCE));
+	googleMenuButton->setIconSize(MANAGE_ICON_SIZE);
+	MakeCompact(*googleMenuButton);
+	googleMenu = new QMenu(googleMenuButton);
+	removeFromGoogleAction = googleMenu->addAction(QString());
+	auto* googleCardLayout = new QHBoxLayout(googleCard);
+	googleCardLayout->setContentsMargins(ROW_CARD_MARGINS);
+	googleCardLayout->setSpacing(ROW_CARD_SPACING);
+	googleCardLayout->addWidget(googleIcon);
+	googleCardLayout->addWidget(googleTitleLabel);
+	googleCardLayout->addWidget(googleStatusLabel, 1);
+	googleCardLayout->addWidget(googleActionButton);
+	googleCardLayout->addWidget(googleMenuButton);
 	googleCard->hide();
 	connect(googleActionButton, &QPushButton::clicked, this, [this]() {
 		if (cloudInfo.hasConflict) {
 			EmitForShownRecord(&AccountDetailsView::CloudConflictRequested);
-		} else if (cloudInfo.isInCloud) {
-			EmitForShownRecord(&AccountDetailsView::RemoveFromGoogleRequested);
 		} else {
 			EmitForShownRecord(&AccountDetailsView::AddToGoogleRequested);
 		}
+	});
+	connect(googleMenuButton, &QPushButton::clicked, this, [this]() {
+		googleMenu->exec(googleMenuButton->mapToGlobal(QPoint(0, googleMenuButton->height())));
+	});
+	connect(removeFromGoogleAction, &QAction::triggered, this, [this]() {
+		EmitForShownRecord(&AccountDetailsView::RemoveFromGoogleRequested);
 	});
 
 	confirmationsCard = new QFrame(this);
 	confirmationsCard->setObjectName(CARD_STYLE);
 	confirmationsSectionLabel = CreateLabel(confirmationsCard);
 	MakeSectionLabel(*confirmationsSectionLabel);
-	confirmationsSummaryLabel = CreateLabel(confirmationsCard);
+	confirmationsState = new QWidget(confirmationsCard);
+	confirmationsIcon = new IllustrationView(CHECK_CIRCLE_ICON_RESOURCE, STATE_ICON_SIZE, confirmationsState);
+	confirmationsCountBadge = CreateLabel(confirmationsState, ROW_BADGE_STYLE);
+	confirmationsCountBadge->setAlignment(Qt::AlignCenter);
+	confirmationsSummaryLabel = CreateLabel(confirmationsState);
 	confirmationsSummaryLabel->setWordWrap(true);
+	confirmationsDetailLabel = CreateLabel(confirmationsState, DETAIL_TEXT_STYLE);
+	auto* confirmationsStateLayout = new QGridLayout(confirmationsState);
+	confirmationsStateLayout->setContentsMargins(0, 0, 0, 0);
+	confirmationsStateLayout->setHorizontalSpacing(STATE_HORIZONTAL_SPACING);
+	confirmationsStateLayout->setVerticalSpacing(STATE_VERTICAL_SPACING);
+	confirmationsStateLayout->addWidget(confirmationsIcon, 0, 0, 2, 1, Qt::AlignCenter);
+	confirmationsStateLayout->addWidget(confirmationsCountBadge, 0, 0, 2, 1, Qt::AlignCenter);
+	confirmationsStateLayout->addWidget(confirmationsSummaryLabel, 0, 1);
+	confirmationsStateLayout->addWidget(confirmationsDetailLabel, 1, 1);
+	confirmationsStateLayout->setColumnStretch(1, 1);
 	openConfirmationsButton = new QPushButton(confirmationsCard);
-	SetButtonRole(*openConfirmationsButton, ButtonRole::PRIMARY);
 	confirmationsSignInButton = new QPushButton(confirmationsCard);
 	SetButtonRole(*confirmationsSignInButton, ButtonRole::PRIMARY);
 	setupSteps = new QWidget(confirmationsCard);
 	setupIntroLabel = CreateLabel(setupSteps);
 	setupIntroLabel->setWordWrap(true);
-	dataStepMarker = new IllustrationView(STEP_TODO_RESOURCE, STEP_MARKER_SIZE, setupSteps);
+	dataStepMarker = new IllustrationView(STEP_TODO_ILLUSTRATION_RESOURCE, STEP_MARKER_SIZE, setupSteps);
 	dataStepTitleLabel = CreateLabel(setupSteps, ROW_NAME_STYLE);
 	dataStepTextLabel = CreateLabel(setupSteps, SECONDARY_TEXT_STYLE);
 	dataStepTextLabel->setWordWrap(true);
 	importFileButton = new QPushButton(setupSteps);
 	SetButtonRole(*importFileButton, ButtonRole::PRIMARY);
 	enterDataButton = new QPushButton(setupSteps);
-	signInStepMarker = new IllustrationView(STEP_TODO_RESOURCE, STEP_MARKER_SIZE, setupSteps);
+	signInStepMarker = new IllustrationView(STEP_TODO_ILLUSTRATION_RESOURCE, STEP_MARKER_SIZE, setupSteps);
 	signInStepTitleLabel = CreateLabel(setupSteps, ROW_NAME_STYLE);
 	signInStepTextLabel = CreateLabel(setupSteps, SECONDARY_TEXT_STYLE);
 	signInStepTextLabel->setWordWrap(true);
@@ -190,7 +225,7 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	confirmationsCardLayout->setContentsMargins(CARD_MARGINS);
 	confirmationsCardLayout->setSpacing(CARD_SPACING);
 	confirmationsCardLayout->addWidget(confirmationsSectionLabel);
-	confirmationsCardLayout->addWidget(confirmationsSummaryLabel);
+	confirmationsCardLayout->addWidget(confirmationsState);
 	confirmationsCardLayout->addWidget(setupSteps);
 	confirmationsCardLayout->addLayout(confirmationsButtonsLayout);
 
@@ -229,21 +264,27 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	revocationStatusLabel->setWordWrap(true);
 	revocationStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	revealRevocationButton = new QPushButton(dataCard);
-	MakeCompact(*revealRevocationButton);
 	qrCodeButton = new QPushButton(dataCard);
-	MakeCompact(*qrCodeButton);
 
 	auto* dataGridLayout = new QGridLayout();
 	dataGridLayout->setHorizontalSpacing(GRID_HORIZONTAL_SPACING);
-	dataGridLayout->setVerticalSpacing(GRID_VERTICAL_SPACING);
-	dataGridLayout->addWidget(codesTitleLabel, 0, 0, Qt::AlignTop);
-	dataGridLayout->addWidget(codesStatusLabel, 0, 1, Qt::AlignTop);
-	dataGridLayout->addWidget(qrCodeButton, 0, 2, Qt::AlignTop);
-	dataGridLayout->addWidget(confirmationsTitleLabel, 1, 0, Qt::AlignTop);
-	dataGridLayout->addWidget(confirmationsStatusLabel, 1, 1, Qt::AlignTop);
-	dataGridLayout->addWidget(revocationTitleLabel, 2, 0, Qt::AlignTop);
-	dataGridLayout->addWidget(revocationStatusLabel, 2, 1, Qt::AlignTop);
-	dataGridLayout->addWidget(revealRevocationButton, 2, 2, Qt::AlignTop);
+	dataGridLayout->setVerticalSpacing(DATA_ROW_SPACING);
+	dataGridLayout->addWidget(codesTitleLabel, CODES_ROW, 0, Qt::AlignVCenter);
+	dataGridLayout->addWidget(codesStatusLabel, CODES_ROW, 1, Qt::AlignVCenter);
+	dataGridLayout->addWidget(qrCodeButton, CODES_ROW, 2, Qt::AlignVCenter);
+	dataGridLayout->addWidget(confirmationsTitleLabel, CONFIRMATION_KEY_ROW, 0, Qt::AlignVCenter);
+	dataGridLayout->addWidget(confirmationsStatusLabel, CONFIRMATION_KEY_ROW, 1, Qt::AlignVCenter);
+	dataGridLayout->addWidget(revocationTitleLabel, RECOVERY_CODE_ROW, 0, Qt::AlignVCenter);
+	dataGridLayout->addWidget(revocationStatusLabel, RECOVERY_CODE_ROW, 1, Qt::AlignVCenter);
+	dataGridLayout->addWidget(revealRevocationButton, RECOVERY_CODE_ROW, 2, Qt::AlignVCenter);
+	for (const int dividerRow : {CODES_ROW + 1, CONFIRMATION_KEY_ROW + 1}) {
+		dataGridLayout->addWidget(CreateRowDivider(dataCard), dividerRow, 0, 1, DATA_COLUMN_COUNT);
+	}
+	// A row without a button is as tall as one with a button, so the dividers stay evenly apart.
+	qrCodeButton->ensurePolished();
+	for (const int dataRow : {CODES_ROW, CONFIRMATION_KEY_ROW, RECOVERY_CODE_ROW}) {
+		dataGridLayout->setRowMinimumHeight(dataRow, qrCodeButton->sizeHint().height());
+	}
 	dataGridLayout->setColumnStretch(1, 1);
 	auto* dataCardLayout = new QVBoxLayout(dataCard);
 	dataCardLayout->setContentsMargins(CARD_MARGINS);
@@ -254,7 +295,7 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	// Like the Manage button of a game in the Steam library: rare actions wait in a menu.
 	manageButton = new QPushButton(this);
 	manageButton->setObjectName(ICON_BUTTON_STYLE);
-	manageButton->setIcon(QIcon(MANAGE_ICON_RESOURCE));
+	manageButton->setIcon(QIcon(GEAR_ICON_RESOURCE));
 	manageButton->setIconSize(MANAGE_ICON_SIZE);
 	manageMenu = new QMenu(manageButton);
 	addDataAction = manageMenu->addAction(QString());
@@ -265,10 +306,11 @@ AccountDetailsView::AccountDetailsView(AccountProfiles& profiles, QWidget* paren
 	auto* headerLayout = new QGridLayout();
 	headerLayout->setHorizontalSpacing(HEADER_HORIZONTAL_SPACING);
 	headerLayout->setVerticalSpacing(HEADER_VERTICAL_SPACING);
-	headerLayout->addWidget(avatarPicture, 0, 0, 2, 1, Qt::AlignTop);
+	headerLayout->addWidget(avatarPicture, 0, 0, 3, 1, Qt::AlignTop);
 	headerLayout->addWidget(nameLabel, 0, 1, Qt::AlignBottom);
-	headerLayout->addWidget(detailsLabel, 1, 1, Qt::AlignTop);
-	headerLayout->addWidget(manageButton, 0, 2, 2, 1, Qt::AlignTop);
+	headerLayout->addWidget(steamIdLabel, 1, 1);
+	headerLayout->addWidget(originLabel, 2, 1, Qt::AlignTop);
+	headerLayout->addWidget(manageButton, 0, 2, 3, 1, Qt::AlignTop);
 	headerLayout->setColumnStretch(1, 1);
 
 	// The page scrolls instead of squeezing the cards, so wrapped texts keep their full height in a low window.
@@ -381,28 +423,40 @@ void AccountDetailsView::UpdateGoogleCard() {
 	if (!isShown) {
 		return;
 	}
-	googleSectionLabel->setText(tr("Google"));
-	googleActionButton->setVisible(!cloudInfo.isChanging);
+	googleTitleLabel->setText(tr("Copy in Google"));
+	googleMenuButton->setToolTip(tr("More"));
+	googleMenuButton->setAccessibleName(tr("More"));
+	removeFromGoogleAction->setText(tr("Remove from Google…"));
+	googleActionButton->hide();
+	googleMenuButton->hide();
 	if (cloudInfo.isChanging) {
+		googleIcon->SetResource(CLOUD_ICON_RESOURCE);
 		googleStatusLabel->setText(tr("Saving to Google…"));
+		googleCard->setToolTip(QString());
 		return;
 	}
 	if (cloudInfo.hasConflict) {
-		googleStatusLabel->setText(tr("Your Google has a different version of this account. Choose which one to keep. Nothing changes until you choose."));
+		googleIcon->SetResource(CLOUD_ALERT_ICON_RESOURCE);
+		googleStatusLabel->setText(tr("Google has a different version."));
+		googleCard->setToolTip(tr("Your Google has a different version of this account. Choose which one to keep. Nothing changes until you choose."));
 		googleActionButton->setText(tr("Choose…"));
 		SetButtonRole(*googleActionButton, ButtonRole::PRIMARY);
+		googleActionButton->show();
 		return;
 	}
 	if (cloudInfo.isInCloud) {
-		const QString syncedText = cloudInfo.lastSyncedAt.isValid() ? tr("Last synced at %1.").arg(QLocale().toString(cloudInfo.lastSyncedAt.time(), QLocale::ShortFormat)) : QString();
-		googleStatusLabel->setText(tr("An encrypted copy of this account is kept in your Google. It appears by itself on any computer where you connect the same Google.") + (syncedText.isEmpty() ? QString() : QLatin1Char(' ') + syncedText));
-		googleActionButton->setText(tr("Remove from Google…"));
-		SetButtonRole(*googleActionButton, ButtonRole::SECONDARY);
+		googleIcon->SetResource(CLOUD_CHECK_ICON_RESOURCE);
+		googleStatusLabel->setText(cloudInfo.lastSyncedAt.isValid() ? tr("Synced at %1.").arg(QLocale().toString(cloudInfo.lastSyncedAt.time(), QLocale::ShortFormat)) : tr("Synced."));
+		googleCard->setToolTip(tr("An encrypted copy of this account is kept in your Google. It appears by itself on any computer where you connect the same Google."));
+		googleMenuButton->show();
 		return;
 	}
-	googleStatusLabel->setText(tr("This account is only on this computer. Add it to Google, and it appears on your other computers too."));
+	googleIcon->SetResource(CLOUD_OFF_ICON_RESOURCE);
+	googleStatusLabel->setText(tr("Only on this computer."));
+	googleCard->setToolTip(tr("This account is only on this computer. Add it to Google, and it appears on your other computers too."));
 	googleActionButton->setText(tr("Add to Google"));
-	SetButtonRole(*googleActionButton, ButtonRole::PRIMARY);
+	SetButtonRole(*googleActionButton, ButtonRole::SECONDARY);
+	googleActionButton->show();
 }
 
 std::optional<QUuid> AccountDetailsView::ShownRecordId() const {
@@ -429,8 +483,8 @@ void AccountDetailsView::RetranslateUi() {
 	confirmationsSectionLabel->setText(tr("Confirmations"));
 	guardSectionLabel->setText(tr("Steam Guard"));
 	moveGuardButton->setText(tr("Move from a phone…"));
-	capabilitiesSectionLabel->setText(tr("Stored data"));
-	codesTitleLabel->setText(tr("Code key"));
+	capabilitiesSectionLabel->setText(tr("Secret data"));
+	codesTitleLabel->setText(tr("Steam Guard key"));
 	confirmationsTitleLabel->setText(tr("Confirmation key"));
 	revocationTitleLabel->setText(tr("Recovery code"));
 	revealRevocationButton->setText(isRevocationCodeVisible ? tr("Hide") : tr("Show"));
@@ -457,12 +511,18 @@ void AccountDetailsView::RetranslateUi() {
 	const bool hasSession = shownSession.has_value();
 	const bool isSessionExpired = hasSession && HasExpired(shownSession->refreshToken, QDateTime::currentDateTimeUtc());
 	if (isSessionExpired) {
+		SetStyleName(*signInDot, STATE_DOT_ATTENTION_STYLE);
+		signInHeadlineLabel->setText(tr("Sign-in expired"));
 		signInStatusLabel->setText(tr("The saved sign-in of %1 has expired. Sign in to Steam again.").arg(SessionAccountName()));
 	} else if (hasSession) {
 		const QString signedInAt = QLocale().toString(shownSession->signedInAt.toLocalTime(), QLocale::ShortFormat);
-		signInStatusLabel->setText(tr("Signed in as %1 on %2.").arg(SessionAccountName(), signedInAt));
+		SetStyleName(*signInDot, STATE_DOT_DONE_STYLE);
+		signInHeadlineLabel->setText(tr("Signed in"));
+		signInStatusLabel->setText(tr("As %1 on this computer since %2.").arg(SessionAccountName(), signedInAt));
 	} else {
-		signInStatusLabel->setText(tr("Not signed in. Signing in with the account name and password is needed for confirmations, trades and approving Steam sign-ins on other devices."));
+		SetStyleName(*signInDot, STATE_DOT_IDLE_STYLE);
+		signInHeadlineLabel->setText(tr("Not signed in"));
+		signInStatusLabel->setText(tr("Signing in with the account name and password is needed for confirmations, trades and approving Steam sign-ins on other devices."));
 	}
 	signInButton->setVisible(!hasSession || isSessionExpired);
 	approveSignInButton->setVisible(hasSession && !isSessionExpired);
@@ -477,7 +537,7 @@ void AccountDetailsView::RetranslateUi() {
 
 	const bool isPending = record.pendingActivation.has_value();
 	const QString pendingText = tr("Saved, waiting for the setup to finish");
-	QString codesText = capabilities.canGenerateCodes ? tr("Saved") : tr("Missing");
+	QString codesText = capabilities.canGenerateCodes ? MASKED_SECRET.toString() : tr("Missing");
 	if (isPending) {
 		codesText = pendingText;
 	}
@@ -487,7 +547,7 @@ void AccountDetailsView::RetranslateUi() {
 	if (isPending) {
 		confirmationsText = pendingText;
 	} else if (capabilities.canSignConfirmations) {
-		confirmationsText = tr("Saved");
+		confirmationsText = MASKED_SECRET.toString();
 	} else if (!record.secrets.identitySecret.isEmpty()) {
 		confirmationsText = tr("Saved, but the SteamID or the device ID is missing");
 	} else {
@@ -497,7 +557,7 @@ void AccountDetailsView::RetranslateUi() {
 
 	QString revocationText = tr("Missing. Keep the recovery code elsewhere: it is needed to remove the authenticator from the account.");
 	if (capabilities.hasRevocationCode) {
-		revocationText = isRevocationCodeVisible ? record.secrets.revocationCode : tr("Saved");
+		revocationText = isRevocationCodeVisible ? record.secrets.revocationCode : MASKED_SECRET.toString();
 	}
 	SetCapabilityState(*revocationStatusLabel, capabilities.hasRevocationCode, revocationText);
 	revealRevocationButton->setVisible(capabilities.hasRevocationCode);
@@ -509,7 +569,14 @@ void AccountDetailsView::UpdateHeader(const AuthenticatorRecord& record) {
 	avatarPicture->SetPicture(profile.avatar);
 	// The title is the Steam name or, without one, the account name: the line below never repeats either.
 	nameLabel->setText(AccountTitle(record, shownPersonaName));
-	detailsLabel->setText(tr("%1 · %2").arg(SteamIdText(record), RecordSourceText(record)));
+	steamIdLabel->setText(SteamIdText(record));
+	originLabel->setText(RecordOriginText(record));
+	// The file and the date of the import stay at hand without taking a line.
+	QString sourceText = RecordSourceText(record);
+	if (!sourceText.isEmpty()) {
+		sourceText[0] = sourceText.at(0).toUpper();
+	}
+	originLabel->setToolTip(sourceText);
 }
 
 void AccountDetailsView::UpdateGuardCard(bool canUseSession) {
@@ -543,7 +610,7 @@ void AccountDetailsView::UpdateConfirmationsCard(bool canUseSession) {
 	const bool isSetupNeeded = capabilities.canGenerateCodes && (!capabilities.canSignConfirmations || !canUseSession);
 	confirmationsCard->setVisible(capabilities.canSignConfirmations || isSetupNeeded);
 	setupSteps->setVisible(isSetupNeeded);
-	confirmationsSummaryLabel->setVisible(!isSetupNeeded);
+	confirmationsState->setVisible(!isSetupNeeded);
 	if (isSetupNeeded) {
 		openConfirmationsButton->setVisible(false);
 		confirmationsSignInButton->setVisible(false);
@@ -558,41 +625,57 @@ void AccountDetailsView::UpdateConfirmationsCard(bool canUseSession) {
 	const bool isSignInRejected = failure.has_value() && failure->kind == ConfirmationsFailureKind::SIGN_IN_REQUIRED;
 	openConfirmationsButton->setVisible(canUseSession && confirmations != nullptr && !isSignInRejected);
 	openConfirmationsButton->setText(tr("Open confirmations…"));
+	SetButtonRole(*openConfirmationsButton, ButtonRole::SECONDARY);
 	confirmationsSignInButton->setVisible(canUseSession && (confirmations == nullptr || isSignInRejected));
 	confirmationsSignInButton->setText(tr("Sign in to Steam…"));
 	if (!canUseSession) {
-		confirmationsSummaryLabel->setText(tr("Sign in to Steam to see and confirm trades and market listings of this account. You'll get a notification about new ones."));
+		ShowConfirmationsState({}, tr("Sign in to Steam to see and confirm trades and market listings of this account. You'll get a notification about new ones."));
 		return;
 	}
 	if (confirmations == nullptr) {
-		confirmationsSummaryLabel->setText(tr("The saved sign-in belongs to another Steam account, so confirmations cannot be checked. Sign in to Steam again."));
+		ShowConfirmationsState(ALERT_CIRCLE_ICON_RESOURCE, tr("The saved sign-in belongs to another Steam account, so confirmations cannot be checked. Sign in to Steam again."));
 		return;
 	}
 	if (failure.has_value()) {
 		if (isSignInRejected) {
-			confirmationsSummaryLabel->setText(tr("Steam no longer accepts the saved sign-in, so confirmations cannot be checked. Sign in to Steam again."));
+			ShowConfirmationsState(ALERT_CIRCLE_ICON_RESOURCE, tr("Steam no longer accepts the saved sign-in, so confirmations cannot be checked. Sign in to Steam again."));
 		} else {
-			confirmationsSummaryLabel->setText(DescribeWebApiError(tr("The last check of confirmations failed."), failure->error, tr("We'll try again automatically.")));
+			ShowConfirmationsState(ALERT_CIRCLE_ICON_RESOURCE, DescribeWebApiError(tr("The last check of confirmations failed."), failure->error, tr("We'll try again automatically.")));
 		}
 		return;
 	}
 	if (!confirmations->HasLoaded()) {
-		confirmationsSummaryLabel->setText(tr("Checking confirmations…"));
+		ShowConfirmationsState(CLOCK_ICON_RESOURCE, tr("Checking confirmations…"));
 		return;
 	}
+	const QString updatedText = tr("Updated at %1.").arg(QLocale().toString(confirmations->LoadedAt().toLocalTime().time(), QLocale::ShortFormat));
 	const auto waitingCount = static_cast<int>(confirmations->Confirmations().size());
 	if (waitingCount == 0) {
-		const QString checkedAt = QLocale().toString(confirmations->LoadedAt().toLocalTime().time(), QLocale::ShortFormat);
-		confirmationsSummaryLabel->setText(tr("You have no confirmations right now. Updated at %1.").arg(checkedAt));
+		ShowConfirmationsState(CHECK_CIRCLE_ICON_RESOURCE, tr("You have no confirmations right now."), updatedText);
 		return;
 	}
-	confirmationsSummaryLabel->setText(tr("%n confirmations are waiting.", nullptr, waitingCount));
+	ShowConfirmationsState({}, tr("%n confirmations are waiting.", nullptr, waitingCount), updatedText);
+	confirmationsCountBadge->setText(QString::number(waitingCount));
+	confirmationsCountBadge->show();
+	// Waiting confirmations are the one thing on the page to act on.
 	openConfirmationsButton->setText(tr("Open confirmations (%1)…").arg(waitingCount));
+	SetButtonRole(*openConfirmationsButton, ButtonRole::PRIMARY);
+}
+
+void AccountDetailsView::ShowConfirmationsState(QLatin1StringView iconResource, const QString& headline, const QString& detail) {
+	confirmationsCountBadge->hide();
+	confirmationsIcon->setVisible(!iconResource.isEmpty());
+	if (!iconResource.isEmpty()) {
+		confirmationsIcon->SetResource(iconResource);
+	}
+	confirmationsSummaryLabel->setText(headline);
+	confirmationsDetailLabel->setText(detail);
+	confirmationsDetailLabel->setVisible(!detail.isEmpty());
 }
 
 void AccountDetailsView::UpdateSetupSteps(bool hasConfirmationData, bool canUseSession) {
 	setupIntroLabel->setText(tr("To confirm trades and market listings from this computer:"));
-	dataStepMarker->SetResource(hasConfirmationData ? STEP_DONE_RESOURCE : STEP_TODO_RESOURCE);
+	dataStepMarker->SetResource(hasConfirmationData ? STEP_DONE_ILLUSTRATION_RESOURCE : STEP_TODO_ILLUSTRATION_RESOURCE);
 	dataStepTitleLabel->setText(tr("Authenticator data for confirmations"));
 	dataStepTextLabel->setText(hasConfirmationData ? tr("Saved.") : tr("Confirmations need the SteamID, the confirmation key and the device ID of this authenticator. They are in its file, a .maFile or twofactor_<SteamID>.json: import the whole file, and only what is missing is added."));
 	importFileButton->setText(tr("Import the file…"));
@@ -600,7 +683,7 @@ void AccountDetailsView::UpdateSetupSteps(bool hasConfirmationData, bool canUseS
 	enterDataButton->setText(tr("Enter by hand…"));
 	enterDataButton->setVisible(!hasConfirmationData);
 
-	signInStepMarker->SetResource(canUseSession ? STEP_DONE_RESOURCE : STEP_TODO_RESOURCE);
+	signInStepMarker->SetResource(canUseSession ? STEP_DONE_ILLUSTRATION_RESOURCE : STEP_TODO_ILLUSTRATION_RESOURCE);
 	signInStepTitleLabel->setText(tr("Steam sign-in"));
 	if (canUseSession && shownSession.has_value()) {
 		signInStepTextLabel->setText(tr("Signed in as %1.").arg(SessionAccountName()));
@@ -627,12 +710,13 @@ void AccountDetailsView::UpdateRestrictionNotice() {
 	} else {
 		lines.append(tr("The Community Market is unavailable for this account."));
 	}
+	QStringList reasonTexts;
 	QStringList explanations;
 	restrictionHelpUrl = QUrl();
 	// Reasons in another language wait for the new ones instead of mixing two languages.
 	if (restriction->reasonsLanguage == InterfaceSteamLanguage()) {
 		for (const MarketRestrictionReason& reason : restriction->reasons) {
-			lines.append(REASON_BULLET.toString() + reason.text);
+			reasonTexts.append(reason.text);
 			if (!reason.explanation.isEmpty()) {
 				explanations.append(reason.explanation);
 			}
@@ -640,6 +724,9 @@ void AccountDetailsView::UpdateRestrictionNotice() {
 				restrictionHelpUrl = reason.helpUrl;
 			}
 		}
+	}
+	if (!reasonTexts.isEmpty()) {
+		lines.append(BulletLines(reasonTexts));
 	}
 	restrictionLabel->setText(lines.join(QLatin1Char('\n')));
 	restrictionLabel->setToolTip(explanations.join(QStringLiteral("\n\n")));

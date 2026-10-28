@@ -92,6 +92,7 @@ private:
 	QLabel* noticeIconLabel = nullptr;
 	QLabel* noticeLabel = nullptr;
 	QPushButton* encryptButton = nullptr;
+	QLabel* automaticCodeLabel = nullptr;
 	QDialogButtonBox* buttonBox = nullptr;
 	QPushButton* signInButton = nullptr;
 };

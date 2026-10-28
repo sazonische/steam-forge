@@ -6,8 +6,10 @@
 namespace SteamForge {
 
 class AccountLibrary;
+class AccountProfiles;
 class CloudSync;
 class IllustrationView;
+class ScrollingRowList;
 
 // Connects the Google account step by step: what goes to Google, the sign-in in the browser, then the recovery key
 // that is written down for a new vault or typed in for an existing one. A lost key gives way to a new vault. Then
@@ -21,7 +23,8 @@ public:
 	// The name the account list shows for an account.
 	using AccountTitleProvider = std::function<QString(const AuthenticatorRecord&)>;
 
-	GoogleConnectDialog(GoogleConnection& connection, CloudSync& sync, const AccountLibrary& library, AccountTitleProvider titleProvider, EncryptionStarter turnOnEncryption, bool isEncryptionOn, QWidget* parent = nullptr);
+	// Without profiles the account list shows no avatars.
+	GoogleConnectDialog(GoogleConnection& connection, CloudSync& sync, const AccountLibrary& library, AccountTitleProvider titleProvider, AccountProfiles* profiles, EncryptionStarter turnOnEncryption, bool isEncryptionOn, QWidget* parent = nullptr);
 
 	void reject() override;
 
@@ -61,6 +64,7 @@ private:
 	CloudSync& cloudSync;
 	const AccountLibrary& accountLibrary;
 	AccountTitleProvider accountTitleProvider;
+	AccountProfiles* accountProfiles = nullptr;
 	EncryptionStarter encryptionStarter;
 	QSet<QUuid> uploadingRecordIds;
 	int uploadTotalCount = 0;
@@ -88,8 +92,8 @@ private:
 	QCheckBox* keySavedCheckBox = nullptr;
 	QLineEdit* keyEdit = nullptr;
 	QPushButton* replaceVaultButton = nullptr;
-	QScrollArea* accountsArea = nullptr;
-	QWidget* accountsList = nullptr;
+	QFrame* accountsFrame = nullptr;
+	ScrollingRowList* accountList = nullptr;
 	QLabel* statusLabel = nullptr;
 	QPushButton* primaryButton = nullptr;
 	QPushButton* secondaryButton = nullptr;

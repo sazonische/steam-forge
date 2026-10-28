@@ -7,6 +7,8 @@ namespace {
 	constexpr const char* EXPIRING_PROPERTY = "expiring";
 	constexpr const char* SELECTED_PROPERTY = "selected";
 	constexpr const char* ATTENTION_PROPERTY = "attention";
+	constexpr const char* KEYBOARD_FOCUS_PROPERTY = "keyboardFocus";
+	constexpr const char* DROP_ACTIVE_PROPERTY = "dropActive";
 	constexpr const char* COMPACT_PROPERTY = "compact";
 	constexpr QLatin1StringView SECONDARY_BUTTON_ROLE{"secondary"};
 	constexpr QLatin1StringView PRIMARY_BUTTON_ROLE{"primary"};
@@ -30,16 +32,14 @@ namespace {
 				return SELECTED_PROPERTY;
 			case StyleFlag::ATTENTION:
 				return ATTENTION_PROPERTY;
+			case StyleFlag::KEYBOARD_FOCUS:
+				return KEYBOARD_FOCUS_PROPERTY;
+			case StyleFlag::DROP_ACTIVE:
+				return DROP_ACTIVE_PROPERTY;
 		}
 		return EXPIRING_PROPERTY;
 	}
 
-	// Style sheet rules with property selectors are evaluated at polish time only.
-	void Repolish(QWidget& widget) {
-		widget.style()->unpolish(&widget);
-		widget.style()->polish(&widget);
-		widget.update();
-	}
 } // namespace
 
 void SetButtonRole(QPushButton& button, ButtonRole buttonRole) {
@@ -70,6 +70,42 @@ void SetStyleFlag(QWidget& widget, StyleFlag styleFlag, bool isSet) {
 	}
 	widget.setProperty(propertyName, isSet);
 	Repolish(widget);
+}
+
+void SetStyleName(QWidget& widget, QLatin1StringView styleName) {
+	if (widget.objectName() == styleName) {
+		return;
+	}
+	widget.setObjectName(styleName);
+	Repolish(widget);
+}
+
+// Style sheet rules with property selectors are evaluated at polish time only.
+void Repolish(QWidget& widget) {
+	widget.style()->unpolish(&widget);
+	widget.style()->polish(&widget);
+	widget.update();
+}
+
+QFrame* CreateRowDivider(QWidget* parent) {
+	auto* divider = new QFrame(parent);
+	divider->setObjectName(ROW_DIVIDER_STYLE);
+	return divider;
+}
+
+QLabel* CreateLabel(QWidget* parent, QLatin1StringView styleName) {
+	auto* label = new QLabel(parent);
+	if (!styleName.isEmpty()) {
+		label->setObjectName(styleName);
+	}
+	return label;
+}
+
+QLabel* CreatePlainLabel(QWidget* parent, QLatin1StringView styleName) {
+	QLabel* label = CreateLabel(parent, styleName);
+	label->setTextFormat(Qt::PlainText);
+	label->setWordWrap(true);
+	return label;
 }
 
 void MakeSectionLabel(QLabel& label) {

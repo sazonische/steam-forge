@@ -18,8 +18,13 @@ public:
 	// The conflict the choice is for.
 	[[nodiscard]] const QString& CloudRecordId() const;
 
+protected:
+	// A press anywhere on the row of an answer chooses it.
+	bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
 	[[nodiscard]] QFrame* CreateVersionCard(const QString& title, const AuthenticatorRecord& record, QLabel*& codeLabel);
+	[[nodiscard]] QWidget* CreateChoiceRow(QWidget* parent, ConflictChoice choice, const QString& title, const QString& description);
 	void UpdateCodes();
 
 	const SteamClock& steamClock;
@@ -29,6 +34,7 @@ private:
 	QLabel* localCodeLabel = nullptr;
 	QLabel* cloudCodeLabel = nullptr;
 	QButtonGroup choiceGroup;
+	QHash<const QObject*, QRadioButton*> choiceButtonsByRow;
 	QPushButton* applyButton = nullptr;
 	QTimer codeTimer;
 };

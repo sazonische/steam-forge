@@ -8,6 +8,7 @@
 namespace SteamForge {
 
 class AccountLibrary;
+class AccountProfiles;
 class CloudSync;
 class GoogleConnection;
 
@@ -29,6 +30,8 @@ public:
 		const CloudSync& sync;
 		const AccountLibrary& library;
 		CloudAccountsView::AccountTitleProvider titleProvider;
+		// The avatars of the accounts; without them the rows show none.
+		AccountProfiles* profiles = nullptr;
 	};
 
 	SettingsDialog(std::optional<InterfaceLanguage> currentLanguage, bool checksForUpdates, DataLocation location, const StorageEncryption& encryption, GoogleConnection& google, const CloudAccountsSource& cloudAccounts, SettingsSection section, QWidget* parent = nullptr);
@@ -68,10 +71,11 @@ private:
 	QListWidget* navigationList = nullptr;
 	QStackedWidget* pageStack = nullptr;
 
+	QLabel* generalTitleLabel = nullptr;
 	QLabel* languageSectionLabel = nullptr;
 	QComboBox* languageComboBox = nullptr;
 
-	QLabel* encryptionSectionLabel = nullptr;
+	QLabel* encryptionTitleLabel = nullptr;
 	QLabel* encryptionIconLabel = nullptr;
 	QLabel* encryptionHeadlineLabel = nullptr;
 	QLabel* encryptionTextLabel = nullptr;
@@ -82,15 +86,16 @@ private:
 	QPushButton* openFolderButton = nullptr;
 	QLabel* portableModeLabel = nullptr;
 
-	QLabel* googleSectionLabel = nullptr;
+	QLabel* googleTitleLabel = nullptr;
 	QLabel* googleIconLabel = nullptr;
 	QLabel* googleHeadlineLabel = nullptr;
+	QLabel* googleEmailLabel = nullptr;
 	QLabel* googleTextLabel = nullptr;
 	QPushButton* googleConnectButton = nullptr;
 	QPushButton* googleDisconnectButton = nullptr;
 	CloudAccountsView* cloudAccountsView = nullptr;
 
-	QLabel* updatesSectionLabel = nullptr;
+	QLabel* updatesTitleLabel = nullptr;
 	QCheckBox* updateChecksCheckBox = nullptr;
 	QLabel* updatesNoteLabel = nullptr;
 

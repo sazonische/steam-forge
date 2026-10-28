@@ -1,6 +1,7 @@
 #include "ui/guard_setup_dialog.h"
 
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/theme.h"
 #include "ui/widget_styles.h"
@@ -13,8 +14,6 @@ namespace {
 	constexpr int RECOVERY_CODE_PIXEL_SIZE = 26;
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
 	constexpr QMargins CARD_MARGINS{16, 12, 16, 12};
-	constexpr QLatin1StringView ILLUSTRATION_RESOURCE{":/illustrations/guard_setup.svg"};
-	constexpr QLatin1StringView SUCCESS_ILLUSTRATION_RESOURCE{":/illustrations/all_set.svg"};
 	constexpr QSize ILLUSTRATION_SIZE{360, 190};
 
 	bool IsBusy(GuardSetupStage stage) {
@@ -29,7 +28,7 @@ GuardSetupDialog::GuardSetupDialog(AccountLibrary& library, const SteamClock& cl
 	setup(transport, clock, library, std::move(setupRecord), std::move(setupSession)) {
 	setMinimumWidth(MINIMUM_DIALOG_WIDTH);
 
-	illustration = new IllustrationView(ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
+	illustration = new IllustrationView(GUARD_SETUP_ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
 	headlineLabel = new QLabel(this);
 	headlineLabel->setObjectName(PAGE_TITLE_STYLE);
 	headlineLabel->setAlignment(Qt::AlignCenter);
@@ -158,7 +157,7 @@ void GuardSetupDialog::UpdateState() {
 	const GuardSetupStage stage = setup.Stage();
 	const bool isIntroduction = stage == GuardSetupStage::IDLE || stage == GuardSetupStage::ADDING;
 	const bool isSuccess = stage == GuardSetupStage::SUCCEEDED;
-	illustration->SetResource(isSuccess ? SUCCESS_ILLUSTRATION_RESOURCE : ILLUSTRATION_RESOURCE);
+	illustration->SetResource(isSuccess ? ALL_SET_ILLUSTRATION_RESOURCE : GUARD_SETUP_ILLUSTRATION_RESOURCE);
 	illustration->setVisible(isIntroduction || isSuccess);
 	headlineLabel->setText(isSuccess ? tr("All set") : tr("Protect your Steam account"));
 	headlineLabel->setVisible(isIntroduction || isSuccess);
@@ -180,9 +179,7 @@ void GuardSetupDialog::UpdateState() {
 	SetButtonRole(*closeButton, stage == GuardSetupStage::SUCCEEDED ? ButtonRole::PRIMARY : ButtonRole::SECONDARY);
 
 	const bool isProblem = setup.Failure().has_value() && stage != GuardSetupStage::SUCCEEDED;
-	statusLabel->setObjectName(isProblem ? ERROR_TEXT_STYLE : SECONDARY_TEXT_STYLE);
-	statusLabel->style()->unpolish(statusLabel);
-	statusLabel->style()->polish(statusLabel);
+	SetStyleName(*statusLabel, isProblem ? ERROR_TEXT_STYLE : SECONDARY_TEXT_STYLE);
 	statusLabel->setText(StatusText());
 	statusLabel->setVisible(!statusLabel->text().isEmpty());
 	setCursor(IsBusy(stage) ? Qt::BusyCursor : Qt::ArrowCursor);

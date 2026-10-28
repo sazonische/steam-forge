@@ -71,6 +71,25 @@ QString RecordSourceText(const AuthenticatorRecord& record) {
 	return QObject::tr("imported from %1 on %2").arg(fileOrigin, date);
 }
 
+QString RecordOriginText(const AuthenticatorRecord& record) {
+	switch (record.source.origin) {
+		case RecordOrigin::MA_FILE:
+		case RecordOrigin::SDA_ENCRYPTED_MA_FILE:
+			return QObject::tr("Imported from Steam Desktop Authenticator");
+		case RecordOrigin::NODE_STEAMCOMMUNITY_FILE:
+			return QObject::tr("Imported from a node-steamcommunity file");
+		case RecordOrigin::OTPAUTH_URI:
+			return QObject::tr("Imported from an otpauth link");
+		case RecordOrigin::STEAM_SIGN_IN:
+			return QObject::tr("Added by signing in to Steam");
+		case RecordOrigin::ADDED_IN_STEAMFORGE:
+			return QObject::tr("Steam Guard set up in SteamForge");
+		case RecordOrigin::MOVED_TO_STEAMFORGE:
+			return QObject::tr("Steam Guard moved to SteamForge");
+	}
+	return {};
+}
+
 QString StorageErrorText(const StorageError& error) {
 	const QString filePath = NativePath(error.filePath);
 	switch (error.kind) {
@@ -259,6 +278,14 @@ QString ConfirmationTypeText(const PendingConfirmation& confirmation) {
 			break;
 	}
 	return QObject::tr("Confirmation");
+}
+
+QString BulletLines(const QStringList& lines) {
+	QStringList bulletLines;
+	for (const QString& line : lines) {
+		bulletLines.append(QStringLiteral("• ") + line);
+	}
+	return bulletLines.join(QLatin1Char('\n'));
 }
 
 } // namespace SteamForge

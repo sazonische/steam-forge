@@ -5,8 +5,10 @@
 namespace SteamForge {
 
 class AccountLibrary;
+class AccountProfiles;
 class CloudSync;
 class GoogleConnection;
+class ScrollingRowList;
 struct CloudOnlyRecord;
 
 // The accounts of this computer, each with a tick for Google, and the accounts left only in Google. A tick only
@@ -17,7 +19,8 @@ class CloudAccountsView final : public QWidget {
 public:
 	using AccountTitleProvider = std::function<QString(const AuthenticatorRecord&)>;
 
-	CloudAccountsView(const CloudSync& sync, const GoogleConnection& connection, const AccountLibrary& library, AccountTitleProvider titleProvider, QWidget* parent = nullptr);
+	// Without profiles the rows show no avatars.
+	CloudAccountsView(const CloudSync& sync, const GoogleConnection& connection, const AccountLibrary& library, AccountTitleProvider titleProvider, AccountProfiles* profiles, QWidget* parent = nullptr);
 
 Q_SIGNALS:
 	void AddRequested(const QUuid& recordId);
@@ -40,6 +43,7 @@ private:
 	const GoogleConnection& googleConnection;
 	const AccountLibrary& accountLibrary;
 	AccountTitleProvider accountTitleProvider;
+	AccountProfiles* accountProfiles = nullptr;
 	// Changes come in bursts and from inside the handlers of the rows: the rows are rebuilt once, afterwards.
 	QTimer rebuildTimer;
 
@@ -47,8 +51,7 @@ private:
 	QLabel* hintLabel = nullptr;
 	QLabel* syncLabel = nullptr;
 	QPushButton* syncButton = nullptr;
-	QWidget* rowsWidget = nullptr;
-	QVBoxLayout* rowsLayout = nullptr;
+	ScrollingRowList* rowList = nullptr;
 };
 
 } // namespace SteamForge

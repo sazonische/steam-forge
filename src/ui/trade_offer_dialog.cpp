@@ -21,17 +21,6 @@ namespace {
 	constexpr int ITEM_PICTURE_EDGE = 200;
 	constexpr int ITEM_PANEL_WIDTH = 300;
 
-	QLabel* CreatePlainLabel(QWidget* parent, QLatin1StringView styleName = {}) {
-		auto* label = new QLabel(parent);
-		// Steam and the partner supply these texts, so they are never interpreted as rich text.
-		label->setTextFormat(Qt::PlainText);
-		label->setWordWrap(true);
-		if (!styleName.isEmpty()) {
-			label->setObjectName(styleName);
-		}
-		return label;
-	}
-
 	void OpenLink(const QUrl& url) {
 		if (url.isValid()) {
 			QDesktopServices::openUrl(url);

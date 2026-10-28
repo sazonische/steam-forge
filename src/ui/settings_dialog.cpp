@@ -2,6 +2,7 @@
 
 #include "app/google_connection.h"
 #include "common/version.h"
+#include "ui/image_resources.h"
 #include "ui/widget_styles.h"
 
 namespace SteamForge {
@@ -17,18 +18,11 @@ namespace {
 	constexpr int NAVIGATION_WIDTH = 190;
 	constexpr int PAGE_SPACING = 12;
 	constexpr int SECTION_SPACING = 20;
-	constexpr int STATUS_SPACING = 10;
-	constexpr QSize STATUS_ICON_SIZE{24, 24};
+	constexpr int STATUS_SPACING = 14;
+	constexpr int STATUS_TEXT_SPACING = 2;
+	constexpr QSize STATUS_ICON_SIZE{36, 36};
 	constexpr QMargins PAGE_MARGINS{24, 20, 24, 12};
 	constexpr QMargins BUTTONS_MARGINS{24, 0, 24, 20};
-	constexpr QLatin1StringView NAVIGATION_STYLE{"SettingsNavigation"};
-	constexpr QLatin1StringView LOCK_ICON_RESOURCE{":/styles/lock.svg"};
-	constexpr QLatin1StringView LOCK_OPEN_ICON_RESOURCE{":/styles/lock-open.svg"};
-	constexpr QLatin1StringView LOCK_ALERT_ICON_RESOURCE{":/styles/lock-alert.svg"};
-	constexpr QLatin1StringView CLOUD_ICON_RESOURCE{":/styles/cloud.svg"};
-	constexpr QLatin1StringView CLOUD_CHECK_ICON_RESOURCE{":/styles/cloud-check.svg"};
-	constexpr QLatin1StringView CLOUD_OFF_ICON_RESOURCE{":/styles/cloud-off.svg"};
-	constexpr QLatin1StringView CLOUD_ALERT_ICON_RESOURCE{":/styles/cloud-alert.svg"};
 
 	int LanguageIndex(std::optional<InterfaceLanguage> language) {
 		if (!language.has_value()) {
@@ -61,15 +55,28 @@ namespace {
 		return pageLayout;
 	}
 
-	// An icon and a headline in one row, as a section of the account panel shows its state.
-	QHBoxLayout* StatusRow(QLabel& iconLabel, QLabel& headlineLabel) {
+	QLabel* CreatePageTitle(QWidget* page) {
+		auto* titleLabel = new QLabel(page);
+		titleLabel->setObjectName(PAGE_TITLE_STYLE);
+		return titleLabel;
+	}
+
+	// An icon beside a headline and, for some states, a line under it, as a card of the account panel shows its state.
+	QHBoxLayout* StatusRow(QLabel& iconLabel, QLabel& headlineLabel, QLabel* detailLabel = nullptr) {
 		iconLabel.setFixedSize(STATUS_ICON_SIZE);
-		headlineLabel.setObjectName(ROW_NAME_STYLE);
+		headlineLabel.setObjectName(STATE_HEADLINE_STYLE);
 		headlineLabel.setWordWrap(true);
+		auto* textLayout = new QVBoxLayout();
+		textLayout->setSpacing(STATUS_TEXT_SPACING);
+		textLayout->addWidget(&headlineLabel);
+		if (detailLabel != nullptr) {
+			detailLabel->setObjectName(DETAIL_TEXT_STYLE);
+			textLayout->addWidget(detailLabel);
+		}
 		auto* statusLayout = new QHBoxLayout();
 		statusLayout->setSpacing(STATUS_SPACING);
-		statusLayout->addWidget(&iconLabel, 0, Qt::AlignTop);
-		statusLayout->addWidget(&headlineLabel, 1);
+		statusLayout->addWidget(&iconLabel, 0, Qt::AlignVCenter);
+		statusLayout->addLayout(textLayout, 1);
 		return statusLayout;
 	}
 
@@ -86,7 +93,7 @@ SettingsDialog::SettingsDialog(std::optional<InterfaceLanguage> currentLanguage,
 	setMinimumSize(MINIMUM_DIALOG_SIZE);
 
 	navigationList = new QListWidget(this);
-	navigationList->setObjectName(NAVIGATION_STYLE);
+	navigationList->setObjectName(SETTINGS_NAVIGATION_STYLE);
 	navigationList->setFixedWidth(NAVIGATION_WIDTH);
 	navigationList->setFrameShape(QFrame::NoFrame);
 	navigationList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -104,7 +111,9 @@ SettingsDialog::SettingsDialog(std::optional<InterfaceLanguage> currentLanguage,
 	contentLayout->addWidget(pageStack, 1);
 	auto* buttonsLayout = new QHBoxLayout();
 	buttonsLayout->setContentsMargins(BUTTONS_MARGINS);
-	buttonsLayout->addWidget(buttonBox);
+	// Rare and lasting, so it waits at the bottom of the Google section, apart from its accounts.
+	buttonsLayout->addWidget(googleDisconnectButton);
+	buttonsLayout->addWidget(buttonBox, 1);
 	contentLayout->addLayout(buttonsLayout);
 	auto* dialogLayout = new QHBoxLayout(this);
 	dialogLayout->setContentsMargins(0, 0, 0, 0);
@@ -113,6 +122,7 @@ SettingsDialog::SettingsDialog(std::optional<InterfaceLanguage> currentLanguage,
 	dialogLayout->addLayout(contentLayout, 1);
 
 	connect(navigationList, &QListWidget::currentRowChanged, pageStack, &QStackedWidget::setCurrentIndex);
+	connect(pageStack, &QStackedWidget::currentChanged, this, &SettingsDialog::UpdateGooglePage);
 	connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 	connect(&encryption, &StorageEncryption::StatusChanged, this, &SettingsDialog::UpdateEncryptionPage);
 	connect(&google, &GoogleConnection::StateChanged, this, &SettingsDialog::UpdateGooglePage);
@@ -135,6 +145,7 @@ void SettingsDialog::changeEvent(QEvent* event) {
 
 QWidget* SettingsDialog::CreateGeneralPage() {
 	auto* page = new QWidget(this);
+	generalTitleLabel = CreatePageTitle(page);
 	languageSectionLabel = new QLabel(page);
 	MakeSectionLabel(*languageSectionLabel);
 	languageComboBox = new QComboBox(page);
@@ -143,6 +154,7 @@ QWidget* SettingsDialog::CreateGeneralPage() {
 	languageComboBox->addItem(RUSSIAN_LANGUAGE_NAME.toString());
 
 	QVBoxLayout* pageLayout = PageLayout(*page);
+	pageLayout->addWidget(generalTitleLabel);
 	pageLayout->addWidget(languageSectionLabel);
 	pageLayout->addWidget(languageComboBox);
 	pageLayout->addStretch();
@@ -153,11 +165,11 @@ QWidget* SettingsDialog::CreateGeneralPage() {
 
 QWidget* SettingsDialog::CreateEncryptionPage() {
 	auto* page = new QWidget(this);
-	encryptionSectionLabel = new QLabel(page);
-	MakeSectionLabel(*encryptionSectionLabel);
+	encryptionTitleLabel = CreatePageTitle(page);
 	encryptionIconLabel = new QLabel(page);
 	encryptionHeadlineLabel = new QLabel(page);
 	encryptionTextLabel = new QLabel(page);
+	encryptionTextLabel->setObjectName(DETAIL_TEXT_STYLE);
 	encryptionTextLabel->setWordWrap(true);
 	encryptionGoogleLabel = new QLabel(page);
 	encryptionGoogleLabel->setObjectName(NOTICE_STYLE);
@@ -183,7 +195,7 @@ QWidget* SettingsDialog::CreateEncryptionPage() {
 	folderRowLayout->addWidget(openFolderButton);
 
 	QVBoxLayout* pageLayout = PageLayout(*page);
-	pageLayout->addWidget(encryptionSectionLabel);
+	pageLayout->addWidget(encryptionTitleLabel);
 	pageLayout->addLayout(StatusRow(*encryptionIconLabel, *encryptionHeadlineLabel));
 	pageLayout->addWidget(encryptionTextLabel);
 	pageLayout->addWidget(encryptionGoogleLabel);
@@ -201,24 +213,25 @@ QWidget* SettingsDialog::CreateEncryptionPage() {
 
 QWidget* SettingsDialog::CreateGooglePage(const CloudAccountsSource& cloudAccounts) {
 	auto* page = new QWidget(this);
-	googleSectionLabel = new QLabel(page);
-	MakeSectionLabel(*googleSectionLabel);
+	googleTitleLabel = CreatePageTitle(page);
 	googleIconLabel = new QLabel(page);
 	googleHeadlineLabel = new QLabel(page);
+	googleEmailLabel = new QLabel(page);
+	googleEmailLabel->setTextFormat(Qt::PlainText);
 	googleTextLabel = new QLabel(page);
+	googleTextLabel->setObjectName(DETAIL_TEXT_STYLE);
 	googleTextLabel->setWordWrap(true);
 	googleConnectButton = new QPushButton(page);
-	googleDisconnectButton = new QPushButton(page);
-	cloudAccountsView = new CloudAccountsView(cloudAccounts.sync, googleConnection, cloudAccounts.library, cloudAccounts.titleProvider, page);
+	googleDisconnectButton = new QPushButton(this);
+	cloudAccountsView = new CloudAccountsView(cloudAccounts.sync, googleConnection, cloudAccounts.library, cloudAccounts.titleProvider, cloudAccounts.profiles, page);
 
 	auto* buttonsLayout = new QHBoxLayout();
 	buttonsLayout->addWidget(googleConnectButton);
-	buttonsLayout->addWidget(googleDisconnectButton);
 	buttonsLayout->addStretch();
 
 	QVBoxLayout* pageLayout = PageLayout(*page);
-	pageLayout->addWidget(googleSectionLabel);
-	pageLayout->addLayout(StatusRow(*googleIconLabel, *googleHeadlineLabel));
+	pageLayout->addWidget(googleTitleLabel);
+	pageLayout->addLayout(StatusRow(*googleIconLabel, *googleHeadlineLabel, googleEmailLabel));
 	pageLayout->addWidget(googleTextLabel);
 	pageLayout->addLayout(buttonsLayout);
 	pageLayout->addSpacing(SECTION_SPACING);
@@ -232,15 +245,14 @@ QWidget* SettingsDialog::CreateGooglePage(const CloudAccountsSource& cloudAccoun
 
 QWidget* SettingsDialog::CreateUpdatesPage() {
 	auto* page = new QWidget(this);
-	updatesSectionLabel = new QLabel(page);
-	MakeSectionLabel(*updatesSectionLabel);
+	updatesTitleLabel = CreatePageTitle(page);
 	updateChecksCheckBox = new QCheckBox(page);
 	updatesNoteLabel = new QLabel(page);
 	updatesNoteLabel->setObjectName(SECONDARY_TEXT_STYLE);
 	updatesNoteLabel->setWordWrap(true);
 
 	QVBoxLayout* pageLayout = PageLayout(*page);
-	pageLayout->addWidget(updatesSectionLabel);
+	pageLayout->addWidget(updatesTitleLabel);
 	pageLayout->addWidget(updateChecksCheckBox);
 	pageLayout->addWidget(updatesNoteLabel);
 	pageLayout->addStretch();
@@ -255,9 +267,10 @@ void SettingsDialog::RetranslateUi() {
 	for (int row = 0; row < navigationList->count(); ++row) {
 		navigationList->item(row)->setText(sectionNames.at(static_cast<std::size_t>(row)));
 	}
+	generalTitleLabel->setText(tr("General"));
 	languageSectionLabel->setText(tr("Language"));
 	languageComboBox->setItemText(SYSTEM_LANGUAGE_INDEX, tr("System language"));
-	encryptionSectionLabel->setText(tr("Encryption"));
+	encryptionTitleLabel->setText(tr("Encryption"));
 	dataFolderSectionLabel->setText(tr("Data folder"));
 	openFolderButton->setText(tr("Open folder"));
 	if (dataLocation.isPortable) {
@@ -265,9 +278,9 @@ void SettingsDialog::RetranslateUi() {
 	} else {
 		portableModeLabel->setText(tr("To keep the data next to the program instead, place an empty file named .portable next to SteamForge and restart it. Existing data is not moved automatically."));
 	}
-	googleSectionLabel->setText(tr("Google"));
+	googleTitleLabel->setText(tr("Google"));
 	googleDisconnectButton->setText(tr("Disconnect on this computer"));
-	updatesSectionLabel->setText(tr("Updates"));
+	updatesTitleLabel->setText(tr("Updates"));
 	updateChecksCheckBox->setText(tr("Check for new versions"));
 	updatesNoteLabel->setText(tr("Once a day SteamForge asks GitHub which version is the latest and offers a new one in a window. Nothing is downloaded or installed by itself. You have version %1.").arg(APPLICATION_VERSION));
 	buttonBox->button(QDialogButtonBox::Close)->setText(tr("Close"));
@@ -337,6 +350,7 @@ void SettingsDialog::UpdateEncryptionPage() {
 void SettingsDialog::UpdateGooglePage() {
 	const QString& email = googleConnection.Email();
 	googleConnectButton->setText(tr("Connect Google…"));
+	googleEmailLabel->clear();
 	bool canConnect = false;
 	bool canDisconnect = false;
 	switch (googleConnection.State()) {
@@ -363,8 +377,9 @@ void SettingsDialog::UpdateGooglePage() {
 			break;
 		case GoogleConnectionState::CONNECTED:
 			SetStatusIcon(*googleIconLabel, CLOUD_CHECK_ICON_RESOURCE);
-			googleHeadlineLabel->setText(email.isEmpty() ? tr("Google is connected") : tr("Connected to %1").arg(email));
-			googleTextLabel->setText(tr("The cloud copy is encrypted, and this computer keeps its key."));
+			googleHeadlineLabel->setText(tr("Account connected"));
+			googleEmailLabel->setText(email);
+			googleTextLabel->setText(tr("The copies are encrypted. The key is kept on this computer."));
 			canDisconnect = true;
 			break;
 		case GoogleConnectionState::SIGN_IN_REQUIRED:
@@ -377,10 +392,11 @@ void SettingsDialog::UpdateGooglePage() {
 			break;
 	}
 	googleTextLabel->setVisible(!googleTextLabel->text().isEmpty());
+	googleEmailLabel->setVisible(!googleEmailLabel->text().isEmpty());
 	cloudAccountsView->setVisible(googleConnection.State() == GoogleConnectionState::CONNECTED);
 	googleConnectButton->setVisible(canConnect);
 	SetButtonRole(*googleConnectButton, canConnect ? ButtonRole::PRIMARY : ButtonRole::SECONDARY);
-	googleDisconnectButton->setVisible(canDisconnect);
+	googleDisconnectButton->setVisible(canDisconnect && pageStack->currentIndex() == static_cast<int>(SettingsSection::GOOGLE));
 }
 
 CloudAccountsView& SettingsDialog::CloudAccounts() {

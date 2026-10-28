@@ -439,12 +439,12 @@ private Q_SLOTS:
 		const SteamForge::GoogleConnectDialog::EncryptionStarter noEncryption = []() {
 			return false;
 		};
-		SteamForge::GoogleConnectDialog googleIntroDialog(googleConnection, cloudSync, library, SteamForge::RecordDisplayName, noEncryption, false);
+		SteamForge::GoogleConnectDialog googleIntroDialog(googleConnection, cloudSync, library, SteamForge::RecordDisplayName, &profiles, noEncryption, false);
 		googleIntroDialog.show();
 		QTest::qWait(300);
 		QVERIFY(googleIntroDialog.grab().save(QDir(renderDirectory).filePath(QStringLiteral("tour_google_intro.png"))));
 		googleIntroDialog.hide();
-		SteamForge::GoogleConnectDialog googleKeyDialog(googleConnection, cloudSync, library, SteamForge::RecordDisplayName, noEncryption, true);
+		SteamForge::GoogleConnectDialog googleKeyDialog(googleConnection, cloudSync, library, SteamForge::RecordDisplayName, &profiles, noEncryption, true);
 		googleKeyDialog.show();
 		Q_EMIT googleConnection.NewVaultCreated(QStringLiteral("K7QX-M2PA-VR4D-9TBN-HC3W-ZJ5E-LF6S-UY8G").replace(u'9', u'R').replace(u'8', u'B'));
 		QTest::qWait(300);

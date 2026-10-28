@@ -13,7 +13,6 @@ inline constexpr QLatin1StringView CAPABILITY_MISSING_STYLE{"CapabilityMissing"}
 inline constexpr QLatin1StringView ERROR_TEXT_STYLE{"ErrorText"};
 inline constexpr QLatin1StringView NOTICE_STYLE{"Notice"};
 inline constexpr QLatin1StringView PROBLEM_BANNER_STYLE{"ProblemBanner"};
-inline constexpr QLatin1StringView SUCCESS_BANNER_STYLE{"SuccessBanner"};
 inline constexpr QLatin1StringView TOP_BAR_STYLE{"TopBar"};
 inline constexpr QLatin1StringView TOP_BAR_TITLE_STYLE{"TopBarTitle"};
 inline constexpr QLatin1StringView CARD_STYLE{"Card"};
@@ -36,13 +35,31 @@ inline constexpr QLatin1StringView DROP_ZONE_STYLE{"DropZone"};
 inline constexpr QLatin1StringView LINK_BUTTON_STYLE{"LinkButton"};
 inline constexpr QLatin1StringView STATUS_CHIP_STYLE{"StatusChip"};
 inline constexpr QLatin1StringView QR_REVEAL_BUTTON_STYLE{"QrRevealButton"};
+// The main line of a state in a card, such as "Signed in"; the details go below in secondary text.
+inline constexpr QLatin1StringView STATE_HEADLINE_STYLE{"StateHeadline"};
+// Quiet text a little larger than the hints, such as the lines under the account name and under a state.
+inline constexpr QLatin1StringView DETAIL_TEXT_STYLE{"DetailText"};
+// A saved secret shown as dots.
+inline constexpr QLatin1StringView MASKED_SECRET_STYLE{"MaskedSecret"};
+// A colored dot before a state: done, waiting for the user, or not started.
+inline constexpr QLatin1StringView STATE_DOT_DONE_STYLE{"StateDotDone"};
+inline constexpr QLatin1StringView STATE_DOT_ATTENTION_STYLE{"StateDotAttention"};
+inline constexpr QLatin1StringView STATE_DOT_IDLE_STYLE{"StateDotIdle"};
+inline constexpr QLatin1StringView ROW_DIVIDER_STYLE{"RowDivider"};
+// A framed list of rows with dividers, such as the accounts in Google or the answers to a question.
+inline constexpr QLatin1StringView LIST_FRAME_STYLE{"ListFrame"};
+inline constexpr QLatin1StringView SETTINGS_NAVIGATION_STYLE{"SettingsNavigation"};
 
 // Boolean states that style sheet rules select with property selectors.
 enum class StyleFlag {
 	EXPIRING,
 	SELECTED,
 	// A status that waits for the user, such as a locked SteamForge.
-	ATTENTION
+	ATTENTION,
+	// The focus came from the keyboard; a click or a dialog that just opened shows no focus frame.
+	KEYBOARD_FOCUS,
+	// Files are dragged over the drop zone.
+	DROP_ACTIVE
 };
 
 enum class ButtonRole {
@@ -58,6 +75,15 @@ void MakeCompact(QPushButton& button);
 void FitHeightToContents(QWidget& window);
 
 void SetStyleFlag(QWidget& widget, StyleFlag styleFlag, bool isSet);
+// Changes the style name that the style sheet selects and applies it at once.
+void SetStyleName(QWidget& widget, QLatin1StringView styleName);
+// Applies the style sheet again after a property it selects on has changed.
+void Repolish(QWidget& widget);
+// The thin line between the rows of a list.
+[[nodiscard]] QFrame* CreateRowDivider(QWidget* parent);
+[[nodiscard]] QLabel* CreateLabel(QWidget* parent, QLatin1StringView styleName = {});
+// A wrapping label for texts from Steam or from the user, which are never interpreted as rich text.
+[[nodiscard]] QLabel* CreatePlainLabel(QWidget* parent, QLatin1StringView styleName = {});
 
 // Uppercase through the font, so translations stay in normal case.
 void MakeSectionLabel(QLabel& label);

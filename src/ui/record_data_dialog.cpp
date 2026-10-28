@@ -2,14 +2,13 @@
 
 #include "app/account_library.h"
 #include "steam/device_id.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/widget_styles.h"
 
 namespace SteamForge {
 
 namespace {
-	constexpr QLatin1StringView SHOW_SECRET_ICON_RESOURCE{":/styles/eye.svg"};
-	constexpr QLatin1StringView HIDE_SECRET_ICON_RESOURCE{":/styles/eye-off.svg"};
 	constexpr int MINIMUM_DIALOG_WIDTH = 760;
 	constexpr int DIALOG_SPACING = 12;
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
@@ -36,7 +35,7 @@ namespace {
 
 	void UpdateVisibilityAction(QAction& action, const QLineEdit& edit, const QString& showText, const QString& hideText) {
 		const bool isVisible = edit.echoMode() == QLineEdit::Normal;
-		action.setIcon(QIcon(isVisible ? HIDE_SECRET_ICON_RESOURCE : SHOW_SECRET_ICON_RESOURCE));
+		action.setIcon(QIcon(isVisible ? EYE_OFF_ICON_RESOURCE : EYE_ICON_RESOURCE));
 		action.setToolTip(isVisible ? hideText : showText);
 	}
 
@@ -68,7 +67,7 @@ RecordDataDialog::RecordDataDialog(AccountLibrary& library, AuthenticatorRecord 
 	identitySecretTitleLabel = new QLabel(this);
 	identitySecretEdit = new QLineEdit(this);
 	identitySecretEdit->setEchoMode(QLineEdit::Password);
-	identitySecretVisibilityAction = identitySecretEdit->addAction(QIcon(SHOW_SECRET_ICON_RESOURCE), QLineEdit::TrailingPosition);
+	identitySecretVisibilityAction = identitySecretEdit->addAction(QIcon(EYE_ICON_RESOURCE), QLineEdit::TrailingPosition);
 	identitySecretHintLabel = CreateHintLabel(this);
 	deviceIdTitleLabel = new QLabel(this);
 	deviceIdEdit = new QLineEdit(record.secrets.deviceId, this);
@@ -80,7 +79,7 @@ RecordDataDialog::RecordDataDialog(AccountLibrary& library, AuthenticatorRecord 
 	revocationCodeTitleLabel = new QLabel(this);
 	revocationCodeEdit = new QLineEdit(this);
 	revocationCodeEdit->setEchoMode(QLineEdit::Password);
-	revocationCodeVisibilityAction = revocationCodeEdit->addAction(QIcon(SHOW_SECRET_ICON_RESOURCE), QLineEdit::TrailingPosition);
+	revocationCodeVisibilityAction = revocationCodeEdit->addAction(QIcon(EYE_ICON_RESOURCE), QLineEdit::TrailingPosition);
 	// A saved recovery code is neither shown nor replaced here.
 	revocationCodeEdit->setReadOnly(!record.secrets.revocationCode.isEmpty());
 	revocationCodeVisibilityAction->setVisible(!revocationCodeEdit->isReadOnly());

@@ -3,6 +3,7 @@
 #include "app/confirmation_monitor.h"
 #include "ui/confirmation_card.h"
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/steam_picture.h"
 #include "ui/trade_offer_dialog.h"
@@ -22,8 +23,6 @@ namespace {
 	constexpr int EMPTY_STATE_TOP_MARGIN = 24;
 	constexpr int EMPTY_STATE_SPACING = 8;
 	constexpr int EMPTY_STATE_BUTTON_SPACING = 8;
-	constexpr QLatin1StringView EMPTY_ILLUSTRATION_RESOURCE{":/illustrations/no_confirmations.svg"};
-	constexpr QLatin1StringView SIGN_IN_ILLUSTRATION_RESOURCE{":/illustrations/sign_in_required.svg"};
 	constexpr QSize EMPTY_ILLUSTRATION_SIZE{360, 200};
 	// Cards, the empty-list state and the closing stretch: the cards always come first.
 	constexpr int TRAILING_LAYOUT_ITEMS = 2;
@@ -31,16 +30,6 @@ namespace {
 	constexpr std::size_t TRADES_FILTER_INDEX = 1;
 	constexpr std::size_t MARKET_FILTER_INDEX = 2;
 	constexpr std::size_t OTHER_FILTER_INDEX = 3;
-
-	QLabel* CreatePlainLabel(QWidget* parent, QLatin1StringView styleName = {}) {
-		auto* label = new QLabel(parent);
-		label->setTextFormat(Qt::PlainText);
-		label->setWordWrap(true);
-		if (!styleName.isEmpty()) {
-			label->setObjectName(styleName);
-		}
-		return label;
-	}
 
 	bool NeedsSignIn(const AccountConfirmations& confirmations) {
 		const std::optional<ConfirmationsFailure>& failure = confirmations.LoadFailure();
@@ -102,7 +91,7 @@ ConfirmationsDialog::ConfirmationsDialog(ConfirmationMonitor& monitor, SteamImag
 	entriesLayout->setContentsMargins(0, 0, 0, 0);
 	entriesLayout->setSpacing(ENTRY_SPACING);
 	emptyState = new QWidget(entriesContainer);
-	emptyIllustration = new IllustrationView(EMPTY_ILLUSTRATION_RESOURCE, EMPTY_ILLUSTRATION_SIZE, emptyState);
+	emptyIllustration = new IllustrationView(NO_CONFIRMATIONS_ILLUSTRATION_RESOURCE, EMPTY_ILLUSTRATION_SIZE, emptyState);
 	emptyTitleLabel = CreatePlainLabel(emptyState, PAGE_TITLE_STYLE);
 	emptyTitleLabel->setAlignment(Qt::AlignCenter);
 	emptyLabel = CreatePlainLabel(emptyState, EMPTY_STATE_TEXT_STYLE);
@@ -239,11 +228,7 @@ void ConfirmationsDialog::UpdateState() {
 	statusLabel->setVisible(!isSignInRequired);
 	const bool hasLoadFailure = confirmations != nullptr && confirmations->LoadFailure().has_value();
 	const QLatin1StringView statusStyle = hasLoadFailure ? ERROR_TEXT_STYLE : SECONDARY_TEXT_STYLE;
-	if (statusLabel->objectName() != statusStyle) {
-		statusLabel->setObjectName(statusStyle);
-		statusLabel->style()->unpolish(statusLabel);
-		statusLabel->style()->polish(statusLabel);
-	}
+	SetStyleName(*statusLabel, statusStyle);
 	const QString responseFailureText = ResponseFailureText();
 	responseFailureLabel->setText(responseFailureText);
 	responseFailureLabel->setVisible(!responseFailureText.isEmpty());
@@ -261,12 +246,12 @@ void ConfirmationsDialog::UpdateEmptyState(bool isSignInRequired) {
 	emptyState->setVisible(isSignInRequired || isLoadedEmpty);
 	signInButton->setVisible(isSignInRequired && canSignInHelp);
 	if (isSignInRequired) {
-		emptyIllustration->SetResource(SIGN_IN_ILLUSTRATION_RESOURCE);
+		emptyIllustration->SetResource(SIGN_IN_REQUIRED_ILLUSTRATION_RESOURCE);
 		emptyTitleLabel->setText(canSignInHelp ? tr("Sign in to Steam again") : tr("Confirmations are unavailable"));
 		emptyLabel->setText(StatusText());
 		return;
 	}
-	emptyIllustration->SetResource(EMPTY_ILLUSTRATION_RESOURCE);
+	emptyIllustration->SetResource(NO_CONFIRMATIONS_ILLUSTRATION_RESOURCE);
 	emptyTitleLabel->setText(tr("Nothing to confirm"));
 	emptyLabel->setText(tr("New confirmations will appear here automatically."));
 }

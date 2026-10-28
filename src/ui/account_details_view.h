@@ -63,6 +63,8 @@ private:
 	void UpdateSetupSteps(bool hasConfirmationData, bool canUseSession);
 	void UpdateRestrictionNotice();
 	void UpdateGoogleCard();
+	// An empty icon leaves the state without one; an empty detail hides its line.
+	void ShowConfirmationsState(QLatin1StringView iconResource, const QString& headline, const QString& detail = {});
 	void ToggleRevocationCode();
 	[[nodiscard]] bool HidesAccountName() const;
 	[[nodiscard]] QString SessionAccountName() const;
@@ -78,25 +80,36 @@ private:
 
 	PictureView* avatarPicture = nullptr;
 	QLabel* nameLabel = nullptr;
-	QLabel* detailsLabel = nullptr;
+	QLabel* steamIdLabel = nullptr;
+	QLabel* originLabel = nullptr;
 	QWidget* restrictionNotice = nullptr;
 	QLabel* restrictionLabel = nullptr;
 	QPushButton* restrictionHelpButton = nullptr;
 	QUrl restrictionHelpUrl;
 	QFrame* signInCard = nullptr;
 	QLabel* signInSectionLabel = nullptr;
+	QLabel* signInDot = nullptr;
+	QLabel* signInHeadlineLabel = nullptr;
 	QLabel* signInStatusLabel = nullptr;
 	QPushButton* signInButton = nullptr;
 	QPushButton* approveSignInButton = nullptr;
 	QPushButton* signOutButton = nullptr;
 	QFrame* googleCard = nullptr;
-	QLabel* googleSectionLabel = nullptr;
+	IllustrationView* googleIcon = nullptr;
+	QLabel* googleTitleLabel = nullptr;
 	QLabel* googleStatusLabel = nullptr;
 	QPushButton* googleActionButton = nullptr;
+	QPushButton* googleMenuButton = nullptr;
+	QMenu* googleMenu = nullptr;
+	QAction* removeFromGoogleAction = nullptr;
 	RecordCloudInfo cloudInfo;
 	QFrame* confirmationsCard = nullptr;
 	QLabel* confirmationsSectionLabel = nullptr;
+	QWidget* confirmationsState = nullptr;
+	IllustrationView* confirmationsIcon = nullptr;
+	QLabel* confirmationsCountBadge = nullptr;
 	QLabel* confirmationsSummaryLabel = nullptr;
+	QLabel* confirmationsDetailLabel = nullptr;
 	QPushButton* openConfirmationsButton = nullptr;
 	QPushButton* confirmationsSignInButton = nullptr;
 	QWidget* setupSteps = nullptr;

@@ -2,6 +2,7 @@
 
 #include "app/account_library.h"
 #include "app/storage_encryption.h"
+#include "ui/image_resources.h"
 #include "ui/record_presentation.h"
 #include "ui/success_dialog.h"
 #include "ui/widget_styles.h"
@@ -9,14 +10,11 @@
 namespace SteamForge {
 
 namespace {
-	constexpr QLatin1StringView LOCK_ICON_RESOURCE{":/styles/lock.svg"};
-	constexpr QLatin1StringView LOCK_OPEN_ICON_RESOURCE{":/styles/lock-open.svg"};
 	constexpr QSize NOTICE_ICON_SIZE{16, 16};
 	constexpr int NOTICE_ICON_SPACING = 8;
 	constexpr int NOTICE_LINE_SPACING = 2;
-	constexpr QLatin1StringView SHOW_PASSWORD_ICON_RESOURCE{":/styles/eye.svg"};
-	constexpr QLatin1StringView HIDE_PASSWORD_ICON_RESOURCE{":/styles/eye-off.svg"};
 	constexpr int MINIMUM_DIALOG_WIDTH = 480;
+	constexpr int SIGN_IN_BUTTON_MINIMUM_WIDTH = 90;
 	constexpr int DIALOG_SPACING = 8;
 	constexpr int SECTION_SPACING = 12;
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
@@ -58,7 +56,7 @@ LoginDialog::LoginDialog(AccountLibrary& library, const SteamClock& clock, Stora
 	headlineLabel->setTextFormat(Qt::PlainText);
 	headlineLabel->setWordWrap(true);
 	introLabel = new QLabel(this);
-	introLabel->setObjectName(SECONDARY_TEXT_STYLE);
+	introLabel->setObjectName(DETAIL_TEXT_STYLE);
 	introLabel->setWordWrap(true);
 	accountNameLabel = new QLabel(this);
 	MakeSectionLabel(*accountNameLabel);
@@ -68,7 +66,7 @@ LoginDialog::LoginDialog(AccountLibrary& library, const SteamClock& clock, Stora
 	MakeSectionLabel(*passwordLabel);
 	passwordEdit = new QLineEdit(this);
 	passwordEdit->setEchoMode(QLineEdit::Password);
-	passwordVisibilityAction = passwordEdit->addAction(QIcon(SHOW_PASSWORD_ICON_RESOURCE), QLineEdit::TrailingPosition);
+	passwordVisibilityAction = passwordEdit->addAction(QIcon(EYE_ICON_RESOURCE), QLineEdit::TrailingPosition);
 
 	codeRow = new QWidget(this);
 	codeLabel = new QLabel(codeRow);
@@ -143,9 +141,18 @@ LoginDialog::LoginDialog(AccountLibrary& library, const SteamClock& clock, Stora
 	noticeLayout->setSpacing(NOTICE_ICON_SPACING);
 	noticeLayout->addWidget(noticeIconLabel, 0, Qt::AlignTop);
 	noticeLayout->addLayout(noticeTextLayout, 1);
-	buttonBox = new QDialogButtonBox(QDialogButtonBox::Cancel, this);
+	automaticCodeLabel = CreateLabel(this, NOTICE_STYLE);
+	automaticCodeLabel->setWordWrap(true);
+	buttonBox = new QDialogButtonBox(this);
 	signInButton = buttonBox->addButton(QString(), QDialogButtonBox::AcceptRole);
 	SetButtonRole(*signInButton, ButtonRole::PRIMARY);
+	// As tall as the hint beside it.
+	signInButton->setSizePolicy(signInButton->sizePolicy().horizontalPolicy(), QSizePolicy::Preferred);
+	signInButton->setMinimumWidth(SIGN_IN_BUTTON_MINIMUM_WIDTH);
+	buttonBox->setSizePolicy(buttonBox->sizePolicy().horizontalPolicy(), QSizePolicy::Preferred);
+	auto* signInRowLayout = new QHBoxLayout();
+	signInRowLayout->addWidget(automaticCodeLabel, 1);
+	signInRowLayout->addWidget(buttonBox);
 
 	auto* dialogLayout = new QVBoxLayout(this);
 	dialogLayout->setContentsMargins(DIALOG_MARGINS);
@@ -163,11 +170,10 @@ LoginDialog::LoginDialog(AccountLibrary& library, const SteamClock& clock, Stora
 	dialogLayout->addWidget(noAccessCard);
 	dialogLayout->addWidget(noticeRow);
 	dialogLayout->addSpacing(SECTION_SPACING);
-	dialogLayout->addWidget(buttonBox);
+	dialogLayout->addLayout(signInRowLayout);
 
 	connect(passwordVisibilityAction, &QAction::triggered, this, &LoginDialog::TogglePasswordVisibility);
 	connect(buttonBox, &QDialogButtonBox::accepted, this, &LoginDialog::StartLogin);
-	connect(buttonBox, &QDialogButtonBox::rejected, this, &LoginDialog::reject);
 	connect(submitCodeButton, &QPushButton::clicked, this, &LoginDialog::SubmitCode);
 	connect(codeEdit, &QLineEdit::returnPressed, this, &LoginDialog::SubmitCode);
 	connect(moveGuardButton, &QPushButton::clicked, this, &LoginDialog::ConfirmGuardMove);
@@ -224,7 +230,7 @@ void LoginDialog::RetranslateUi() {
 	supportOptionTitleLabel->setText(tr("Neither the file nor the phone number"));
 	supportOptionLabel->setText(tr("If you are still signed in to Steam on another device, remove Steam Guard there: in the Steam mobile application, or in the Steam client under Settings, Account, Manage Steam Guard. Then sign in here with the email code and set up Steam Guard in SteamForge. Without such a device, use the recovery code or Steam Support at help.steampowered.com. After a removal Steam restricts trades and the market for 15 days."));
 	signInButton->setText(tr("Sign in"));
-	buttonBox->button(QDialogButtonBox::Cancel)->setText(tr("Cancel"));
+	automaticCodeLabel->setText(tr("SteamForge enters the Steam Guard code for you."));
 	const bool isPasswordVisible = passwordEdit->echoMode() == QLineEdit::Normal;
 	passwordVisibilityAction->setToolTip(isPasswordVisible ? tr("Hide password") : tr("Show password"));
 	UpdateState();
@@ -279,7 +285,7 @@ void LoginDialog::ResendMoveCode() {
 void LoginDialog::TogglePasswordVisibility() {
 	const bool willBeVisible = passwordEdit->echoMode() == QLineEdit::Password;
 	passwordEdit->setEchoMode(willBeVisible ? QLineEdit::Normal : QLineEdit::Password);
-	passwordVisibilityAction->setIcon(QIcon(willBeVisible ? HIDE_PASSWORD_ICON_RESOURCE : SHOW_PASSWORD_ICON_RESOURCE));
+	passwordVisibilityAction->setIcon(QIcon(willBeVisible ? EYE_OFF_ICON_RESOURCE : EYE_ICON_RESOURCE));
 	passwordVisibilityAction->setToolTip(willBeVisible ? tr("Hide password") : tr("Show password"));
 }
 
@@ -289,6 +295,7 @@ void LoginDialog::UpdateState() {
 	accountNameEdit->setEnabled(canEditCredentials);
 	passwordEdit->setEnabled(canEditCredentials);
 	signInButton->setVisible(canEditCredentials);
+	automaticCodeLabel->setVisible(canEditCredentials && !isNewAccount && purpose == LoginPurpose::SIGN_IN && DetermineCapabilities(record).canGenerateCodes);
 	codeRow->setVisible(IsAwaitingCode(stage));
 	codeLabel->setText(CodePrompt(stage));
 	resendCodeButton->setVisible(stage == LoginStage::AWAITING_MOVE_CODE);
@@ -307,9 +314,7 @@ void LoginDialog::UpdateState() {
 
 	const bool isCodeProblem = login && IsAwaitingCode(stage) && (login->IsCodeRejected() || login->MoveError().has_value());
 	const bool isFailure = stage == LoginStage::FAILED || isCodeProblem;
-	statusLabel->setObjectName(isFailure ? ERROR_TEXT_STYLE : SECONDARY_TEXT_STYLE);
-	statusLabel->style()->unpolish(statusLabel);
-	statusLabel->style()->polish(statusLabel);
+	SetStyleName(*statusLabel, isFailure ? ERROR_TEXT_STYLE : SECONDARY_TEXT_STYLE);
 	statusLabel->setText(StatusText());
 	statusLabel->setVisible(!statusLabel->text().isEmpty());
 	setCursor(IsBusy(stage) ? Qt::BusyCursor : Qt::ArrowCursor);
@@ -368,7 +373,7 @@ QString LoginDialog::IntroText() const {
 		return tr("Sign in to %1. When Steam asks for the Steam Guard code, choose \"Move Steam Guard to SteamForge\": Steam sends an SMS code to the phone of the account.").arg(accountTitle);
 	}
 	if (DetermineCapabilities(record).canGenerateCodes) {
-		return tr("The Steam Guard code is entered automatically.");
+		return {};
 	}
 	return tr("If Steam asks for a Steam Guard code, enter it from the Steam mobile application or move Steam Guard to SteamForge.");
 }

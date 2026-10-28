@@ -29,13 +29,10 @@ namespace {
 	// The links grow by a few hundred bytes per account in Google.
 	constexpr qint64 MAX_STATE_DOCUMENT_SIZE = qint64{1} << 20;
 	constexpr QLatin1StringView VAULT_FILE_NAME{"vault.json"};
-	constexpr QLatin1StringView KIND_PROPERTY{"kind"};
-	constexpr QLatin1StringView VAULT_KIND{"vault"};
-	constexpr QLatin1StringView VAULT_ID_PROPERTY{"vaultId"};
 	constexpr QLatin1StringView ACCESS_DENIED_REASON{"access_denied"};
 
 	bool IsVaultFile(const DriveFile& file) {
-		return file.name == VAULT_FILE_NAME && file.appProperties.value(KIND_PROPERTY) == VAULT_KIND;
+		return file.name == VAULT_FILE_NAME && file.appProperties.value(DRIVE_KIND_PROPERTY) == VAULT_FILE_KIND;
 	}
 
 	// The list comes oldest first: when two computers created a vault at once, the older one wins.
@@ -294,7 +291,7 @@ void GoogleConnection::UploadVaultHeader() {
 		return;
 	}
 	const quint64 number = attempt->number;
-	const DriveProperties properties{{KIND_PROPERTY, VAULT_KIND}, {VAULT_ID_PROPERTY, attempt->header->vaultId}};
+	const DriveProperties properties{{DRIVE_KIND_PROPERTY, VAULT_FILE_KIND}, {DRIVE_VAULT_ID_PROPERTY, attempt->header->vaultId}};
 	attempt->drive->Create(VAULT_FILE_NAME, properties, SerializeVaultHeader(*attempt->header), *this, [this, number](std::expected<DriveFile, GoogleError> uploaded) {
 		if (!IsCurrentAttempt(number)) {
 			return;

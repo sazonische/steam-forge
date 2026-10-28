@@ -1,6 +1,7 @@
 #include "ui/success_dialog.h"
 
 #include "ui/illustration_view.h"
+#include "ui/image_resources.h"
 #include "ui/theme.h"
 #include "ui/widget_styles.h"
 
@@ -12,7 +13,6 @@ namespace {
 	constexpr int KEPT_VALUE_PIXEL_SIZE = 26;
 	constexpr QMargins DIALOG_MARGINS{24, 20, 24, 20};
 	constexpr QMargins CARD_MARGINS{16, 12, 16, 12};
-	constexpr QLatin1StringView ILLUSTRATION_RESOURCE{":/illustrations/all_set.svg"};
 	constexpr QSize ILLUSTRATION_SIZE{360, 190};
 } // namespace
 
@@ -21,7 +21,7 @@ SuccessDialog::SuccessDialog(const QString& headline, const QString& text, QWidg
 	setWindowTitle(headline);
 	setMinimumWidth(MINIMUM_DIALOG_WIDTH);
 
-	illustration = new IllustrationView(ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
+	illustration = new IllustrationView(ALL_SET_ILLUSTRATION_RESOURCE, ILLUSTRATION_SIZE, this);
 	headlineLabel = new QLabel(headline, this);
 	headlineLabel->setObjectName(PAGE_TITLE_STYLE);
 	headlineLabel->setAlignment(Qt::AlignCenter);

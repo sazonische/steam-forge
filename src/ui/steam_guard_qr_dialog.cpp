@@ -1,5 +1,6 @@
 #include "ui/steam_guard_qr_dialog.h"
 
+#include "ui/image_resources.h"
 #include "ui/widget_styles.h"
 
 #include <ZXing/BitMatrix.h>
@@ -28,7 +29,6 @@ namespace {
 	constexpr std::chrono::milliseconds COPIED_FEEDBACK_DURATION{1500};
 	constexpr QColor QR_BACKGROUND{0xff, 0xff, 0xff};
 	constexpr QColor QR_MODULE_COLOR{0x00, 0x00, 0x00};
-	constexpr QLatin1StringView HIDE_ICON_RESOURCE{":/styles/eye-off.svg"};
 	constexpr int STEAM_ENCODER_LINK_INDEX = 0;
 	constexpr int STEAM_TYPE_LINK_INDEX = 1;
 	constexpr int APP_TABS_SPACING = 4;
@@ -111,7 +111,7 @@ SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, SteamGuardLi
 
 	qrCover = new QWidget(qrArea);
 	auto* coverIconLabel = new QLabel(qrCover);
-	coverIconLabel->setPixmap(QIcon(HIDE_ICON_RESOURCE).pixmap(COVER_ICON_SIZE, devicePixelRatioF()));
+	coverIconLabel->setPixmap(QIcon(EYE_OFF_ICON_RESOURCE).pixmap(COVER_ICON_SIZE, devicePixelRatioF()));
 	coverIconLabel->setAlignment(Qt::AlignCenter);
 	showCodeButton = new QPushButton(tr("Show QR code"), qrCover);
 	showCodeButton->setObjectName(QR_REVEAL_BUTTON_STYLE);
@@ -128,7 +128,7 @@ SteamGuardQrDialog::SteamGuardQrDialog(const QString& accountTitle, SteamGuardLi
 	qrAreaLayout->addWidget(qrLabel, 0, 0);
 	qrAreaLayout->addWidget(qrCover, 0, 0, Qt::AlignCenter);
 
-	hideCodeButton = new QPushButton(QIcon(HIDE_ICON_RESOURCE), tr("Hide QR code"), this);
+	hideCodeButton = new QPushButton(QIcon(EYE_OFF_ICON_RESOURCE), tr("Hide QR code"), this);
 	hideCodeButton->setObjectName(LINK_BUTTON_STYLE);
 	// Keeps its place while hidden, so the window does not jump when the code shows.
 	QSizePolicy hideButtonPolicy = hideCodeButton->sizePolicy();
