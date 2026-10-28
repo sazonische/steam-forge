@@ -94,6 +94,8 @@ public:
 	[[nodiscard]] const std::vector<CloudOnlyRecord>& CloudOnlyRecords() const;
 	// The link of the local record becomes a cloud-only record in one save.
 	[[nodiscard]] std::expected<void, StorageError> LeaveOnlyInCloud(const QUuid& localRecordId, const QString& title);
+	// For a cloud record no local record was ever linked to.
+	[[nodiscard]] std::expected<void, StorageError> AddCloudOnlyRecord(const CloudOnlyRecord& record);
 	[[nodiscard]] std::expected<void, StorageError> ForgetCloudOnlyRecords(const QSet<QString>& cloudRecordIds);
 
 Q_SIGNALS:

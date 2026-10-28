@@ -82,6 +82,8 @@ public:
 	[[nodiscard]] bool HasConflict(const QUuid& recordId) const;
 	// An action asked for the account has not finished yet.
 	[[nodiscard]] bool IsChanging(const QUuid& recordId) const;
+	// The first copy of the account is on its way to Google: removed meanwhile, the account counts as in Google.
+	[[nodiscard]] bool IsBeingAdded(const QUuid& recordId) const;
 
 Q_SIGNALS:
 	void StatusChanged();
@@ -99,6 +101,12 @@ private:
 		QString recordId;
 		int revision = 1;
 		DriveFile file;
+	};
+
+	// What the removal question asked for an account whose first copy was still on its way to Google.
+	struct RemovalWhileAdding {
+		QString title;
+		bool isRemovedFromCloud = false;
 	};
 
 	using Step = std::function<void()>;
@@ -128,6 +136,7 @@ private:
 	void AdoptCloudRecord(const CloudRevision& revision);
 	void LinkSameGuard(AuthenticatorRecord local, const AuthenticatorRecord& cloudRecord, const CloudRevision& revision);
 	void CollectConflict(CloudConflictKind kind, const QUuid& localRecordId, const CloudRevision& revision);
+	void FinishAdding(const QUuid& recordId, bool isAdded);
 	void UploadNewRecord(const AuthenticatorRecord& record, std::function<void(bool)> done);
 	// False as soon as a file could not be deleted; a file that is already gone counts as deleted.
 	void DeleteFiles(std::vector<QString> fileIds, std::function<void(bool)> done);
@@ -150,6 +159,8 @@ private:
 	std::deque<Step> requestedSteps;
 	QSet<QUuid> localRecordsInAction;
 	QSet<QString> cloudRecordsInAction;
+	QSet<QUuid> recordsBeingAdded;
+	QHash<QUuid, RemovalWhileAdding> removalsWhileAdding;
 	std::vector<CloudConflict> conflicts;
 	CloudSyncStatus status = CloudSyncStatus::INACTIVE;
 	QDateTime lastSyncedAt;

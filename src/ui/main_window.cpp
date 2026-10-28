@@ -1207,7 +1207,8 @@ void MainWindow::ConfirmRemoval(const QUuid& recordId) {
 	if (accountLibrary.FindSession(recordId).has_value()) {
 		consequences.append(tr("The saved Steam sign-in is removed from this computer as well."));
 	}
-	const bool isInCloud = cloudSync.IsInCloud(recordId);
+	// An account on its way to Google counts as there: its copy arrives after the removal.
+	const bool isInCloud = cloudSync.IsInCloud(recordId) || cloudSync.IsBeingAdded(recordId);
 	// Removing from Google needs the connection; otherwise only the choice to keep the copy there is left.
 	const bool canRemoveFromCloud = isInCloud && googleConnection.State() == GoogleConnectionState::CONNECTED;
 	if (isInCloud) {

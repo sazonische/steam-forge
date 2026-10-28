@@ -49,6 +49,8 @@ CloudSync::CloudSync(GoogleConnection& connection, AccountLibrary& library, QObj
 		requestedSteps.clear();
 		localRecordsInAction.clear();
 		cloudRecordsInAction.clear();
+		recordsBeingAdded.clear();
+		removalsWhileAdding.clear();
 		conflicts.clear();
 		SetStatus(CloudSyncStatus::INACTIVE);
 	});
@@ -117,22 +119,34 @@ void CloudSync::AddToCloud(const QUuid& recordId) {
 		Q_EMIT AddingFinished(recordId, IsInCloud(recordId));
 		return;
 	}
+	recordsBeingAdded.insert(recordId);
 	Request(recordId, {}, [this, recordId]() {
 		const AuthenticatorRecord* requestedRecord = accountLibrary.FindRecord(recordId);
 		// A pass may have linked the same Steam Guard meanwhile or found another one of the account in the cloud.
 		if (requestedRecord == nullptr || IsInCloud(recordId) || HasConflict(recordId)) {
-			Q_EMIT AddingFinished(recordId, IsInCloud(recordId));
+			FinishAdding(recordId, IsInCloud(recordId));
 			RunNextStep();
 			return;
 		}
 		UploadNewRecord(*requestedRecord, [this, recordId](bool isUploaded) {
-			Q_EMIT AddingFinished(recordId, isUploaded);
+			FinishAdding(recordId, isUploaded);
 			RunNextStep();
 		});
 	});
 }
 
+void CloudSync::FinishAdding(const QUuid& recordId, bool isAdded) {
+	recordsBeingAdded.remove(recordId);
+	removalsWhileAdding.remove(recordId);
+	Q_EMIT AddingFinished(recordId, isAdded);
+}
+
 void CloudSync::RemoveFromCloud(const QUuid& recordId) {
+	// The first copy is still on its way: it goes once it is there.
+	if (recordsBeingAdded.contains(recordId)) {
+		removalsWhileAdding[recordId].isRemovedFromCloud = true;
+		return;
+	}
 	const std::vector<CloudLink>& links = googleConnection.Links();
 	const auto link = std::ranges::find(links, recordId, &CloudLink::localRecordId);
 	if (link == links.end() || IsChanging(recordId)) {
@@ -183,6 +197,11 @@ void CloudSync::ResolveConflict(const QString& cloudRecordId, ConflictChoice cho
 }
 
 void CloudSync::LeaveInCloud(const QUuid& recordId, const QString& title) {
+	// The first copy is still on its way: it is left in Google once it is there.
+	if (recordsBeingAdded.contains(recordId)) {
+		removalsWhileAdding[recordId].title = title;
+		return;
+	}
 	if (const std::expected<void, StorageError> left = googleConnection.LeaveOnlyInCloud(recordId, title); !left.has_value()) {
 		qWarning("The account removed from this computer may come back from Google: the choice could not be saved.");
 	}
@@ -278,6 +297,10 @@ bool CloudSync::HasConflict(const QUuid& recordId) const {
 
 bool CloudSync::IsChanging(const QUuid& recordId) const {
 	return localRecordsInAction.contains(recordId);
+}
+
+bool CloudSync::IsBeingAdded(const QUuid& recordId) const {
+	return recordsBeingAdded.contains(recordId);
 }
 
 void CloudSync::Request(const QUuid& localRecordId, const QString& cloudRecordId, Step step) {
@@ -668,10 +691,28 @@ void CloudSync::UploadNewRecord(const AuthenticatorRecord& record, std::function
 		done(false);
 		return;
 	}
-	drive->Create(RECORD_FILE_NAME, RecordProperties(recordId, FIRST_REVISION), *content, *requestContext, [this, recordId, localRecordId = record.id, fingerprint = CloudRecordFingerprint(record), uploadDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) {
+	const QString fallbackTitle = record.label.isEmpty() ? record.account.accountName : record.label;
+	drive->Create(RECORD_FILE_NAME, RecordProperties(recordId, FIRST_REVISION), *content, *requestContext, [this, recordId, localRecordId = record.id, fallbackTitle, fingerprint = CloudRecordFingerprint(record), uploadDone = std::move(done)](std::expected<DriveFile, GoogleError> uploaded) {
 		if (!uploaded.has_value()) {
 			isRunReachable = false;
 			uploadDone(false);
+			return;
+		}
+		// Removed here while the copy was on its way. Until the copy is gone it counts as left in Google, so it does not
+		// come back here, also when its removal from Google fails.
+		if (accountLibrary.FindRecord(localRecordId) == nullptr) {
+			const RemovalWhileAdding removal = removalsWhileAdding.value(localRecordId);
+			CheckSaved(googleConnection.AddCloudOnlyRecord(CloudOnlyRecord{.cloudRecordId = recordId, .title = removal.title.isEmpty() ? fallbackTitle : removal.title}));
+			if (!removal.isRemovedFromCloud) {
+				uploadDone(true);
+				return;
+			}
+			DeleteFiles({uploaded->id}, [this, recordId, uploadDone](bool isDeleted) {
+				if (isDeleted) {
+					CheckSaved(googleConnection.ForgetCloudOnlyRecords(QSet<QString>{recordId}));
+				}
+				uploadDone(false);
+			});
 			return;
 		}
 		const CloudLink link{.localRecordId = localRecordId, .cloudRecordId = recordId, .revision = FIRST_REVISION, .fileId = uploaded->id, .fingerprint = fingerprint};

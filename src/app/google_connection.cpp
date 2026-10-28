@@ -404,6 +404,12 @@ std::expected<void, StorageError> GoogleConnection::LeaveOnlyInCloud(const QUuid
 	return SaveLinks(std::move(changedLinks), std::move(changedCloudOnlyRecords));
 }
 
+std::expected<void, StorageError> GoogleConnection::AddCloudOnlyRecord(const CloudOnlyRecord& record) {
+	std::vector<CloudOnlyRecord> changedCloudOnlyRecords = cloudOnlyRecords;
+	changedCloudOnlyRecords.push_back(record);
+	return SaveLinks(links, std::move(changedCloudOnlyRecords));
+}
+
 std::expected<void, StorageError> GoogleConnection::ForgetCloudOnlyRecords(const QSet<QString>& cloudRecordIds) {
 	std::vector<CloudOnlyRecord> changedCloudOnlyRecords = cloudOnlyRecords;
 	const std::size_t forgottenCount = std::erase_if(changedCloudOnlyRecords, [&cloudRecordIds](const CloudOnlyRecord& record) {

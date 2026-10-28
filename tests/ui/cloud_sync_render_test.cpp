@@ -242,6 +242,83 @@ private Q_SLOTS:
 		QVERIFY(mainWindow.grab().save(QDir(renderDirectory).filePath(QStringLiteral("not-synced-%1.png").arg(suffix))));
 	}
 
+	void DoesNotBringBackAnAccountRemovedWhileItWasAdded_data() {
+		QTest::addColumn<bool>("isRemovedFromGoogle");
+		QTest::newRow("left in Google") << false;
+		QTest::newRow("removed from Google too") << true;
+	}
+
+	// An account removed here while its first copy was on its way to Google does not come back by itself. The removal
+	// question treats it as an account in Google.
+	void DoesNotBringBackAnAccountRemovedWhileItWasAdded() {
+		QFETCH(bool, isRemovedFromGoogle);
+		FakeDrive drive;
+		CloudComputer thisComputer(drive);
+		const SteamForge::AuthenticatorRecord account = DemoRecord(QStringLiteral("dmitry_v"), LOCAL_STEAM_ID, 0x37);
+		QVERIFY(thisComputer.library->Add(account).has_value());
+		QVERIFY(!ConnectToGoogle(thisComputer).isEmpty());
+		QVERIFY(SyncAndWait(*thisComputer.sync));
+
+		FakeWebApiTransport webApiTransport;
+		FakeCommunityTransport communityTransport;
+		SteamForge::SteamClock clock;
+		SteamForge::SteamImageCache imageCache;
+		SteamForge::ConfirmationMonitor monitor(webApiTransport, communityTransport, *thisComputer.library, clock);
+		const QDir dataRoot(thisComputer.directory.path());
+		SteamForge::ApplicationSettings settings(dataRoot.filePath(QStringLiteral("settings.ini")));
+		FakeCommunityTransport profileTransport;
+		SteamForge::AccountProfiles profiles(profileTransport, imageCache, dataRoot.filePath(QStringLiteral("profiles.json")));
+		SteamForge::MainWindow mainWindow(*thisComputer.library, clock, monitor, imageCache, profiles, *thisComputer.encryption, *thisComputer.connection, *thisComputer.sync, settings, SteamForge::DataLocation{.directoryPath = dataRoot.path(), .isPortable = false});
+		mainWindow.show();
+		auto* detailsView = mainWindow.findChild<SteamForge::AccountDetailsView*>();
+		QVERIFY(detailsView != nullptr);
+
+		// The upload waits for its answer while the account is removed with the removal question.
+		drive.HoldResponses();
+		thisComputer.sync->AddToCloud(account.id);
+		QVERIFY(thisComputer.sync->IsChanging(account.id));
+		bool isRemovalConfirmed = false;
+		bool isGoogleChoiceShown = false;
+		QTimer::singleShot(100, [&isRemovalConfirmed, &isGoogleChoiceShown, isRemovedFromGoogle]() {
+			auto* question = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+			if (question == nullptr) {
+				return;
+			}
+			isGoogleChoiceShown = question->checkBox() != nullptr;
+			if (isGoogleChoiceShown) {
+				question->checkBox()->setChecked(isRemovedFromGoogle);
+			}
+			const QList<QAbstractButton*> buttons = question->buttons();
+			const auto removeButton = std::ranges::find_if(buttons, [question](QAbstractButton* button) {
+				return question->buttonRole(button) == QMessageBox::DestructiveRole;
+			});
+			if (removeButton != buttons.end()) {
+				isRemovalConfirmed = true;
+				(*removeButton)->click();
+			}
+		});
+		Q_EMIT detailsView->RemoveRequested(account.id);
+		QVERIFY(isRemovalConfirmed);
+		QVERIFY(isGoogleChoiceShown);
+		QVERIFY(thisComputer.library->FindRecord(account.id) == nullptr);
+
+		drive.ReleaseResponses();
+		QTRY_VERIFY(!thisComputer.sync->IsChanging(account.id));
+		QTRY_VERIFY(thisComputer.sync->Status() != SteamForge::CloudSyncStatus::SYNCING);
+		QVERIFY(SyncAndWait(*thisComputer.sync));
+		QVERIFY(SyncAndWait(*thisComputer.sync));
+		QVERIFY(thisComputer.library->Records().empty());
+		QCOMPARE(thisComputer.sync->Status(), SteamForge::CloudSyncStatus::SYNCED);
+		if (isRemovedFromGoogle) {
+			QCOMPARE(drive.FileCount(QStringLiteral("record")), 0);
+			QVERIFY(thisComputer.connection->CloudOnlyRecords().empty());
+		} else {
+			QCOMPARE(drive.FileCount(QStringLiteral("record")), 1);
+			QCOMPARE(thisComputer.connection->CloudOnlyRecords().size(), std::size_t{1});
+			QCOMPARE(thisComputer.connection->CloudOnlyRecords().front().title, QStringLiteral("dmitry_v"));
+		}
+	}
+
 	// The window of the account data holds a copy of the account: saving it must not bring back the Steam Guard key
 	// that Google replaced while the window was open.
 	void KeepsTheKeyFromGoogleWhenAccountDataIsSaved() {
